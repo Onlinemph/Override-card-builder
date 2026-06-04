@@ -116,6 +116,12 @@ function convertArmLegArmor(tw: number | undefined): number {
   return Math.max(MIN_ARM_LEG_ARMOR, roundNearest(tw / ARM_LEG_ARMOR_DIVISOR));
 }
 
+/** Per-section structure: IS / 3, round nearest, min 1. Returns 0 if the location is absent. */
+function convertStructure(is: number | undefined): number {
+  if (is === undefined) return 0;
+  return Math.max(MIN_STRUCTURE, roundNearest(is / STRUCTURE_DIVISOR));
+}
+
 /** Heat dissipated per round: count x (2 doubles | 1 single). */
 function heatDissipatedPerRound(unit: Unit): number {
   const perSink =
@@ -166,12 +172,16 @@ export function convertUnit(unit: Unit): OverrideCard {
   );
   const head = lookupHeadArmor(a.HD ?? 0);
 
-  // Center-torso structure only: TW / 3, round nearest, min 1.
-  const ctStructure = unit.structure.CT;
-  const structure =
-    ctStructure === undefined
-      ? MIN_STRUCTURE
-      : Math.max(MIN_STRUCTURE, roundNearest(ctStructure / STRUCTURE_DIVISOR));
+  // Per-section structure: IS / 3, round nearest, min 1. Torso uses CT internal.
+  const s = unit.structure;
+  const structure = {
+    torso: convertStructure(s.CT),
+    head: convertStructure(s.HD),
+    leftArm: convertStructure(s.LA),
+    rightArm: convertStructure(s.RA),
+    leftLeg: convertStructure(s.LL),
+    rightLeg: convertStructure(s.RL),
+  };
 
   const heatDissipation = roundNearest(
     heatDissipatedPerRound(unit) / HEAT_DISSIPATION_DIVISOR,

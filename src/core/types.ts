@@ -147,6 +147,17 @@ export interface CardArmor {
   rightLeg: number;
 }
 
+/** Per-section internal structure on the Override card. Each = IS / 3, round nearest, min 1. */
+export interface CardStructure {
+  /** Torso structure, from center-torso internal structure. */
+  torso: number;
+  head: number;
+  leftArm: number;
+  rightArm: number;
+  leftLeg: number;
+  rightLeg: number;
+}
+
 /** Converted Override record-card statistics for one unit. */
 export interface OverrideCard {
   /** "Chassis Model". */
@@ -167,8 +178,8 @@ export interface OverrideCard {
   /** Base TMM + jump bonus (exposed; meaningful only when jump > 0). */
   tmmJump: number;
   armor: CardArmor;
-  /** Center-torso structure only: TW / 3, round nearest, min 1. */
-  structure: number;
+  /** Per-section structure: IS / 3, round nearest, min 1 (torso from CT). */
+  structure: CardStructure;
   /** Total dissipated per round / 5, round nearest. */
   heatDissipation: number;
   weapons: CardWeapon[];

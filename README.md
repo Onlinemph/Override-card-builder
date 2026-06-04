@@ -65,7 +65,7 @@ readable summary to stdout. `--csv` adds one flat CSV row per unit.
 | Head armor | bracket on head TW: 0–2→1, 3–5→2, 6–7→3, 8–9→4, cap 5 | lookup |
 | Arms/legs armor | TW ÷ 3, min 1 | nearest |
 | Non-'Mech armor (stub) | location ÷ 4 | nearest |
-| Structure / section | TW ÷ 3, min 1 ('Mechs use **CT structure only**) | nearest |
+| Structure / section | IS ÷ 3, min 1 — per section (torso from CT, head, arms, legs) | nearest |
 | Heat dissipation | total dissipated/round ÷ 5 (doubles dissipate 2 each) | nearest |
 
 Rounding is **per field** — `roundUp()` for damage, `roundNearest()` for
@@ -86,7 +86,9 @@ are exposed on the card (`tmmSprint`, `tmmJump`) but the card prints **base TMM*
 MTF files do **not** contain internal-structure values. The parser derives them
 from the standard TechManual internal-structure-by-tonnage table
 (`INTERNAL_STRUCTURE_BY_TONNAGE` in `constants.ts`), keyed on mass. A
-non-standard tonnage fails loudly.
+non-standard tonnage fails loudly. The card then reports structure **per
+section** (torso from CT, head, each arm, each leg), each = roundNearest(IS ÷ 3)
+with a minimum of 1.
 
 ## Validation method — the DFA oracle
 

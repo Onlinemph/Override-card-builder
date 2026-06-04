@@ -124,7 +124,12 @@ function printSummary(card: OverrideCard): void {
     `  Armor  torso ${card.armor.torso}  rear ${card.armor.rear}  head ${card.armor.head}` +
       `  arms ${card.armor.leftArm}/${card.armor.rightArm}  legs ${card.armor.leftLeg}/${card.armor.rightLeg}`,
   );
-  lines.push(`  Structure (CT) ${card.structure}   Heat dissipation ${card.heatDissipation}`);
+  lines.push(
+    `  Structure  torso ${card.structure.torso}  head ${card.structure.head}` +
+      `  arms ${card.structure.leftArm}/${card.structure.rightArm}` +
+      `  legs ${card.structure.leftLeg}/${card.structure.rightLeg}`,
+  );
+  lines.push(`  Heat dissipation ${card.heatDissipation}`);
   if (card.weapons.length > 0) {
     lines.push("  Weapons:");
     for (const w of card.weapons) {
@@ -158,7 +163,12 @@ function toCsv(cards: OverrideCard[]): string {
     "armorRightArm",
     "armorLeftLeg",
     "armorRightLeg",
-    "structureCT",
+    "structureTorso",
+    "structureHead",
+    "structureLeftArm",
+    "structureRightArm",
+    "structureLeftLeg",
+    "structureRightLeg",
     "heatDissipation",
     "weaponCount",
   ];
@@ -186,7 +196,12 @@ function toCsv(cards: OverrideCard[]): string {
       c.armor.rightArm,
       c.armor.leftLeg,
       c.armor.rightLeg,
-      c.structure,
+      c.structure.torso,
+      c.structure.head,
+      c.structure.leftArm,
+      c.structure.rightArm,
+      c.structure.leftLeg,
+      c.structure.rightLeg,
       c.heatDissipation,
       c.weapons.length,
     ]

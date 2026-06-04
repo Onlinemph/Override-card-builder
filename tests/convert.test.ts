@@ -90,8 +90,11 @@ describe("convertUnit: Locust LCT-1V", () => {
     expect(c.armor.leftArm).toBe(1); // 4/3 -> 1
     expect(c.armor.leftLeg).toBe(3); // 8/3 -> 2.67 -> 3
   });
-  it("structure and heat", () => {
-    expect(c.structure).toBe(2); // CT 6 /3
+  it("structure (per-section, IS/3 min 1) and heat", () => {
+    expect(c.structure.torso).toBe(2); // CT IS 6 /3
+    expect(c.structure.head).toBe(1); // HD IS 3 /3
+    expect(c.structure.leftArm).toBe(1); // arm IS 3 /3
+    expect(c.structure.leftLeg).toBe(1); // leg IS 4 /3 -> 1.33
     expect(c.heatDissipation).toBe(2); // 10 single /5
   });
   it("weapon damage", () => {
@@ -110,7 +113,9 @@ describe("convertUnit: Hunchback HBK-4G", () => {
     expect(c.armor.rear).toBe(3); // (6+6+6)/6
     expect(c.armor.head).toBe(4); // HD TW 9
     expect(c.armor.leftArm).toBe(5); // 16/3 -> 5.33
-    expect(c.structure).toBe(5); // CT 16 /3 -> 5.33
+    expect(c.structure.torso).toBe(5); // CT IS 16 /3 -> 5.33
+    expect(c.structure.leftArm).toBe(3); // arm IS 8 /3 -> 2.67
+    expect(c.structure.leftLeg).toBe(4); // leg IS 12 /3
     expect(c.heatDissipation).toBe(3); // 13/5 -> 2.6
   });
   it("weapon damage (AC/20, ML, ML, Small Laser)", () => {
@@ -132,7 +137,10 @@ describe("convertUnit: Atlas AS7-D", () => {
     expect(c.armor.head).toBe(4);
     expect(c.armor.leftArm).toBe(11); // 34/3 -> 11.33
     expect(c.armor.leftLeg).toBe(14); // 41/3 -> 13.67
-    expect(c.structure).toBe(10); // CT 31 /3 -> 10.33
+    expect(c.structure.torso).toBe(10); // CT IS 31 /3 -> 10.33
+    expect(c.structure.head).toBe(1); // HD IS 3 /3
+    expect(c.structure.leftArm).toBe(6); // arm IS 17 /3 -> 5.67
+    expect(c.structure.leftLeg).toBe(7); // leg IS 21 /3
     expect(c.heatDissipation).toBe(4); // 20/5
   });
   it("weapon damage (AC/20, LRM 20, SRM 6, 4x ML)", () => {
