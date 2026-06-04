@@ -291,11 +291,14 @@ function parseWeapons(lines: RawLine[], file: string): Weapon[] {
     }
 
     let name = line.text.slice(0, comma).trim();
-    const rawLocation = line.text.slice(comma + 1).trim();
+    let rawLocation = line.text.slice(comma + 1).trim();
 
-    // Rear-mounted flag, e.g. "Medium Laser (R)".
-    const rearMounted = /\(\s*r\s*\)$/i.test(name);
-    name = name.replace(/\(\s*r\s*\)$/i, "").trim();
+    // Rear-mounted flag. MTF variants put the "(R)" marker on either side:
+    // "Medium Laser (R), Center Torso" or "Medium Laser, Center Torso (R)".
+    const rearRe = /\(\s*r\s*\)$/i;
+    const rearMounted = rearRe.test(name) || rearRe.test(rawLocation);
+    name = name.replace(rearRe, "").trim();
+    rawLocation = rawLocation.replace(rearRe, "").trim();
 
     const loc = WEAPON_LOCATION_MAP[rawLocation.toLowerCase()];
     if (!loc) {

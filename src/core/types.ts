@@ -111,3 +111,68 @@ export interface Unit {
   /** Source filename, populated by the CLI for error messages and output naming. */
   sourceFile?: string;
 }
+
+// ---------------------------------------------------------------------------
+// Conversion output — the Override record-card stats produced by convert.ts.
+// ---------------------------------------------------------------------------
+
+/** A weapon as it appears on the Override card. */
+export interface CardWeapon {
+  /** Weapon name from the MTF. */
+  name: string;
+  /** Normalized location code. */
+  location: MechLocation;
+  /** Rear-mounted flag carried from parsing. */
+  rearMounted: boolean;
+  /** Total Warfare damage looked up for this weapon (0 if unknown). */
+  twDamage: number;
+  /** Converted Override damage: roundUp(twDamage / 3). v1 = one weapon per TIC. */
+  damage: number;
+  /** True when the weapon name was not found in the TW damage table. */
+  unknown: boolean;
+}
+
+/** Per-section armor on the Override card. */
+export interface CardArmor {
+  /** (CT + LT + RT) / 6, round nearest. */
+  torso: number;
+  /** (CTr + LTr + RTr) / 6, round nearest. */
+  rear: number;
+  /** Head-armor bracket lookup on head TW. */
+  head: number;
+  /** TW / 3, round nearest, min 1 (0 if location absent). */
+  leftArm: number;
+  rightArm: number;
+  leftLeg: number;
+  rightLeg: number;
+}
+
+/** Converted Override record-card statistics for one unit. */
+export interface OverrideCard {
+  /** "Chassis Model". */
+  name: string;
+  chassis: string;
+  model: string;
+  mass: number;
+  techBase: TechBase;
+  /** Printed move string, e.g. "8/12" or "5/8 (J)". */
+  move: string;
+  walkMove: number;
+  runMove: number;
+  jump: number;
+  /** Base TMM (what the card prints). */
+  tmm: number;
+  /** Base TMM + sprint bonus (exposed, not printed). */
+  tmmSprint: number;
+  /** Base TMM + jump bonus (exposed; meaningful only when jump > 0). */
+  tmmJump: number;
+  armor: CardArmor;
+  /** Center-torso structure only: TW / 3, round nearest, min 1. */
+  structure: number;
+  /** Total dissipated per round / 5, round nearest. */
+  heatDissipation: number;
+  weapons: CardWeapon[];
+  /** Non-fatal notes (e.g. weapons missing from the TW damage table). */
+  warnings: string[];
+  sourceFile?: string;
+}

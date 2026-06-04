@@ -95,13 +95,12 @@ export const HEAD_ARMOR_LOOKUP: ReadonlyArray<HeadArmorBracket> = [
 // runMP <= maxRun. Sprint and jump add +1 to base TMM (exposed separately by
 // convert.ts); the card prints base TMM.
 //
-// Anchored data point (verified vs DFA): Atlas 3/5 -> runMP 5 -> TMM 1.
+// Verified vs DFA cards: run 3 -> 0, 6 -> 1, 8 -> 2, 9 -> 2, 11 -> 3.
+// (Atlas 3/5 -> runMP 5 -> TMM 1 also confirmed.)
 //
-// !!! CONFIRM: The user's source table was truncated in the task description
-// ("Ts"). The table below is a reconstruction consistent with the run-5 -> 1
-// anchor. Rows for runMP >= 13 are explicitly INFERRED and must be confirmed
-// against a fast light 'Mech (per the README validation note). Replace this
-// table verbatim once the real one is supplied.
+// !!! INFERRED, UNVERIFIED: bands 4-5 (run 13-17 -> 4, run 18+ -> 5) are taken
+// from Alpha Strike CE and must be confirmed against a fast light 'Mech (see
+// the README validation note).
 // ---------------------------------------------------------------------------
 
 export interface TmmBracket {
@@ -110,12 +109,12 @@ export interface TmmBracket {
 }
 
 export const TMM_BY_RUN: ReadonlyArray<TmmBracket> = [
-  { maxRun: 4, tmm: 0 },
-  { maxRun: 6, tmm: 1 }, // anchor: run 5 -> 1
-  { maxRun: 8, tmm: 2 },
-  { maxRun: 10, tmm: 3 },
-  { maxRun: 12, tmm: 4 },
-  { maxRun: Infinity, tmm: 5 }, // CONFIRM: run >= 13 inferred
+  { maxRun: 3, tmm: 0 },
+  { maxRun: 6, tmm: 1 },
+  { maxRun: 9, tmm: 2 },
+  { maxRun: 12, tmm: 3 },
+  { maxRun: 17, tmm: 4 }, // INFERRED (Alpha Strike CE), UNVERIFIED
+  { maxRun: Infinity, tmm: 5 }, // INFERRED (Alpha Strike CE), UNVERIFIED
 ];
 
 /** Sprint and jump each add +1 to base TMM (rules). Card prints base TMM. */
