@@ -9,6 +9,9 @@ import "./style.css";
 import { buildTic, convertUnit, isLegalTic, parseMtf, ParseError } from "../core/index.js";
 import type { CardWeapon, OverrideCard } from "../core/index.js";
 
+// Injected by Vite (see vite.config.ts).
+declare const __BUILD_TIME__: string;
+
 const EXAMPLE_LOCUST = `chassis:Locust
 model:LCT-1V
 
@@ -260,11 +263,21 @@ $("clear").addEventListener("click", () => {
 $("upload").addEventListener("click", () => fileInput.click());
 
 fileInput.addEventListener("change", async () => {
-  const files = Array.from(fileInput.files ?? []);
-  if (files.length === 0) return;
-  const texts = await Promise.all(files.map((f) => f.text()));
-  const results = texts.map((text, i) => convertOne(text.trim(), files[i]!.name));
-  textarea.value = texts[0]!; // show the first file for reference
-  showResults(results);
-  fileInput.value = ""; // reset so re-selecting the same file fires "change"
+  try {
+    const files = Array.from(fileInput.files ?? []);
+    if (files.length === 0) return;
+    const texts = await Promise.all(files.map((f) => f.text()));
+    const results = texts.map((text, i) => convertOne(text.trim(), files[i]!.name));
+    textarea.value = texts[0]!; // show the first file for reference
+    showResults(results);
+  } catch (err) {
+    // Never fail silently — surface read/parse problems to the user.
+    output.innerHTML = errorCard("upload", err instanceof Error ? err.message : String(err));
+  } finally {
+    fileInput.value = ""; // reset so re-selecting the same file fires "change"
+  }
 });
+
+// Build stamp — lets you confirm at a glance whether you're on the latest deploy.
+const buildEl = document.getElementById("build");
+if (buildEl) buildEl.textContent = `build ${__BUILD_TIME__}`;

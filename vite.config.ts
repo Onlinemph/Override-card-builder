@@ -5,6 +5,11 @@ import { defineConfig } from "vite";
 // (https://<user>.github.io/<repo>/) without hard-coding the repo name.
 export default defineConfig({
   base: "./",
+  // Injected build timestamp, shown in the footer so it's obvious at a glance
+  // whether the page is the latest deploy or a cached one.
+  define: {
+    __BUILD_TIME__: JSON.stringify(new Date().toISOString()),
+  },
   build: {
     outDir: "dist-web",
     emptyOutDir: true,
