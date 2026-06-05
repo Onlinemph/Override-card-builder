@@ -18,14 +18,17 @@ import {
   HEAD_ARMOR_LOOKUP,
   HEAT_DISSIPATION_DIVISOR,
   HEAT_PER_DOUBLE_SINK,
+  CLUSTER_WEAPON_FAMILIES,
   HEAT_PER_SINGLE_SINK,
   M_DICE_DIVISOR,
   MIN_ARM_LEG_ARMOR,
   MIN_STRUCTURE,
   MISSILE_WEAPON_FAMILIES,
+  RANGE_VARYING_CLUSTER_FAMILIES,
   REAR_ARMOR_DIVISOR,
   STRUCTURE_DIVISOR,
   WEAPON_RANGES,
+  WEAPON_RANGES_CLAN,
   TMM_BY_RUN,
   TMM_JUMP_BONUS,
   TMM_SPRINT_BONUS,
@@ -37,6 +40,7 @@ import {
 } from "./constants.js";
 import type {
   CardWeapon,
+  DamageKind,
   DamageProfile,
   OverrideCard,
   RangeBrackets,
@@ -102,7 +106,8 @@ export function normalizeWeaponName(raw: string): string {
   s = s.toLowerCase().replace(/\s+/g, " ").trim();
   s = s.replace(/^(is|cl|clan)\s+/, ""); // drop spaced tech prefix
   s = s.replace(/\bautocannon\//g, "ac/"); // Autocannon/20 -> ac/20
-  s = s.replace(/^ac\s+(\d+)/, "ac/$1"); // "ac 20" -> "ac/20"
+  s = s.replace(/\bhyper assault gauss\b/g, "hag"); // Hyper Assault Gauss/30 -> hag/30
+  s = s.replace(/\b(ac|hag)\s+(\d+)/g, "$1/$2"); // "ac 20"/"hag 30" -> "ac/20"/"hag/30" (also Rotary/Ultra/Light AC)
   s = s.replace(/\b(srm|lrm)\s*-\s*(\d+)/g, "$1 $2"); // srm-6 -> srm 6
   return s.replace(/\s+/g, " ").trim();
 }
@@ -132,37 +137,85 @@ export function convertWeaponDamage(sumTw: number): number {
 }
 
 /**
+ * True if a normalized name starts with any family token in the list. A token
+ * matches the whole name, a space-delimited prefix ("srm 6", "lb 10-x ac"), or
+ * a slash-delimited prefix ("hag/30").
+ */
+function inFamily(normalizedName: string, families: ReadonlyArray<string>): boolean {
+  return families.some(
+    (family) =>
+      normalizedName === family ||
+      normalizedName.startsWith(`${family} `) ||
+      normalizedName.startsWith(`${family}/`),
+  );
+}
+
+/**
  * True if a normalized weapon name belongs to a missile family (rolls M dice).
  * Matches on the leading family token so "streak srm 6" hits "streak srm" (not
  * "srm"), and "rocket launcher 10" hits "rocket launcher".
  */
 export function isMissileWeapon(normalizedName: string): boolean {
-  return MISSILE_WEAPON_FAMILIES.some(
-    (family) => normalizedName === family || normalizedName.startsWith(`${family} `),
-  );
+  return inFamily(normalizedName, MISSILE_WEAPON_FAMILIES);
+}
+
+/** True if a normalized weapon name is a cluster weapon (rolls C dice): LB-X, HAG, Silver Bullet Gauss. */
+export function isClusterWeapon(normalizedName: string): boolean {
+  return inFamily(normalizedName, CLUSTER_WEAPON_FAMILIES);
+}
+
+/** True if a cluster weapon's C dice fall off by range (HAG: short/med/long). */
+export function isRangeVaryingCluster(normalizedName: string): boolean {
+  return inFamily(normalizedName, RANGE_VARYING_CLUSTER_FAMILIES);
+}
+
+/** Damage mechanic for a normalized weapon name (zero-damage entries stay direct). */
+export function classifyDamage(normalizedName: string): DamageKind {
+  if (isMissileWeapon(normalizedName)) return "missile";
+  if (isClusterWeapon(normalizedName)) return "cluster";
+  return "direct";
 }
 
 /**
- * Derive the Override damage profile from a rack's TW damage.
+ * Derive the Override damage profile from a weapon's TW damage.
  *
  *   max   = ceil(rackTW / 3)
- *   mDice = ceil(rackTW / 10)          (missiles only; 0 for direct-fire)
- *   base  = max(1, floor(rackTW / 10)) (missiles only; === max for direct-fire)
+ *   base  = max(1, floor(rackTW / 10))   (missile/cluster; === max for direct)
+ *   mDice = ceil(rackTW / 10)            (missile only)
+ *   cDice = max − base                   (cluster only; HAG falls off −1 per bracket)
  *
- * Direct-fire weapons (isMissile=false) and zero-damage entries collapse to a
- * flat profile: base === max, mDice 0.
+ * Direct-fire and zero-damage entries collapse to a flat profile (base === max).
  */
-export function computeDamageProfile(twDamage: number, isMissile: boolean): DamageProfile {
+export function computeDamageProfile(
+  twDamage: number,
+  kind: DamageKind,
+  rangeVarying = false,
+): DamageProfile {
   const max = convertWeaponDamage(twDamage);
-  if (!isMissile || twDamage <= 0) return { base: max, mDice: 0, max };
-  const mDice = roundUp(twDamage / M_DICE_DIVISOR);
+  if (kind === "direct" || twDamage <= 0) {
+    return { kind: "direct", base: max, mDice: 0, cDice: [], max };
+  }
   const base = Math.max(1, Math.floor(twDamage / M_DICE_DIVISOR));
-  return { base, mDice, max };
+  if (kind === "missile") {
+    return { kind, base, mDice: roundUp(twDamage / M_DICE_DIVISOR), cDice: [], max };
+  }
+  // cluster: base + cDice === max. Range-varying clusters (HAG) shed one C die
+  // per bracket: [short, med, long].
+  const top = max - base;
+  const cDice = rangeVarying ? [top, top - 1, top - 2] : [top];
+  return { kind, base, mDice: 0, cDice, max };
 }
 
-/** Format a profile for the card: `base+M{mDice} (max)` for missiles, else flat `max`. */
+/**
+ * Format a profile for the card:
+ *   - missile: `base+M{mDice} (max)`
+ *   - cluster: `base+C{cDice}` (HAG: `base+C{short}|{med}|{long}`)
+ *   - direct:  flat `max`
+ */
 export function formatDamage(p: DamageProfile): string {
-  return p.mDice > 0 ? `${p.base}+M${p.mDice} (${p.max})` : `${p.max}`;
+  if (p.kind === "missile") return `${p.base}+M${p.mDice} (${p.max})`;
+  if (p.kind === "cluster" && p.cDice[0]! > 0) return `${p.base}+C${p.cDice.join("|")}`;
+  return `${p.max}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -266,10 +319,13 @@ function convertWeapon(w: Weapon, techBase: TechBase): CardWeapon {
   const { twDamage, unknown } = lookupWeaponDamage(w.name, techBase);
   // v1: one weapon per TIC, so each weapon is its own group.
   // TODO(TIC grouping): replace per-weapon conversion with grouped sums.
-  const isMissile = !unknown && isMissileWeapon(key);
-  const profile = computeDamageProfile(twDamage, isMissile);
+  const kind: DamageKind = unknown ? "direct" : classifyDamage(key);
+  const profile = computeDamageProfile(twDamage, kind, isRangeVaryingCluster(key));
   // Range data is a separate, growing table; weapons absent from it have no row.
-  const rangeData = WEAPON_RANGES[key];
+  // Clan ranges diverge for some weapons (ER lasers, RACs) — consult the Clan
+  // override table first for Clan units, then fall back to the shared table.
+  const rangeData =
+    (techBase === "Clan" ? WEAPON_RANGES_CLAN[key] : undefined) ?? WEAPON_RANGES[key];
   const range = rangeData ? computeRangeBrackets(rangeData) : null;
   return {
     name: w.name,

@@ -117,14 +117,31 @@ export interface Unit {
 // ---------------------------------------------------------------------------
 
 /**
+ * How a weapon's damage is rolled on the Override card.
+ *   - direct:  flat damage (base === max, no dice). Lasers, ACs, Gauss, etc.
+ *   - missile: rolls M dice; prints `base+M{mDice} (max)`. LRM/SRM/MRM/RL.
+ *   - cluster: rolls C dice; prints `base+C{cDice}`. LB-X, HAG, Silver Bullet.
+ */
+export type DamageKind = "direct" | "missile" | "cluster";
+
+/**
  * Override damage profile. Direct-fire weapons deal flat damage (base === max,
- * mDice 0). Missile racks roll M dice and print `base+M{mDice} (max)`.
+ * mDice 0, cDice []). Missile racks roll M dice (`base+M{mDice} (max)`). Cluster
+ * weapons roll C dice (`base+C{cDice}`), where base + cDice === max.
  */
 export interface DamageProfile {
-  /** Guaranteed minimum damage, printed before the dice. floor(rackTW/10), min 1 for missiles; === max for direct-fire. */
+  /** Which dice mechanic this weapon uses. */
+  kind: DamageKind;
+  /** Guaranteed minimum damage. floor(rackTW/10), min 1 for missile/cluster; === max for direct. */
   base: number;
-  /** Number of M (missile) dice = ceil(rackTW / 10). 0 for direct-fire weapons. */
+  /** Number of M (missile) dice = ceil(rackTW / 10). 0 unless kind === "missile". */
   mDice: number;
+  /**
+   * C (cluster) dice = max − base. Empty unless kind === "cluster". One entry
+   * for a range-independent cluster (LB-X); three entries [short, med, long]
+   * for a range-varying cluster (HAG), each one lower than the last.
+   */
+  cDice: number[];
   /** Maximum damage = ceil(rackTW / 3). */
   max: number;
 }

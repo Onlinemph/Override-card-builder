@@ -79,6 +79,28 @@ export const MISSILE_WEAPON_FAMILIES: ReadonlyArray<string> = [
   "rocket launcher",
 ] as const;
 
+/**
+ * Cluster weapon families that roll C dice on the Override card, printing
+ * `base+C{cDice}` where base + cDice === max (= ceil(TW/3)). Matched on the
+ * leading token of the normalized name.
+ *
+ * Confirmed vs DFA cards: LB-X ("lb 10-x ac" -> 1+C3), HAG ("hag/30" ->
+ * 3+C7|6|5). Silver Bullet Gauss is also cluster-only (page 40) and is listed
+ * here for when it is added to the damage table.
+ */
+export const CLUSTER_WEAPON_FAMILIES: ReadonlyArray<string> = [
+  "lb",
+  "hag",
+  "silver bullet gauss",
+] as const;
+
+/**
+ * Cluster families whose C dice fall off with range (short/med/long), printed
+ * `base+C{short}|{med}|{long}` with each value one lower than the last.
+ * Confirmed vs DFA card: HAG/30 -> 3+C7|6|5.
+ */
+export const RANGE_VARYING_CLUSTER_FAMILIES: ReadonlyArray<string> = ["hag"] as const;
+
 /** 'Mech torso armor: (CT + LT + RT) / 6, round nearest. */
 export const TORSO_ARMOR_DIVISOR = 6;
 
@@ -218,11 +240,24 @@ export const WEAPON_DAMAGE: Readonly<Record<string, number>> = {
   "lb 10-x ac": 10,
   "lb 20-x ac": 20,
 
-  // --- Ballistic: Ultra AC (single-shot class damage; double-tap = TODO) ---
+  // --- Ballistic: Ultra AC (single-shot class damage; double-tap is the (RF) rule, not damage) ---
   "ultra ac/2": 2,
   "ultra ac/5": 5,
   "ultra ac/10": 10,
   "ultra ac/20": 20,
+
+  // --- Ballistic: Rotary AC. Per page 40, RAC TW is rebalanced (cluster-hit
+  // average): RAC/2 base TW = 3, RAC/5 base TW = 8. Single-shot value; the
+  // (RF) double-fire is a TIC rule, not a damage change. ceil/3 -> 1 and 3. ---
+  "rotary ac/2": 3,
+  "rotary ac/5": 8,
+
+  // --- Ballistic: HAG (Clan-only; cluster C-dice, range-varying). Nominal rack
+  // TW by class drives base (floor/10) and C dice (max − base). VERIFIED vs DFA
+  // card: HAG/30 -> 3+C7|6|5. ---
+  "hag/20": 20,
+  "hag/30": 30,
+  "hag/40": 40,
 
   // --- Ballistic: Light AC ---
   "light ac/2": 2,
@@ -352,6 +387,68 @@ export const WEAPON_RANGES: Readonly<Record<string, WeaponRange>> = {
   "mrm 20": { min: 0, medium: 8, long: 15, toHitMod: 1 },
   "mrm 30": { min: 0, medium: 8, long: 15, toHitMod: 1 },
   "mrm 40": { min: 0, medium: 8, long: 15, toHitMod: 1 },
+
+  // --- Missiles: Rocket Launcher (inherent +1; VERIFIED vs DFA card RL15: +1/+1/+3/+5/–) ---
+  "rocket launcher 10": { min: 0, medium: 11, long: 18, toHitMod: 1 }, // CONFIRM (RL15 verified)
+  "rocket launcher 15": { min: 0, medium: 9, long: 15, toHitMod: 1 }, // VERIFIED
+  "rocket launcher 20": { min: 0, medium: 7, long: 12, toHitMod: 1 }, // CONFIRM (RL15 verified)
+
+  // --- Energy: pulse lasers (inherent -2 "pulse quality"; VERIFIED vs DFA card MPLas: -2/-2/+2/–/–) ---
+  "small pulse laser": { min: 0, medium: 2, long: 3, toHitMod: -2 }, // CONFIRM (IS ranges)
+  "medium pulse laser": { min: 0, medium: 4, long: 6, toHitMod: -2 }, // VERIFIED (IS)
+  "large pulse laser": { min: 0, medium: 7, long: 10, toHitMod: -2 }, // CONFIRM (IS ranges)
+
+  // --- Energy: ER Medium Laser (IS; long range raised to 13 per page 42; VERIFIED: +0/+0/+2/+4/–) ---
+  "er medium laser": { min: 0, medium: 8, long: 13 }, // VERIFIED (IS); Clan ranges differ (see WEAPON_RANGES_CLAN)
+
+  // --- Energy: ER PPC (ER PPC range is tech-independent: 7/14/23) ---
+  "er ppc": { min: 0, medium: 14, long: 23 }, // CONFIRM
+
+  // --- Ballistic: Light AC ---
+  "light ac/2": { min: 0, medium: 12, long: 18 }, // CONFIRM
+  "light ac/5": { min: 0, medium: 10, long: 15 }, // CONFIRM
+
+  // --- Ballistic: Ultra AC (VERIFIED vs DFA card UAC/10 IS: +0/+0/+2/+4/–) ---
+  "ultra ac/10": { min: 0, medium: 12, long: 18 }, // VERIFIED (IS); Clan UAC ranges differ
+
+  // --- Ballistic: Rotary AC (VERIFIED vs DFA card RAC/5 IS: +0/+0/+2/+4/–) ---
+  "rotary ac/5": { min: 0, medium: 12, long: 18 }, // VERIFIED (IS); Clan in WEAPON_RANGES_CLAN
+
+  // --- Ballistic: LB-X cluster (VERIFIED vs DFA card LB 10-X IS: +0/+0/+2/+4/–) ---
+  "lb 10-x ac": { min: 0, medium: 12, long: 18 }, // VERIFIED (IS); Clan LB ranges differ
+
+  // --- Ballistic: HAG (Clan-only; all classes share range 2/16/24; VERIFIED vs DFA card HAG/30: +2/+0/+0/+2/+4) ---
+  "hag/20": { min: 2, medium: 16, long: 24 },
+  "hag/30": { min: 2, medium: 16, long: 24 }, // VERIFIED
+  "hag/40": { min: 2, medium: 16, long: 24 },
+
+  // --- Ballistic: misc Gauss / supporting (canonical, tech-independent) ---
+  "ap gauss rifle": { min: 0, medium: 6, long: 9 }, // CONFIRM
+  "light gauss rifle": { min: 3, medium: 17, long: 25 }, // CONFIRM
+  magshot: { min: 0, medium: 6, long: 9 }, // CONFIRM
+  "magshot gauss rifle": { min: 0, medium: 6, long: 9 }, // CONFIRM
+
+  // --- Energy/ballistic: plasma + vehicle flamer (canonical) ---
+  "plasma rifle": { min: 0, medium: 10, long: 15 }, // CONFIRM
+  "vehicle flamer": { min: 0, medium: 2, long: 3 }, // CONFIRM
+} as const;
+
+/**
+ * Clan range OVERRIDES — weapons whose TW ranges differ from the IS / shared
+ * value in WEAPON_RANGES. Consulted first for Clan units (convert.ts), then
+ * falls back to WEAPON_RANGES. Mirrors the WEAPON_DAMAGE_CLAN pattern.
+ *
+ * TECH-DIVERGENCE GAP: pulse lasers, LB-X, and Ultra AC also have different
+ * Clan ranges, but only Clan ER Medium Laser and Clan Rotary AC/5 are
+ * card-verified so far. Until a Clan card is supplied for the others, Clan
+ * units fall back to the IS ranges above (a documented, known gap — not a
+ * silent one). Add a row here as each is verified.
+ */
+export const WEAPON_RANGES_CLAN: Readonly<Record<string, WeaponRange>> = {
+  // Clan ER Medium Laser reaches further than IS (5/10/15). VERIFIED vs DFA card cerMLas.
+  "er medium laser": { min: 0, medium: 10, long: 15 },
+  // Clan Rotary AC/5 reaches further than IS. VERIFIED vs DFA card cRAC/5: +0/+0/+0/+2/+4.
+  "rotary ac/5": { min: 0, medium: 16, long: 24 },
 } as const;
 
 /**

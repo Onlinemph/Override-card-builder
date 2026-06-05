@@ -5,12 +5,14 @@ import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import {
+  classifyDamage,
   computeDamageProfile,
   computeRangeBrackets,
   convertUnit,
   formatDamage,
   formatRangeBrackets,
   isMissileWeapon,
+  isRangeVaryingCluster,
   lookupHeadArmor,
   lookupTmm,
   lookupWeaponDamage,
@@ -19,12 +21,21 @@ import {
   roundNearest,
   roundUp,
   WEAPON_RANGES,
+  WEAPON_RANGES_CLAN,
 } from "../src/core/index.js";
+import type { TechBase } from "../src/core/index.js";
 import type { OverrideCard } from "../src/core/index.js";
 
 const FIXTURES = join(dirname(fileURLToPath(import.meta.url)), "fixtures");
 const card = (name: string): OverrideCard =>
   convertUnit(parseMtf(readFileSync(join(FIXTURES, name), "utf8"), name));
+
+/** Run a single weapon name through the full damage path (normalize -> lookup -> classify -> format). */
+const damageTextFor = (name: string, tech: TechBase = "IS"): string => {
+  const { twDamage } = lookupWeaponDamage(name, tech);
+  const key = normalizeWeaponName(name);
+  return formatDamage(computeDamageProfile(twDamage, classifyDamage(key), isRangeVaryingCluster(key)));
+};
 
 // NOTE: expected values below are hand-computed from the formulas in
 // convert.ts against the embedded fixtures. They are the FIRST-PASS values to
@@ -123,7 +134,7 @@ describe("missile damage profile (M dice, VERIFIED vs DFA cards)", () => {
     const cases: Array<[number, string]> = [
       [5, "1+M1 (2)"], // LRM-5
       [10, "1+M1 (4)"], // LRM-10 / MRM-10
-      [15, "1+M2 (5)"], // LRM-15
+      [15, "1+M2 (5)"], // LRM-15 / RL15
       [20, "2+M2 (7)"], // LRM-20 / MRM-20
       [4, "1+M1 (2)"], // SRM-2 / Streak SRM-2
       [8, "1+M1 (3)"], // SRM-4 / Streak SRM-4
@@ -132,14 +143,19 @@ describe("missile damage profile (M dice, VERIFIED vs DFA cards)", () => {
       [40, "4+M4 (14)"], // MRM-40
     ];
     for (const [tw, expected] of cases) {
-      expect(formatDamage(computeDamageProfile(tw, true))).toBe(expected);
+      expect(formatDamage(computeDamageProfile(tw, "missile"))).toBe(expected);
     }
   });
 
-  it("leaves direct-fire weapons flat (base === max, no M dice)", () => {
-    expect(computeDamageProfile(5, false)).toEqual({ base: 2, mDice: 0, max: 2 }); // Medium Laser
-    expect(computeDamageProfile(20, false)).toEqual({ base: 7, mDice: 0, max: 7 }); // AC/20
-    expect(formatDamage(computeDamageProfile(20, false))).toBe("7");
+  it("leaves direct-fire weapons flat (base === max, no dice)", () => {
+    expect(computeDamageProfile(5, "direct")).toEqual({
+      kind: "direct",
+      base: 2,
+      mDice: 0,
+      cDice: [],
+      max: 2,
+    }); // Medium Laser
+    expect(formatDamage(computeDamageProfile(20, "direct"))).toBe("7"); // AC/20
   });
 
   it("renders missile damageText through full conversion (Atlas LRM-20 + SRM-6)", () => {
@@ -147,6 +163,42 @@ describe("missile damage profile (M dice, VERIFIED vs DFA cards)", () => {
     const text = c.weapons.map((w) => w.damageText);
     // AC/20 flat 7, LRM-20 -> 2+M2 (7), SRM-6 -> 1+M2 (4), 4x ML flat 2.
     expect(text).toEqual(["7", "2+M2 (7)", "1+M2 (4)", "2", "2", "2", "2"]);
+  });
+});
+
+describe("cluster damage profile (C dice, VERIFIED vs DFA card)", () => {
+  it("classifies cluster families (LB-X, HAG), not missiles or direct-fire", () => {
+    expect(classifyDamage("lb 10-x ac")).toBe("cluster");
+    expect(classifyDamage("hag/30")).toBe("cluster"); // slash-delimited family token
+    expect(classifyDamage("lrm 15")).toBe("missile");
+    expect(classifyDamage("medium laser")).toBe("direct");
+    expect(isRangeVaryingCluster("hag/30")).toBe(true);
+    expect(isRangeVaryingCluster("lb 10-x ac")).toBe(false);
+  });
+
+  it("derives base+C{cDice} where base + cDice === max", () => {
+    expect(formatDamage(computeDamageProfile(10, "cluster"))).toBe("1+C3"); // LB 10-X, VERIFIED
+    expect(formatDamage(computeDamageProfile(20, "cluster"))).toBe("2+C5"); // LB 20-X
+  });
+
+  it("sheds one C die per bracket for range-varying clusters (HAG)", () => {
+    expect(formatDamage(computeDamageProfile(30, "cluster", true))).toBe("3+C7|6|5"); // HAG/30, VERIFIED
+    expect(computeDamageProfile(30, "cluster", true)).toEqual({
+      kind: "cluster",
+      base: 3,
+      mDice: 0,
+      cDice: [7, 6, 5],
+      max: 10,
+    });
+  });
+
+  it("renders verified damage lines through full conversion", () => {
+    // LB 10-X cluster, RL15 missile (+M2), RAC/5 and UAC/10 flat, all from the card.
+    expect(damageTextFor("LB 10-X AC")).toBe("1+C3");
+    expect(damageTextFor("Rocket Launcher 15")).toBe("1+M2 (5)");
+    expect(damageTextFor("Rotary AC/5")).toBe("3"); // TW 8 -> ceil/3
+    expect(damageTextFor("Ultra AC/10")).toBe("4"); // TW 10 -> ceil/3
+    expect(damageTextFor("HAG/30", "Clan")).toBe("3+C7|6|5");
   });
 });
 
@@ -183,6 +235,23 @@ describe("range brackets (page 43, VERIFIED vs DFA cards)", () => {
     expect(computeRangeBrackets({ min: 6, medium: 14, long: 21 }).s).toBe(2); // LRM
     expect(computeRangeBrackets({ min: 3, medium: 12, long: 18 }).s).toBe(0); // PPC
     expect(computeRangeBrackets({ min: 4, medium: 16, long: 24 }).s).toBe(2); // AC/2
+  });
+
+  it("reproduces every verified row from the mixed-weapons DFA card", () => {
+    expect(brackets("medium pulse laser")).toBe("-2 -2 +2 – –"); // pulse -2
+    expect(brackets("er medium laser")).toBe("+0 +0 +2 +4 –"); // IS, long 13
+    expect(brackets("lb 10-x ac")).toBe("+0 +0 +2 +4 –");
+    expect(brackets("hag/30")).toBe("+2 +0 +0 +2 +4");
+    expect(brackets("rotary ac/5")).toBe("+0 +0 +2 +4 –"); // IS
+    expect(brackets("ultra ac/10")).toBe("+0 +0 +2 +4 –"); // IS
+    expect(brackets("rocket launcher 15")).toBe("+1 +1 +3 +5 –"); // inherent +1
+  });
+
+  it("applies Clan range overrides where TW ranges diverge", () => {
+    const clan = (key: string) =>
+      formatRangeBrackets(computeRangeBrackets(WEAPON_RANGES_CLAN[key]!));
+    expect(clan("er medium laser")).toBe("+0 +0 +2 +4 –"); // 0/10/15
+    expect(clan("rotary ac/5")).toBe("+0 +0 +0 +2 +4"); // 0/16/24, longer than IS
   });
 
   it("attaches range rows through full conversion and leaves unlisted weapons null", () => {
