@@ -323,6 +323,39 @@ describe("TIC grouping (page 41 caps: base <= 5, max <= 14)", () => {
   });
 });
 
+describe("equipment surfacing (ammo + important gear from crit slots)", () => {
+  const c = card("Atlas AS7-D (crits).mtf");
+  const find = (label: string) => c.equipment.find((e) => e.label === label);
+
+  it("counts ammo bins by location", () => {
+    expect(find("AC/20 Ammo")).toMatchObject({ location: "RT", category: "ammo", count: 2 });
+    expect(find("LRM-20 Ammo")).toMatchObject({ location: "LT", category: "ammo", count: 2 });
+    expect(find("SRM-6 Ammo")).toMatchObject({ location: "LT", category: "ammo", count: 1 });
+  });
+
+  it("surfaces important gear (CASE, ECM) with location, once each", () => {
+    expect(find("CASE")).toMatchObject({ location: "LT", category: "equipment", count: 1 });
+    expect(find("ECM")).toMatchObject({ location: "LT", category: "equipment", count: 1 });
+  });
+
+  it("excludes weapons, actuators, engine, and structure from equipment", () => {
+    const labels = c.equipment.map((e) => e.label);
+    expect(labels).not.toContain("Medium Laser");
+    expect(labels).not.toContain("Autocannon/20");
+    expect(labels.some((l) => /actuator|engine|gyro|sensors|life support/i.test(l))).toBe(false);
+  });
+
+  it("orders equipment before ammo", () => {
+    const firstAmmo = c.equipment.findIndex((e) => e.category === "ammo");
+    const lastEquip = c.equipment.map((e) => e.category).lastIndexOf("equipment");
+    expect(lastEquip).toBeLessThan(firstAmmo);
+  });
+
+  it("is empty when the MTF has no crit blocks", () => {
+    expect(card("Atlas AS7-D.mtf").equipment).toEqual([]);
+  });
+});
+
 describe("melee (Punch/Kick auto-generated + physical weapons)", () => {
   it("derives Punch/Kick from tonnage (VERIFIED 100t -> 4/7)", () => {
     expect(card("Atlas AS7-D.mtf").melee).toEqual({ punch: 4, kick: 7 }); // 100t

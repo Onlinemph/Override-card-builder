@@ -197,8 +197,22 @@ function cardShell(card: OverrideCard, idx: number): string {
     <h3>Heat &amp; TICs</h3>
     <div class="stats">${stat("Heat dissipation", card.heatDissipation)}</div>
     <div class="tic-editor" data-card="${idx}"></div>
+    ${equipmentSection(card)}
     ${warnings}
   </article>`;
+}
+
+function equipmentSection(card: OverrideCard): string {
+  if (card.equipment.length === 0) return "";
+  const items = card.equipment
+    .map((e) => {
+      const qty = e.count > 1 ? ` <span class="muted">×${e.count}</span>` : "";
+      const cls = e.category === "ammo" ? "equip ammo" : "equip";
+      return `<li class="${cls}"><span class="equip-name">${esc(e.label)}</span>
+        <span class="equip-loc">${esc(e.location)}</span>${qty}</li>`;
+    })
+    .join("");
+  return `<h3>Equipment</h3><ul class="equipment">${items}</ul>`;
 }
 
 function errorCard(file: string, message: string): string {

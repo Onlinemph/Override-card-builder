@@ -19,6 +19,7 @@ import {
   structureRowToLocations,
 } from "./constants.js";
 import type {
+  CritSlot,
   Engine,
   HeatSinkType,
   MechLocation,
@@ -67,6 +68,7 @@ export function parseMtf(text: string, file = "<unknown>"): Unit {
   const armor = parseArmor(lines, file);
   const structure = deriveStructure(mass, file);
   const weapons = parseWeapons(lines, file);
+  const critSlots = parseCritSlots(lines);
 
   return {
     chassis,
@@ -80,6 +82,7 @@ export function parseMtf(text: string, file = "<unknown>"): Unit {
     armor,
     structure,
     weapons,
+    critSlots,
   };
 }
 
@@ -244,6 +247,47 @@ function parseArmor(lines: RawLine[], file: string): Partial<Record<MechLocation
     throw new ParseError(`no armor lines found`, file, "Armor");
   }
   return armor;
+}
+
+/**
+ * Per-location critical-slot blocks, e.g.:
+ *
+ *   Right Torso:
+ *   Autocannon/20
+ *   ...
+ *   IS Ammo AC/20
+ *   ISCASE
+ *   -Empty-
+ *
+ * A header line is exactly a location name followed by ":". Each subsequent
+ * non-empty line is one occupied slot until a blank line or the next header.
+ * "-Empty-" slots are skipped. Absent entirely (many hand-written MTFs) -> [].
+ */
+function parseCritSlots(lines: RawLine[]): CritSlot[] {
+  const slots: CritSlot[] = [];
+  let location: MechLocation | null = null;
+  let rawLocation = "";
+
+  for (const { text } of lines) {
+    if (text.endsWith(":")) {
+      const header = text.slice(0, -1).trim();
+      const loc = WEAPON_LOCATION_MAP[header.toLowerCase()];
+      if (loc) {
+        location = loc;
+        rawLocation = header;
+        continue;
+      }
+    }
+    if (!location) continue;
+    if (text === "") {
+      location = null; // blank line ends the block
+      continue;
+    }
+    if (text.toLowerCase() === "-empty-") continue;
+    slots.push({ name: text, location, rawLocation });
+  }
+
+  return slots;
 }
 
 /**

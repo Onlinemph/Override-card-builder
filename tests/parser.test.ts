@@ -93,6 +93,18 @@ Medium Laser, Center Torso (R)
     ]);
   });
 
+  it("parses per-location crit-slot blocks (ammo, CASE, electronics), skipping -Empty-", () => {
+    const u = parseMtf(load("Atlas AS7-D (crits).mtf"), "Atlas AS7-D (crits).mtf");
+    const slots = u.critSlots ?? [];
+    // Ammo bins land in the right locations.
+    expect(slots.filter((s) => s.name === "IS Ammo AC/20" && s.location === "RT")).toHaveLength(2);
+    expect(slots.filter((s) => s.name === "IS Ammo LRM-20" && s.location === "LT")).toHaveLength(2);
+    expect(slots.some((s) => s.name === "ISCASE" && s.location === "LT")).toBe(true);
+    expect(slots.some((s) => s.name === "ISGuardianECM" && s.location === "LT")).toBe(true);
+    // -Empty- and headers are not slots.
+    expect(slots.some((s) => /empty/i.test(s.name))).toBe(false);
+  });
+
   it("fails loudly, naming the file and field, on a missing required field", () => {
     const bad = "chassis:Foo\nmodel:Bar\nTechBase:Inner Sphere\nWalk MP:4\n";
     expect(() => parseMtf(bad, "broken.mtf")).toThrowError(ParseError);

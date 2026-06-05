@@ -56,6 +56,20 @@ export interface Weapon {
   rearMounted: boolean;
 }
 
+/**
+ * One occupied critical slot, parsed from the per-location crit blocks (which
+ * the `Weapons:` block does not cover). Multi-slot items appear once per slot;
+ * "-Empty-" slots are skipped. Used to surface ammo and notable equipment.
+ */
+export interface CritSlot {
+  /** Slot contents exactly as written (e.g. "IS Ammo AC/20", "ISGuardianECM"). */
+  name: string;
+  /** Normalized location code. */
+  location: MechLocation;
+  /** Original location header text (e.g. "Right Torso"). */
+  rawLocation: string;
+}
+
 /** Movement profile. Override carries these straight to the card at 1:1. */
 export interface Movement {
   /** Walk MP as listed in the MTF. */
@@ -108,6 +122,11 @@ export interface Unit {
   /** Internal structure points per front location, derived from tonnage. */
   structure: Partial<Record<StructureLocation, number>>;
   weapons: Weapon[];
+  /**
+   * Occupied critical slots from the per-location crit blocks (ammo, CASE,
+   * electronics, etc.). Optional: many hand-written MTFs omit crit blocks.
+   */
+  critSlots?: CritSlot[];
   /** Source filename, populated by the CLI for error messages and output naming. */
   sourceFile?: string;
 }
@@ -232,6 +251,22 @@ export interface Tic {
   rangeText: string | null;
 }
 
+/**
+ * Notable equipment surfaced on the card: ammo (with bin count) and important
+ * gear (CASE, ECM, probes, etc.), each with its location. Mundane crit items
+ * (actuators, structure, heat sinks, the weapons themselves) are excluded.
+ */
+export interface CardEquipment {
+  /** Clean display label, e.g. "AC/20 Ammo" or "ECM". */
+  label: string;
+  /** Location code. */
+  location: MechLocation;
+  /** "ammo" for ammunition bins, "equipment" for everything else. */
+  category: "ammo" | "equipment";
+  /** Number of bins/slots (ammo and jump jets count; other gear is 1). */
+  count: number;
+}
+
 /** Per-section armor on the Override card. */
 export interface CardArmor {
   /** (CT + LT + RT) / 6, round nearest. */
@@ -295,6 +330,8 @@ export interface OverrideCard {
   weapons: CardWeapon[];
   /** Weapons auto-grouped into TICs (what the card fires). */
   tics: Tic[];
+  /** Notable equipment with locations (ammo, CASE, electronics). */
+  equipment: CardEquipment[];
   /** Auto-generated Punch / Kick damage from tonnage. */
   melee: MeleeProfile;
   /** Non-fatal notes (e.g. weapons missing from the TW damage table). */

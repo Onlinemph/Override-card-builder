@@ -140,6 +140,13 @@ function printSummary(card: OverrideCard): void {
     }
   }
   lines.push(`  Melee: Punch / Kick ${card.melee.punch} / ${card.melee.kick}`);
+  if (card.equipment.length > 0) {
+    lines.push("  Equipment:");
+    for (const e of card.equipment) {
+      const qty = e.count > 1 ? ` x${e.count}` : "";
+      lines.push(`    - ${e.label} @ ${e.location}${qty}`);
+    }
+  }
   for (const warn of card.warnings) lines.push(`  ! ${warn}`);
   process.stdout.write(lines.join("\n") + "\n\n");
 }

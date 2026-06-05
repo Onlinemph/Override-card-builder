@@ -13,7 +13,7 @@
  * DFA-generated card for the same unit to verify.
  */
 
-import type { StructureLocation, TechBase, WeaponRange } from "./types.js";
+import type { MechLocation, StructureLocation, TechBase, WeaponRange } from "./types.js";
 
 // ---------------------------------------------------------------------------
 // Rounding directions, declared per field so convert.ts can pick the right one.
@@ -553,6 +553,47 @@ export const MELEE_WEAPONS: Readonly<Record<string, MeleeWeaponSpec>> = {
   mace: { divisor: 12, tnMod: 1 },
   claws: { divisor: 20, tnMod: 1 },
 } as const;
+
+// ---------------------------------------------------------------------------
+// Equipment surfacing. From the crit-slot blocks we show ammo (always) and a
+// curated set of "important" gear; everything else (actuators, structure, heat
+// sinks, engine, the weapons themselves) is ignored. This inclusion list is
+// matched as a lowercase substring against the crit name (with IS/CL prefixes
+// still present), first match wins — so order specific entries before general
+// ones ("angel ecm" before "ecm"). `countable` items are 1-slot-each and are
+// tallied (jump jets); others are shown once per location.
+// ---------------------------------------------------------------------------
+
+export interface ImportantEquipment {
+  /** Lowercase substrings to look for in the crit name. */
+  match: ReadonlyArray<string>;
+  /** Clean label shown on the card. */
+  label: string;
+  /** True for 1-slot-each items that should be counted (jump jets). */
+  countable?: boolean;
+}
+
+export const IMPORTANT_EQUIPMENT: ReadonlyArray<ImportantEquipment> = [
+  { match: ["case ii", "caseii"], label: "CASE II" },
+  { match: ["case"], label: "CASE" },
+  { match: ["angel ecm"], label: "Angel ECM" },
+  { match: ["guardian ecm", "ecm suite", "ecm"], label: "ECM" },
+  { match: ["bloodhound", "beagle", "active probe", "light active probe"], label: "Active Probe" },
+  { match: ["targeting computer"], label: "Targeting Computer" },
+  { match: ["artemis"], label: "Artemis FCS" },
+  { match: ["antimissile", "anti-missile", "anti missile"], label: "AMS" },
+  { match: ["c3 master", "c3master"], label: "C3 Master" },
+  { match: ["c3 slave", "c3slave", "c3 boosted", "c3i", "c3"], label: "C3" },
+  { match: ["supercharger"], label: "Supercharger" },
+  { match: ["masc"], label: "MASC" },
+  { match: ["tag"], label: "TAG" },
+  { match: ["improved jump jet", "jump jet"], label: "Jump Jet", countable: true },
+];
+
+/** 'Mech location print order for grouping equipment and similar lists. */
+export const LOCATION_ORDER: ReadonlyArray<MechLocation> = [
+  "HD", "CT", "RT", "LT", "RA", "LA", "RL", "LL", "CTR", "RTR", "LTR",
+];
 
 // ---------------------------------------------------------------------------
 // Standard internal-structure-by-tonnage table (TechManual). MTF files do NOT

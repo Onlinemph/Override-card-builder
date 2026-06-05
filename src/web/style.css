@@ -285,3 +285,31 @@ footer {
   font-size: 0.85rem;
   margin: 0.4rem 0 0;
 }
+
+/* ---- Equipment list ------------------------------------------------------ */
+.equipment {
+  list-style: none;
+  margin: 0.3rem 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 0.3rem;
+}
+.equip {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 0.3rem 0.5rem;
+  font-size: 0.9rem;
+}
+.equip.ammo {
+  border-left: 3px solid var(--accent);
+}
+.equip-loc {
+  margin-left: auto;
+  color: var(--muted);
+  font-variant: small-caps;
+}

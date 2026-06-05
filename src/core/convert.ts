@@ -20,7 +20,9 @@ import {
   HEAT_PER_DOUBLE_SINK,
   CLUSTER_WEAPON_FAMILIES,
   HEAT_PER_SINGLE_SINK,
+  IMPORTANT_EQUIPMENT,
   KICK_TW_DIVISOR,
+  LOCATION_ORDER,
   M_DICE_DIVISOR,
   MELEE_WEAPONS,
   MIN_ARM_LEG_ARMOR,
@@ -45,7 +47,9 @@ import {
   WEAPON_DAMAGE_DIVISOR,
 } from "./constants.js";
 import type {
+  CardEquipment,
   CardWeapon,
+  CritSlot,
   DamageKind,
   DamageProfile,
   OverrideCard,
@@ -552,6 +556,62 @@ export function groupIntoTics(weapons: CardWeapon[]): Tic[] {
 }
 
 // ---------------------------------------------------------------------------
+// Equipment surfacing: ammo (with bin count) and important gear, from crit slots.
+// ---------------------------------------------------------------------------
+
+/** Clean an ammo crit name into a label like "AC/20 Ammo". */
+export function ammoLabel(raw: string): string {
+  let s = raw
+    .replace(/\((?:[^)]*)\)/g, " ") // drop "(Half)", "(Clan)" etc.
+    .replace(/\bammo\b/gi, " ")
+    .replace(/^\s*(is|cl|clan)\b/i, " ") // leading spaced tech prefix
+    .replace(/^\s*(is|cl)(?=[a-z])/i, " ") // leading attached tech prefix (ISAC20)
+    .replace(/\b(half|full)\b/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return s ? `${s} Ammo` : "Ammo";
+}
+
+/**
+ * Derive notable equipment from crit slots: ammo (counted by bin) and the
+ * curated important-gear list. Grouped by location + label; ammo and jump jets
+ * are tallied, other gear shown once. Ordered by location, ammo last.
+ */
+export function buildEquipment(critSlots: ReadonlyArray<CritSlot>): CardEquipment[] {
+  const byKey = new Map<string, CardEquipment>();
+  const bump = (label: string, location: CritSlot["location"], category: "ammo" | "equipment", countable: boolean) => {
+    const key = `${location}|${category}|${label}`;
+    const existing = byKey.get(key);
+    if (existing) {
+      if (countable) existing.count += 1;
+    } else {
+      byKey.set(key, { label, location, category, count: 1 });
+    }
+  };
+
+  for (const slot of critSlots) {
+    const lower = slot.name.toLowerCase();
+    if (lower.includes("ammo")) {
+      bump(ammoLabel(slot.name), slot.location, "ammo", true); // each bin counts
+      continue;
+    }
+    const match = IMPORTANT_EQUIPMENT.find((e) => e.match.some((m) => lower.includes(m)));
+    if (match) bump(match.label, slot.location, "equipment", match.countable ?? false);
+  }
+
+  const locRank = (loc: CardEquipment["location"]) => {
+    const i = LOCATION_ORDER.indexOf(loc);
+    return i < 0 ? LOCATION_ORDER.length : i;
+  };
+  return [...byKey.values()].sort(
+    (a, b) =>
+      Number(a.category === "ammo") - Number(b.category === "ammo") || // equipment first
+      locRank(a.location) - locRank(b.location) ||
+      a.label.localeCompare(b.label),
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Top-level conversion
 // ---------------------------------------------------------------------------
 
@@ -633,6 +693,7 @@ export function convertUnit(unit: Unit): OverrideCard {
     heatDissipation,
     weapons,
     tics: groupIntoTics(weapons),
+    equipment: buildEquipment(unit.critSlots ?? []),
     melee,
     warnings,
     sourceFile: unit.sourceFile,
