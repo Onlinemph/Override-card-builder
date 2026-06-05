@@ -254,6 +254,11 @@ $("clear").addEventListener("click", () => {
   output.innerHTML = "";
 });
 
+// Open the native file picker from a real button. Clicking a <label> that wraps
+// a display:none input fails to open the dialog in several browsers (Safari /
+// some mobile), so trigger it explicitly instead.
+$("upload").addEventListener("click", () => fileInput.click());
+
 fileInput.addEventListener("change", async () => {
   const files = Array.from(fileInput.files ?? []);
   if (files.length === 0) return;
