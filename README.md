@@ -55,6 +55,28 @@ Accepts one or more `.mtf` files **or** directories (scanned for `*.mtf`).
 For each unit the CLI writes one `<Chassis>_<Model>.override.json` and prints a
 readable summary to stdout. `--csv` adds one flat CSV row per unit.
 
+## Web UI (GitHub Pages)
+
+A browser UI lives in `src/web/` (plus `index.html`). It imports the **same pure
+core** as the CLI — paste or upload a `.mtf` and it renders the Override card
+entirely client-side. No server, no Node.
+
+```bash
+npm run dev:web       # Vite dev server with live reload
+npm run build:web     # static build -> dist-web/
+npm run preview:web   # serve the production build locally
+```
+
+### Deploying to GitHub Pages
+
+`.github/workflows/deploy-pages.yml` builds `dist-web/` and publishes it on every
+push to `main` (and `claude/**` branches, for previewing). **One-time setup you
+must do in the repo:** Settings → Pages → *Build and deployment* → **Source:
+GitHub Actions**. After that, the site publishes automatically; the deploy job
+prints the URL (typically `https://<user>.github.io/<repo>/`). The Vite `base`
+is `"./"`, so the build works under the Pages project subpath without
+hard-coding the repo name.
+
 ## Conversion rules (implemented in `convert.ts` / `constants.ts`)
 
 | Field | Formula | Rounding |

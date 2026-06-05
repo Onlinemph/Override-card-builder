@@ -1,0 +1,213 @@
+:root {
+  --bg: #0f1115;
+  --panel: #181b22;
+  --panel-2: #20242d;
+  --ink: #e6e8ec;
+  --muted: #8b93a1;
+  --accent: #f0a020;
+  --accent-ink: #1a1205;
+  --error: #ff6b6b;
+  --line: #2b303b;
+  --good: #6bd49a;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 15px/1.5 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+}
+
+#app {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 2rem 1.25rem 4rem;
+}
+
+header h1 {
+  margin: 0;
+  font-size: 1.9rem;
+  letter-spacing: 0.5px;
+}
+
+.tagline {
+  color: var(--muted);
+  margin: 0.35rem 0 1.75rem;
+}
+
+code {
+  background: var(--panel-2);
+  padding: 0.05rem 0.35rem;
+  border-radius: 4px;
+  font-size: 0.9em;
+}
+
+.input {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+button,
+.file-btn {
+  cursor: pointer;
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+  color: var(--ink);
+  padding: 0.5rem 0.9rem;
+  border-radius: 6px;
+  font: inherit;
+}
+
+button:hover,
+.file-btn:hover {
+  border-color: var(--accent);
+}
+
+button.primary {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-color: var(--accent);
+  font-weight: 600;
+  align-self: flex-start;
+}
+
+textarea {
+  width: 100%;
+  min-height: 260px;
+  resize: vertical;
+  background: var(--panel);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0.9rem;
+  font: 13px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.output {
+  margin-top: 2rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 1rem;
+}
+
+.card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 1rem 1.1rem 1.25rem;
+}
+
+.card.error {
+  border-color: var(--error);
+}
+
+.card.error h2 {
+  color: var(--error);
+}
+
+.card h2 {
+  margin: 0 0 0.75rem;
+  font-size: 1.2rem;
+}
+
+.card h2 small {
+  color: var(--muted);
+  font-weight: 400;
+  font-size: 0.8em;
+}
+
+.card h3 {
+  margin: 1rem 0 0.4rem;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 0.4rem 0.75rem;
+}
+
+.stat {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  border-bottom: 1px dotted var(--line);
+  padding: 0.15rem 0;
+}
+
+.stat .label {
+  color: var(--muted);
+}
+
+.stat .value {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+table.weapons {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 0.4rem;
+  font-size: 0.9rem;
+}
+
+table.weapons th,
+table.weapons td {
+  text-align: left;
+  padding: 0.3rem 0.4rem;
+  border-bottom: 1px solid var(--line);
+}
+
+table.weapons th {
+  color: var(--muted);
+  font-weight: 500;
+  font-size: 0.78rem;
+}
+
+td.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.rear {
+  color: var(--accent);
+  font-size: 0.85em;
+}
+
+.warn-flag {
+  color: var(--error);
+  font-size: 0.8em;
+}
+
+.warnings {
+  margin: 0.75rem 0 0;
+  padding-left: 1.1rem;
+  color: var(--error);
+  font-size: 0.85rem;
+}
+
+footer {
+  margin-top: 3rem;
+  color: var(--muted);
+  font-size: 0.82rem;
+  border-top: 1px solid var(--line);
+  padding-top: 1rem;
+}

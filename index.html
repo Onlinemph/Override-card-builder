@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>mtf2override — MTF to BattleTech: Override card</title>
+  </head>
+  <body>
+    <main id="app">
+      <header>
+        <h1>mtf2override</h1>
+        <p class="tagline">
+          Convert a MegaMek <code>.mtf</code> BattleMech into BattleTech:
+          Override record-card stats. Everything runs in your browser.
+        </p>
+      </header>
+
+      <section class="input">
+        <div class="toolbar">
+          <label class="file-btn">
+            Upload .mtf file(s)
+            <input id="file" type="file" accept=".mtf,text/plain" multiple hidden />
+          </label>
+          <button id="example" type="button">Load example (Locust)</button>
+          <button id="clear" type="button">Clear</button>
+        </div>
+        <textarea
+          id="mtf"
+          spellcheck="false"
+          placeholder="Paste .mtf text here, or upload a file above…"
+        ></textarea>
+        <button id="convert" type="button" class="primary">Convert</button>
+      </section>
+
+      <section id="output" class="output" aria-live="polite"></section>
+
+      <footer>
+        <p>
+          TMM upper bands (run &ge; 13) are inferred and unverified. Validate
+          against the DFA Override Card Generator.
+        </p>
+      </footer>
+    </main>
+
+    <script type="module" src="/src/web/main.ts"></script>
+  </body>
+</html>
