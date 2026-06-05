@@ -27,6 +27,7 @@ import {
   RANGE_VARYING_CLUSTER_FAMILIES,
   REAR_ARMOR_DIVISOR,
   STRUCTURE_DIVISOR,
+  WEAPON_DAMAGE_BY_RANGE,
   WEAPON_RANGES,
   WEAPON_RANGES_CLAN,
   TMM_BY_RUN,
@@ -169,11 +170,31 @@ export function isRangeVaryingCluster(normalizedName: string): boolean {
   return inFamily(normalizedName, RANGE_VARYING_CLUSTER_FAMILIES);
 }
 
+/** True if a weapon's max rounds to nearest rather than up. Rocket Launchers only (RL10 -> max 3, not 4). */
+export function isRocketLauncher(normalizedName: string): boolean {
+  return inFamily(normalizedName, ["rocket launcher"]);
+}
+
 /** Damage mechanic for a normalized weapon name (zero-damage entries stay direct). */
 export function classifyDamage(normalizedName: string): DamageKind {
+  if (normalizedName in WEAPON_DAMAGE_BY_RANGE) return "variable";
   if (isMissileWeapon(normalizedName)) return "missile";
   if (isClusterWeapon(normalizedName)) return "cluster";
   return "direct";
+}
+
+/**
+ * Variable (range-dependent) flat damage from a TW [short, med, long] triple:
+ * each bracket is ceil(TW/3). Printed `short|med|long` (SNPPC 4|3|2, HGauss 9|7|4).
+ */
+export function computeVariableProfile(twByRange: readonly [number, number, number]): DamageProfile {
+  const byRange = twByRange.map(roundUp1Third);
+  return { kind: "variable", base: byRange[byRange.length - 1]!, mDice: 0, cDice: [], byRange, max: byRange[0]! };
+}
+
+/** ceil(tw / 3) — the per-bracket Override damage value. */
+function roundUp1Third(tw: number): number {
+  return roundUp(tw / WEAPON_DAMAGE_DIVISOR);
 }
 
 /**
@@ -190,31 +211,38 @@ export function computeDamageProfile(
   twDamage: number,
   kind: DamageKind,
   rangeVarying = false,
+  maxRoundNearest = false,
 ): DamageProfile {
-  const max = convertWeaponDamage(twDamage);
-  if (kind === "direct" || twDamage <= 0) {
-    return { kind: "direct", base: max, mDice: 0, cDice: [], max };
+  // Rocket Launchers round their max to nearest (RL10 -> 3); everything else
+  // rounds up. base/mDice are unaffected.
+  const max = maxRoundNearest
+    ? Math.round(twDamage / WEAPON_DAMAGE_DIVISOR)
+    : convertWeaponDamage(twDamage);
+  if (kind === "direct" || kind === "variable" || twDamage <= 0) {
+    return { kind: "direct", base: max, mDice: 0, cDice: [], byRange: [], max };
   }
   const base = Math.max(1, Math.floor(twDamage / M_DICE_DIVISOR));
   if (kind === "missile") {
-    return { kind, base, mDice: roundUp(twDamage / M_DICE_DIVISOR), cDice: [], max };
+    return { kind, base, mDice: roundUp(twDamage / M_DICE_DIVISOR), cDice: [], byRange: [], max };
   }
   // cluster: base + cDice === max. Range-varying clusters (HAG) shed one C die
   // per bracket: [short, med, long].
   const top = max - base;
   const cDice = rangeVarying ? [top, top - 1, top - 2] : [top];
-  return { kind, base, mDice: 0, cDice, max };
+  return { kind, base, mDice: 0, cDice, byRange: [], max };
 }
 
 /**
  * Format a profile for the card:
- *   - missile: `base+M{mDice} (max)`
- *   - cluster: `base+C{cDice}` (HAG: `base+C{short}|{med}|{long}`)
- *   - direct:  flat `max`
+ *   - missile:  `base+M{mDice} (max)`
+ *   - cluster:  `base+C{cDice}` (HAG: `base+C{short}|{med}|{long}`)
+ *   - variable: `short|med|long`
+ *   - direct:   flat `max`
  */
 export function formatDamage(p: DamageProfile): string {
   if (p.kind === "missile") return `${p.base}+M${p.mDice} (${p.max})`;
   if (p.kind === "cluster" && p.cDice[0]! > 0) return `${p.base}+C${p.cDice.join("|")}`;
+  if (p.kind === "variable") return p.byRange.join("|");
   return `${p.max}`;
 }
 
@@ -319,8 +347,16 @@ function convertWeapon(w: Weapon, techBase: TechBase): CardWeapon {
   const { twDamage, unknown } = lookupWeaponDamage(w.name, techBase);
   // v1: one weapon per TIC, so each weapon is its own group.
   // TODO(TIC grouping): replace per-weapon conversion with grouped sums.
-  const kind: DamageKind = unknown ? "direct" : classifyDamage(key);
-  const profile = computeDamageProfile(twDamage, kind, isRangeVaryingCluster(key));
+  const byRange = WEAPON_DAMAGE_BY_RANGE[key];
+  const profile =
+    !unknown && byRange
+      ? computeVariableProfile(byRange)
+      : computeDamageProfile(
+          twDamage,
+          unknown ? "direct" : classifyDamage(key),
+          isRangeVaryingCluster(key),
+          isRocketLauncher(key),
+        );
   // Range data is a separate, growing table; weapons absent from it have no row.
   // Clan ranges diverge for some weapons (ER lasers, RACs) — consult the Clan
   // override table first for Clan units, then fall back to the shared table.

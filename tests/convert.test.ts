@@ -8,11 +8,13 @@ import {
   classifyDamage,
   computeDamageProfile,
   computeRangeBrackets,
+  computeVariableProfile,
   convertUnit,
   formatDamage,
   formatRangeBrackets,
   isMissileWeapon,
   isRangeVaryingCluster,
+  isRocketLauncher,
   lookupHeadArmor,
   lookupTmm,
   lookupWeaponDamage,
@@ -20,6 +22,7 @@ import {
   parseMtf,
   roundNearest,
   roundUp,
+  WEAPON_DAMAGE_BY_RANGE,
   WEAPON_RANGES,
   WEAPON_RANGES_CLAN,
 } from "../src/core/index.js";
@@ -30,11 +33,21 @@ const FIXTURES = join(dirname(fileURLToPath(import.meta.url)), "fixtures");
 const card = (name: string): OverrideCard =>
   convertUnit(parseMtf(readFileSync(join(FIXTURES, name), "utf8"), name));
 
-/** Run a single weapon name through the full damage path (normalize -> lookup -> classify -> format). */
+/** Run a single weapon name through the full damage path, mirroring convertWeapon. */
 const damageTextFor = (name: string, tech: TechBase = "IS"): string => {
-  const { twDamage } = lookupWeaponDamage(name, tech);
   const key = normalizeWeaponName(name);
-  return formatDamage(computeDamageProfile(twDamage, classifyDamage(key), isRangeVaryingCluster(key)));
+  const { twDamage, unknown } = lookupWeaponDamage(name, tech);
+  const byRange = WEAPON_DAMAGE_BY_RANGE[key];
+  const profile =
+    !unknown && byRange
+      ? computeVariableProfile(byRange)
+      : computeDamageProfile(
+          twDamage,
+          unknown ? "direct" : classifyDamage(key),
+          isRangeVaryingCluster(key),
+          isRocketLauncher(key),
+        );
+  return formatDamage(profile);
 };
 
 // NOTE: expected values below are hand-computed from the formulas in
@@ -153,9 +166,17 @@ describe("missile damage profile (M dice, VERIFIED vs DFA cards)", () => {
       base: 2,
       mDice: 0,
       cDice: [],
+      byRange: [],
       max: 2,
     }); // Medium Laser
     expect(formatDamage(computeDamageProfile(20, "direct"))).toBe("7"); // AC/20
+  });
+
+  it("rounds Rocket Launcher max to nearest (RL10 -> 3, not 4)", () => {
+    // All three RLs VERIFIED vs DFA card; RL10 would be 4 under ceil.
+    expect(damageTextFor("Rocket Launcher 10")).toBe("1+M1 (3)");
+    expect(damageTextFor("Rocket Launcher 15")).toBe("1+M2 (5)");
+    expect(damageTextFor("Rocket Launcher 20")).toBe("2+M2 (7)");
   });
 
   it("renders missile damageText through full conversion (Atlas LRM-20 + SRM-6)", () => {
@@ -188,6 +209,7 @@ describe("cluster damage profile (C dice, VERIFIED vs DFA card)", () => {
       base: 3,
       mDice: 0,
       cDice: [7, 6, 5],
+      byRange: [],
       max: 10,
     });
   });
@@ -195,10 +217,36 @@ describe("cluster damage profile (C dice, VERIFIED vs DFA card)", () => {
   it("renders verified damage lines through full conversion", () => {
     // LB 10-X cluster, RL15 missile (+M2), RAC/5 and UAC/10 flat, all from the card.
     expect(damageTextFor("LB 10-X AC")).toBe("1+C3");
-    expect(damageTextFor("Rocket Launcher 15")).toBe("1+M2 (5)");
+    expect(damageTextFor("LB 10-X AC", "Clan")).toBe("1+C3"); // cLB 10-X same
     expect(damageTextFor("Rotary AC/5")).toBe("3"); // TW 8 -> ceil/3
     expect(damageTextFor("Ultra AC/10")).toBe("4"); // TW 10 -> ceil/3
+    expect(damageTextFor("Ultra AC/20", "Clan")).toBe("7"); // cUAC/20 TW 20 -> ceil/3
     expect(damageTextFor("HAG/30", "Clan")).toBe("3+C7|6|5");
+  });
+});
+
+describe("variable (range-dependent) damage (VERIFIED vs DFA card)", () => {
+  it("classifies and formats short|med|long damage", () => {
+    expect(classifyDamage("snub-nose ppc")).toBe("variable");
+    expect(classifyDamage("heavy gauss rifle")).toBe("variable");
+    expect(formatDamage(computeVariableProfile([10, 8, 5]))).toBe("4|3|2"); // SNPPC
+    expect(formatDamage(computeVariableProfile([25, 20, 10]))).toBe("9|7|4"); // Heavy Gauss
+  });
+
+  it("renders through the full conversion path", () => {
+    expect(damageTextFor("Snub-Nose PPC")).toBe("4|3|2");
+    expect(damageTextFor("Heavy Gauss Rifle")).toBe("9|7|4");
+  });
+
+  it("exposes per-range values with min as base and short as max", () => {
+    expect(computeVariableProfile([25, 20, 10])).toEqual({
+      kind: "variable",
+      base: 4,
+      mDice: 0,
+      cDice: [],
+      byRange: [9, 7, 4],
+      max: 9,
+    });
   });
 });
 
@@ -247,11 +295,33 @@ describe("range brackets (page 43, VERIFIED vs DFA cards)", () => {
     expect(brackets("rocket launcher 15")).toBe("+1 +1 +3 +5 –"); // inherent +1
   });
 
+  it("reproduces the IS rows from the mixed 100-ton DFA card", () => {
+    expect(brackets("small pulse laser")).toBe("-2 -2 – – –"); // SPLas
+    expect(brackets("large pulse laser")).toBe("-2 -2 +0 – –"); // LPLas
+    expect(brackets("er small laser")).toBe("+0 +0 +4 – –"); // erSLas
+    expect(brackets("er large laser")).toBe("+0 +0 +0 +2 +4"); // erLLas IS
+    expect(brackets("snub-nose ppc")).toBe("+0 +0 +0 +4 –"); // SNPPC
+    expect(brackets("heavy gauss rifle")).toBe("+4 +2 +0 +2 +4"); // HGauss
+    expect(brackets("rotary ac/2")).toBe("+0 +0 +2 +4 –"); // RAC/2
+    expect(brackets("ultra ac/20")).toBe("+0 +0 +2 – –"); // cUAC/20
+  });
+
   it("applies Clan range overrides where TW ranges diverge", () => {
     const clan = (key: string) =>
       formatRangeBrackets(computeRangeBrackets(WEAPON_RANGES_CLAN[key]!));
-    expect(clan("er medium laser")).toBe("+0 +0 +2 +4 –"); // 0/10/15
-    expect(clan("rotary ac/5")).toBe("+0 +0 +0 +2 +4"); // 0/16/24, longer than IS
+    expect(clan("er small laser")).toBe("+0 +0 +4 – –"); // cerSLas 0/4/6
+    expect(clan("er medium laser")).toBe("+0 +0 +2 +4 –"); // cerMLas 0/10/15
+    expect(clan("er large laser")).toBe("+0 +0 +0 +2 +2"); // cerLLas 0/15/25 (X +2, not +4)
+    expect(clan("medium pulse laser")).toBe("-2 -2 +0 – –"); // cMPLas 0/8/12
+    expect(clan("rotary ac/5")).toBe("+0 +0 +0 +2 +4"); // cRAC/5 0/16/24
+  });
+
+  it("confirms tech-independent ranges resolve identically for IS and Clan units", () => {
+    // cLB 10-X and cerPPC matched IS on the card -> no Clan override needed.
+    expect(WEAPON_RANGES_CLAN["lb 10-x ac"]).toBeUndefined();
+    expect(WEAPON_RANGES_CLAN["er ppc"]).toBeUndefined();
+    expect(brackets("lb 10-x ac")).toBe("+0 +0 +2 +4 –");
+    expect(brackets("er ppc")).toBe("+0 +0 +0 +2 +4");
   });
 
   it("attaches range rows through full conversion and leaves unlisted weapons null", () => {

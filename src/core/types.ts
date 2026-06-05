@@ -118,16 +118,18 @@ export interface Unit {
 
 /**
  * How a weapon's damage is rolled on the Override card.
- *   - direct:  flat damage (base === max, no dice). Lasers, ACs, Gauss, etc.
- *   - missile: rolls M dice; prints `base+M{mDice} (max)`. LRM/SRM/MRM/RL.
- *   - cluster: rolls C dice; prints `base+C{cDice}`. LB-X, HAG, Silver Bullet.
+ *   - direct:   flat damage (base === max, no dice). Lasers, ACs, Gauss, etc.
+ *   - variable: flat but range-dependent, printed `short|med|long`. SNPPC, Heavy Gauss.
+ *   - missile:  rolls M dice; prints `base+M{mDice} (max)`. LRM/SRM/MRM/RL.
+ *   - cluster:  rolls C dice; prints `base+C{cDice}`. LB-X, HAG, Silver Bullet.
  */
-export type DamageKind = "direct" | "missile" | "cluster";
+export type DamageKind = "direct" | "variable" | "missile" | "cluster";
 
 /**
  * Override damage profile. Direct-fire weapons deal flat damage (base === max,
  * mDice 0, cDice []). Missile racks roll M dice (`base+M{mDice} (max)`). Cluster
- * weapons roll C dice (`base+C{cDice}`), where base + cDice === max.
+ * weapons roll C dice (`base+C{cDice}`), where base + cDice === max. Variable
+ * weapons print per-range damage (`byRange` = [short, med, long]).
  */
 export interface DamageProfile {
   /** Which dice mechanic this weapon uses. */
@@ -142,7 +144,9 @@ export interface DamageProfile {
    * for a range-varying cluster (HAG), each one lower than the last.
    */
   cDice: number[];
-  /** Maximum damage = ceil(rackTW / 3). */
+  /** Per-range damage [short, med, long], each ceil(TW/3). Empty unless kind === "variable". */
+  byRange: number[];
+  /** Maximum damage. For variable weapons this is the short-range value. */
   max: number;
 }
 

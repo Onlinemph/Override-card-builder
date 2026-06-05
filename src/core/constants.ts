@@ -221,7 +221,7 @@ export const WEAPON_DAMAGE: Readonly<Record<string, number>> = {
   "er ppc": 10, // IS ER PPC; Clan ER PPC is 15 (see WEAPON_DAMAGE_CLAN)
   "light ppc": 5,
   "heavy ppc": 15,
-  "snub-nose ppc": 10, // 10 short / 8 med / 5 long; nominal short-range value
+  "snub-nose ppc": 10, // range-varying damage; see WEAPON_DAMAGE_BY_RANGE (nominal short value here)
 
   // --- Energy: flamers (heat weapons; 2 damage in damage mode) ---
   flamer: 2,
@@ -274,7 +274,7 @@ export const WEAPON_DAMAGE: Readonly<Record<string, number>> = {
   // --- Ballistic: Gauss family ---
   "gauss rifle": 15,
   "light gauss rifle": 8,
-  "heavy gauss rifle": 25, // 25 short / 20 med / 10 long; nominal short-range value
+  "heavy gauss rifle": 25, // range-varying damage; see WEAPON_DAMAGE_BY_RANGE (nominal short value here)
   "magshot gauss rifle": 2,
   magshot: 2,
 
@@ -388,39 +388,49 @@ export const WEAPON_RANGES: Readonly<Record<string, WeaponRange>> = {
   "mrm 30": { min: 0, medium: 8, long: 15, toHitMod: 1 },
   "mrm 40": { min: 0, medium: 8, long: 15, toHitMod: 1 },
 
-  // --- Missiles: Rocket Launcher (inherent +1; VERIFIED vs DFA card RL15: +1/+1/+3/+5/–) ---
-  "rocket launcher 10": { min: 0, medium: 11, long: 18, toHitMod: 1 }, // CONFIRM (RL15 verified)
-  "rocket launcher 15": { min: 0, medium: 9, long: 15, toHitMod: 1 }, // VERIFIED
-  "rocket launcher 20": { min: 0, medium: 7, long: 12, toHitMod: 1 }, // CONFIRM (RL15 verified)
+  // --- Missiles: Rocket Launcher (inherent +1; VERIFIED vs DFA card RL10/15/20) ---
+  "rocket launcher 10": { min: 0, medium: 11, long: 18, toHitMod: 1 }, // VERIFIED: +1/+1/+3/+5/–
+  "rocket launcher 15": { min: 0, medium: 9, long: 15, toHitMod: 1 }, // VERIFIED: +1/+1/+3/+5/–
+  "rocket launcher 20": { min: 0, medium: 7, long: 12, toHitMod: 1 }, // VERIFIED: +1/+1/+3/–/–
 
-  // --- Energy: pulse lasers (inherent -2 "pulse quality"; VERIFIED vs DFA card MPLas: -2/-2/+2/–/–) ---
-  "small pulse laser": { min: 0, medium: 2, long: 3, toHitMod: -2 }, // CONFIRM (IS ranges)
-  "medium pulse laser": { min: 0, medium: 4, long: 6, toHitMod: -2 }, // VERIFIED (IS)
-  "large pulse laser": { min: 0, medium: 7, long: 10, toHitMod: -2 }, // CONFIRM (IS ranges)
+  // --- Energy: pulse lasers (IS; inherent -2 "pulse quality"; VERIFIED vs DFA card) ---
+  "small pulse laser": { min: 0, medium: 2, long: 3, toHitMod: -2 }, // VERIFIED (IS SPLas): -2/-2/–/–/–
+  "medium pulse laser": { min: 0, medium: 4, long: 6, toHitMod: -2 }, // VERIFIED (IS MPLas): -2/-2/+2/–/–
+  "large pulse laser": { min: 0, medium: 7, long: 10, toHitMod: -2 }, // VERIFIED (IS LPLas): -2/-2/+0/–/–
 
-  // --- Energy: ER Medium Laser (IS; long range raised to 13 per page 42; VERIFIED: +0/+0/+2/+4/–) ---
-  "er medium laser": { min: 0, medium: 8, long: 13 }, // VERIFIED (IS); Clan ranges differ (see WEAPON_RANGES_CLAN)
+  // --- Energy: IS ER lasers (Clan ranges differ; see WEAPON_RANGES_CLAN) ---
+  "er small laser": { min: 0, medium: 4, long: 5 }, // VERIFIED (IS erSLas): +0/+0/+4/–/–
+  "er medium laser": { min: 0, medium: 8, long: 13 }, // VERIFIED (IS); long raised to 13 per page 42
+  "er large laser": { min: 0, medium: 14, long: 19 }, // VERIFIED (IS erLLas): +0/+0/+0/+2/+4
 
-  // --- Energy: ER PPC (ER PPC range is tech-independent: 7/14/23) ---
-  "er ppc": { min: 0, medium: 14, long: 23 }, // CONFIRM
+  // --- Energy: ER PPC (range tech-independent; VERIFIED both IS and Clan: +0/+0/+0/+2/+4) ---
+  "er ppc": { min: 0, medium: 14, long: 23 },
+
+  // --- Energy: Snub-Nose PPC (range-varying damage; VERIFIED vs DFA card: +0/+0/+0/+4/–) ---
+  "snub-nose ppc": { min: 0, medium: 13, long: 15 },
 
   // --- Ballistic: Light AC ---
   "light ac/2": { min: 0, medium: 12, long: 18 }, // CONFIRM
   "light ac/5": { min: 0, medium: 10, long: 15 }, // CONFIRM
 
-  // --- Ballistic: Ultra AC (VERIFIED vs DFA card UAC/10 IS: +0/+0/+2/+4/–) ---
-  "ultra ac/10": { min: 0, medium: 12, long: 18 }, // VERIFIED (IS); Clan UAC ranges differ
+  // --- Ballistic: Ultra AC (VERIFIED: UAC/10 IS +0/+0/+2/+4/–, UAC/20 +0/+0/+2/–/–) ---
+  "ultra ac/10": { min: 0, medium: 12, long: 18 }, // VERIFIED (IS)
+  "ultra ac/20": { min: 0, medium: 8, long: 12 }, // VERIFIED (cUAC/20)
 
-  // --- Ballistic: Rotary AC (VERIFIED vs DFA card RAC/5 IS: +0/+0/+2/+4/–) ---
+  // --- Ballistic: Rotary AC (VERIFIED: RAC/2 +0/+0/+2/+4/–, RAC/5 IS +0/+0/+2/+4/–) ---
+  "rotary ac/2": { min: 0, medium: 12, long: 18 }, // VERIFIED (IS RAC/2)
   "rotary ac/5": { min: 0, medium: 12, long: 18 }, // VERIFIED (IS); Clan in WEAPON_RANGES_CLAN
 
-  // --- Ballistic: LB-X cluster (VERIFIED vs DFA card LB 10-X IS: +0/+0/+2/+4/–) ---
-  "lb 10-x ac": { min: 0, medium: 12, long: 18 }, // VERIFIED (IS); Clan LB ranges differ
+  // --- Ballistic: LB-X cluster (range tech-independent; VERIFIED both IS LB 10-X and cLB 10-X) ---
+  "lb 10-x ac": { min: 0, medium: 12, long: 18 },
 
   // --- Ballistic: HAG (Clan-only; all classes share range 2/16/24; VERIFIED vs DFA card HAG/30: +2/+0/+0/+2/+4) ---
   "hag/20": { min: 2, medium: 16, long: 24 },
   "hag/30": { min: 2, medium: 16, long: 24 }, // VERIFIED
   "hag/40": { min: 2, medium: 16, long: 24 },
+
+  // --- Ballistic: Heavy Gauss (range-varying damage; VERIFIED vs DFA card: +4/+2/+0/+2/+4) ---
+  "heavy gauss rifle": { min: 4, medium: 13, long: 20 },
 
   // --- Ballistic: misc Gauss / supporting (canonical, tech-independent) ---
   "ap gauss rifle": { min: 0, medium: 6, long: 9 }, // CONFIRM
@@ -438,15 +448,20 @@ export const WEAPON_RANGES: Readonly<Record<string, WeaponRange>> = {
  * value in WEAPON_RANGES. Consulted first for Clan units (convert.ts), then
  * falls back to WEAPON_RANGES. Mirrors the WEAPON_DAMAGE_CLAN pattern.
  *
- * TECH-DIVERGENCE GAP: pulse lasers, LB-X, and Ultra AC also have different
- * Clan ranges, but only Clan ER Medium Laser and Clan Rotary AC/5 are
- * card-verified so far. Until a Clan card is supplied for the others, Clan
- * units fall back to the IS ranges above (a documented, known gap — not a
- * silent one). Add a row here as each is verified.
+ * Cards confirmed LB-X and ER PPC ranges are tech-INDEPENDENT (cLB 10-X and
+ * cerPPC matched IS exactly), so those need no Clan row. Pulse lasers and ER
+ * small/medium/large DO diverge and are overridden below. Clan Ultra AC ranges
+ * may still differ from IS (UAC/10 verified IS, UAC/20 verified Clan); add a
+ * row if a contradicting card appears.
  */
 export const WEAPON_RANGES_CLAN: Readonly<Record<string, WeaponRange>> = {
-  // Clan ER Medium Laser reaches further than IS (5/10/15). VERIFIED vs DFA card cerMLas.
-  "er medium laser": { min: 0, medium: 10, long: 15 },
+  // Clan ER lasers reach further than IS. VERIFIED vs DFA card (cerSLas/cerMLas/cerLLas).
+  "er small laser": { min: 0, medium: 4, long: 6 }, // +0/+0/+4/–/–
+  "er medium laser": { min: 0, medium: 10, long: 15 }, // +0/+0/+2/+4/–
+  "er large laser": { min: 0, medium: 15, long: 25 }, // +0/+0/+0/+2/+2
+  // Clan pulse lasers reach further than IS; -2 pulse quality still applies.
+  // VERIFIED vs DFA card cMPLas: -2/-2/+0/–/–.
+  "medium pulse laser": { min: 0, medium: 8, long: 12, toHitMod: -2 },
   // Clan Rotary AC/5 reaches further than IS. VERIFIED vs DFA card cRAC/5: +0/+0/+0/+2/+4.
   "rotary ac/5": { min: 0, medium: 16, long: 24 },
 } as const;
@@ -470,6 +485,22 @@ export const WEAPON_DAMAGE_CLAN: Readonly<Record<string, number>> = {
 
   // Clan ER PPC.
   "er ppc": 15,
+} as const;
+
+// ---------------------------------------------------------------------------
+// VARIABLE (range-dependent) damage. A few weapons deal different damage at
+// short/medium/long range; the card prints `short|med|long` where each value
+// is ceil(TW/3). Stored as the TW [short, med, long] triple. Keyed on the
+// normalized name; convert.ts prefers this over the single WEAPON_DAMAGE value.
+//
+// VERIFIED vs DFA card: Snub-Nose PPC 10/8/5 -> 4|3|2, Heavy Gauss 25/20/10 ->
+// 9|7|4. (These also appear in WEAPON_DAMAGE with their nominal short value so
+// they register as "known".)
+// ---------------------------------------------------------------------------
+
+export const WEAPON_DAMAGE_BY_RANGE: Readonly<Record<string, readonly [number, number, number]>> = {
+  "snub-nose ppc": [10, 8, 5], // VERIFIED -> 4|3|2
+  "heavy gauss rifle": [25, 20, 10], // VERIFIED -> 9|7|4
 } as const;
 
 // ---------------------------------------------------------------------------
