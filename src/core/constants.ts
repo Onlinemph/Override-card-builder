@@ -13,7 +13,7 @@
  * DFA-generated card for the same unit to verify.
  */
 
-import type { StructureLocation, TechBase } from "./types.js";
+import type { StructureLocation, TechBase, WeaponRange } from "./types.js";
 
 // ---------------------------------------------------------------------------
 // Rounding directions, declared per field so convert.ts can pick the right one.
@@ -281,6 +281,77 @@ export const WEAPON_DAMAGE: Readonly<Record<string, number>> = {
   // TODO(variable damage / Track A range brackets): ATM 3/6/9/12, MML 3/5/7/9,
   // HAG 20/30/40, Rotary AC bursts. These vary by range/mode/ammo; left unset
   // so they surface as warnings rather than wrong numbers.
+} as const;
+
+// ---------------------------------------------------------------------------
+// TW weapon RANGES -> Override range brackets (page 43, "Converting Weapon
+// Ranges"). Keyed on the same NORMALIZED weapon name as WEAPON_DAMAGE. Stores
+// only the values the bracket math reads: min, medium, long (the short-range
+// value is never used). `toHitMod` is the weapon's inherent flat to-hit
+// modifier, added to every applicable bracket (e.g. MRM +1).
+//
+// SCOPE (verified + safe canonical): the missile families below are VERIFIED
+// against DFA card screenshots; the direct-fire rows are canonical TW ranges
+// that are tech-base independent (same for IS and Clan), so a single shared
+// table is correct for them. Each non-missile row is still worth a CONFIRM
+// diff against a DFA card.
+//
+// DELIBERATELY OMITTED until card-verified (their ranges are tech-divergent,
+// mode-dependent, or carry extra modifiers): pulse lasers (-2 pulse quality),
+// ER lasers / ER PPC (IS vs Clan ranges differ), LB-X, Ultra/Rotary AC,
+// snub-nose PPC, Light/Heavy Gauss, and Rocket Launchers (ranges vary per
+// rack size). Weapons absent here simply render no range row.
+//
+// To extend: add a row citing the weapon, and confirm vs a DFA card.
+// ---------------------------------------------------------------------------
+
+export const WEAPON_RANGES: Readonly<Record<string, WeaponRange>> = {
+  // --- Energy: standard lasers (tech-independent) ---
+  "small laser": { min: 0, medium: 2, long: 3 },
+  "medium laser": { min: 0, medium: 6, long: 9 },
+  "large laser": { min: 0, medium: 10, long: 15 },
+
+  // --- Energy: PPCs (min range 3; Light/Heavy share the standard brackets) ---
+  ppc: { min: 3, medium: 12, long: 18 },
+  "light ppc": { min: 3, medium: 12, long: 18 },
+  "heavy ppc": { min: 3, medium: 12, long: 18 },
+
+  // --- Energy: flamer (damage mode) ---
+  flamer: { min: 0, medium: 2, long: 3 },
+
+  // --- Ballistic: standard autocannon ---
+  "ac/2": { min: 4, medium: 16, long: 24 },
+  "ac/5": { min: 3, medium: 12, long: 18 },
+  "ac/10": { min: 0, medium: 10, long: 15 },
+  "ac/20": { min: 0, medium: 6, long: 9 },
+
+  // --- Ballistic: Gauss rifle (standard; Light/Heavy omitted, see header) ---
+  "gauss rifle": { min: 2, medium: 15, long: 22 },
+
+  // --- Ballistic: machine gun ---
+  "machine gun": { min: 0, medium: 2, long: 3 },
+
+  // --- Missiles: SRM (VERIFIED vs DFA card: +0/+0/+2/–/–) ---
+  "srm 2": { min: 0, medium: 6, long: 9 },
+  "srm 4": { min: 0, medium: 6, long: 9 },
+  "srm 6": { min: 0, medium: 6, long: 9 },
+
+  // --- Missiles: Streak SRM (same ranges as SRM; VERIFIED vs DFA card) ---
+  "streak srm 2": { min: 0, medium: 6, long: 9 },
+  "streak srm 4": { min: 0, medium: 6, long: 9 },
+  "streak srm 6": { min: 0, medium: 6, long: 9 },
+
+  // --- Missiles: LRM (min range 6; VERIFIED vs DFA card: +4/+2/+0/+2/+4) ---
+  "lrm 5": { min: 6, medium: 14, long: 21 },
+  "lrm 10": { min: 6, medium: 14, long: 21 },
+  "lrm 15": { min: 6, medium: 14, long: 21 },
+  "lrm 20": { min: 6, medium: 14, long: 21 },
+
+  // --- Missiles: MRM (inherent +1 to-hit; VERIFIED vs DFA card: +1/+1/+3/+5/–) ---
+  "mrm 10": { min: 0, medium: 8, long: 15, toHitMod: 1 },
+  "mrm 20": { min: 0, medium: 8, long: 15, toHitMod: 1 },
+  "mrm 30": { min: 0, medium: 8, long: 15, toHitMod: 1 },
+  "mrm 40": { min: 0, medium: 8, long: 15, toHitMod: 1 },
 } as const;
 
 /**

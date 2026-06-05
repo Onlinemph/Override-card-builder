@@ -129,6 +129,39 @@ export interface DamageProfile {
   max: number;
 }
 
+/**
+ * Total Warfare range profile (in hexes) used to derive Override range
+ * brackets. Per page 43, the bracket math only ever reads min, medium, and
+ * long range — the short-range value is not used — so only those are stored.
+ */
+export interface WeaponRange {
+  /** Minimum range (TW). 0 if the weapon has none. Drives PB and S. */
+  min: number;
+  /** Medium-bracket range value (TW). Drives M. */
+  medium: number;
+  /** Long-bracket range value (TW). Drives L and X. */
+  long: number;
+  /** Inherent flat to-hit modifier added to every applicable bracket (e.g. MRM +1). Default 0. */
+  toHitMod?: number;
+}
+
+/**
+ * Override range-bracket to-hit modifiers (page 43). `null` means the bracket
+ * does not apply to this weapon and prints as "–".
+ */
+export interface RangeBrackets {
+  /** Point Blank. */
+  pb: number | null;
+  /** Short. */
+  s: number | null;
+  /** Medium. */
+  m: number | null;
+  /** Long. */
+  l: number | null;
+  /** Extreme. */
+  x: number | null;
+}
+
 /** A weapon as it appears on the Override card. */
 export interface CardWeapon {
   /** Weapon name from the MTF. */
@@ -145,6 +178,10 @@ export interface CardWeapon {
   profile: DamageProfile;
   /** Printed damage string: `base+M{mDice} (max)` for missiles, else flat `max`. */
   damageText: string;
+  /** Range-bracket modifiers (page 43), or null when the weapon has no range data yet. */
+  range: RangeBrackets | null;
+  /** Printed range row "PB S M L X" (e.g. "+4 +2 +0 +2 +4"), or null when range data is missing. */
+  rangeText: string | null;
   /** True when the weapon name was not found in the TW damage table. */
   unknown: boolean;
 }

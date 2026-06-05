@@ -6,8 +6,10 @@ import { describe, expect, it } from "vitest";
 
 import {
   computeDamageProfile,
+  computeRangeBrackets,
   convertUnit,
   formatDamage,
+  formatRangeBrackets,
   isMissileWeapon,
   lookupHeadArmor,
   lookupTmm,
@@ -16,6 +18,7 @@ import {
   parseMtf,
   roundNearest,
   roundUp,
+  WEAPON_RANGES,
 } from "../src/core/index.js";
 import type { OverrideCard } from "../src/core/index.js";
 
@@ -144,6 +147,50 @@ describe("missile damage profile (M dice, VERIFIED vs DFA cards)", () => {
     const text = c.weapons.map((w) => w.damageText);
     // AC/20 flat 7, LRM-20 -> 2+M2 (7), SRM-6 -> 1+M2 (4), 4x ML flat 2.
     expect(text).toEqual(["7", "2+M2 (7)", "1+M2 (4)", "2", "2", "2", "2"]);
+  });
+});
+
+describe("range brackets (page 43, VERIFIED vs DFA cards)", () => {
+  const brackets = (key: string) => formatRangeBrackets(computeRangeBrackets(WEAPON_RANGES[key]!));
+
+  it("reproduces the missile card rows exactly", () => {
+    expect(brackets("lrm 15")).toBe("+4 +2 +0 +2 +4"); // min 6 -> Short +2 (>=4)
+    expect(brackets("srm 6")).toBe("+0 +0 +2 – –");
+    expect(brackets("streak srm 6")).toBe("+0 +0 +2 – –");
+    expect(brackets("mrm 10")).toBe("+1 +1 +3 +5 –"); // inherent +1 layered on
+  });
+
+  it("layers the MRM inherent +1 only on applicable brackets (X stays –)", () => {
+    expect(computeRangeBrackets(WEAPON_RANGES["mrm 40"]!)).toEqual({
+      pb: 1,
+      s: 1,
+      m: 3,
+      l: 5,
+      x: null,
+    });
+  });
+
+  it("derives sensible brackets for canonical direct-fire weapons", () => {
+    expect(brackets("medium laser")).toBe("+0 +0 +2 – –"); // 0/6/9
+    expect(brackets("large laser")).toBe("+0 +0 +2 +4 –"); // 0/10/15
+    expect(brackets("ppc")).toBe("+2 +0 +2 +4 –"); // min 3 -> PB +2, S +0
+    expect(brackets("ac/2")).toBe("+4 +2 +0 +2 +4"); // min 4, long 24
+    expect(brackets("ac/20")).toBe("+0 +0 +2 – –"); // 0/6/9
+    expect(brackets("gauss rifle")).toBe("+2 +0 +0 +2 +4"); // min 2, med 15, long 22
+  });
+
+  it("the Short bracket follows min>=4, not literal ==4", () => {
+    expect(computeRangeBrackets({ min: 6, medium: 14, long: 21 }).s).toBe(2); // LRM
+    expect(computeRangeBrackets({ min: 3, medium: 12, long: 18 }).s).toBe(0); // PPC
+    expect(computeRangeBrackets({ min: 4, medium: 16, long: 24 }).s).toBe(2); // AC/2
+  });
+
+  it("attaches range rows through full conversion and leaves unlisted weapons null", () => {
+    const c = card("Atlas AS7-D.mtf");
+    const lrm = c.weapons.find((w) => w.name === "LRM 20")!;
+    expect(lrm.rangeText).toBe("+4 +2 +0 +2 +4");
+    const ml = c.weapons.find((w) => w.name === "Medium Laser")!;
+    expect(ml.rangeText).toBe("+0 +0 +2 – –");
   });
 });
 

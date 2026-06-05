@@ -25,6 +25,7 @@ import {
   MISSILE_WEAPON_FAMILIES,
   REAR_ARMOR_DIVISOR,
   STRUCTURE_DIVISOR,
+  WEAPON_RANGES,
   TMM_BY_RUN,
   TMM_JUMP_BONUS,
   TMM_SPRINT_BONUS,
@@ -34,7 +35,16 @@ import {
   WEAPON_DAMAGE_CLAN,
   WEAPON_DAMAGE_DIVISOR,
 } from "./constants.js";
-import type { CardWeapon, DamageProfile, OverrideCard, TechBase, Unit, Weapon } from "./types.js";
+import type {
+  CardWeapon,
+  DamageProfile,
+  OverrideCard,
+  RangeBrackets,
+  TechBase,
+  Unit,
+  Weapon,
+  WeaponRange,
+} from "./types.js";
 
 // ---------------------------------------------------------------------------
 // Rounding helpers — explicit and used per field. Damage rounds UP;
@@ -155,6 +165,78 @@ export function formatDamage(p: DamageProfile): string {
   return p.mDice > 0 ? `${p.base}+M${p.mDice} (${p.max})` : `${p.max}`;
 }
 
+// ---------------------------------------------------------------------------
+// Range brackets (page 43, "Converting Weapon Ranges"). Each bracket reads a
+// TW range value and returns a base modifier, or null when the bracket does
+// not apply to the weapon ("–" on the card). The weapon's inherent to-hit
+// modifier (WeaponRange.toHitMod) is layered on afterward by
+// computeRangeBrackets.
+// ---------------------------------------------------------------------------
+
+/** Point Blank, from min range: ≥4 → +4, 1–3 → +2, 0 → +0. */
+export function bracketPB(min: number): number {
+  if (min >= 4) return 4;
+  if (min >= 1) return 2;
+  return 0;
+}
+
+/**
+ * Short, from min range: ≥4 → +2, else +0.
+ *
+ * NOTE: page 43 reads "+2 if the min range value is 4", but DFA cards show LRM
+ * (min range 6) at Short +2, so the rule is "4 OR MORE". The oracle wins.
+ */
+export function bracketS(min: number): number {
+  return min >= 4 ? 2 : 0;
+}
+
+/** Medium, from medium range: 4–5 → +4, 6–12 → +2, ≥13 → +0, <4 → none. */
+export function bracketM(medium: number): number | null {
+  if (medium < 4) return null;
+  if (medium <= 5) return 4;
+  if (medium <= 12) return 2;
+  return 0;
+}
+
+/** Long, from long range: 13–18 → +4, 19–30 → +2, ≥31 → +0, <13 → none. */
+export function bracketL(long: number): number | null {
+  if (long < 13) return null;
+  if (long <= 18) return 4;
+  if (long <= 30) return 2;
+  return 0;
+}
+
+/** Extreme, from long range: 19–24 → +4, ≥25 → +2, <19 → none. */
+export function bracketX(long: number): number | null {
+  if (long < 19) return null;
+  if (long <= 24) return 4;
+  return 2;
+}
+
+/** Derive the five Override range brackets from a TW range profile, applying the inherent to-hit modifier. */
+export function computeRangeBrackets(r: WeaponRange): RangeBrackets {
+  const mod = r.toHitMod ?? 0;
+  const add = (v: number | null) => (v === null ? null : v + mod);
+  return {
+    pb: add(bracketPB(r.min)),
+    s: add(bracketS(r.min)),
+    m: add(bracketM(r.medium)),
+    l: add(bracketL(r.long)),
+    x: add(bracketX(r.long)),
+  };
+}
+
+/** Format one bracket value: null → "–", else a signed integer ("+4", "+0", "-2"). */
+export function formatBracket(v: number | null): string {
+  if (v === null) return "–";
+  return v >= 0 ? `+${v}` : `${v}`;
+}
+
+/** Format the full range row "PB S M L X", e.g. "+4 +2 +0 +2 +4". */
+export function formatRangeBrackets(b: RangeBrackets): string {
+  return [b.pb, b.s, b.m, b.l, b.x].map(formatBracket).join(" ");
+}
+
 /** Arm/leg armor: TW / 3, round nearest, min 1. Returns 0 if the location is absent. */
 function convertArmLegArmor(tw: number | undefined): number {
   if (tw === undefined) return 0;
@@ -180,11 +262,15 @@ export function formatMove(walk: number, run: number, jump: number): string {
 }
 
 function convertWeapon(w: Weapon, techBase: TechBase): CardWeapon {
+  const key = normalizeWeaponName(w.name);
   const { twDamage, unknown } = lookupWeaponDamage(w.name, techBase);
   // v1: one weapon per TIC, so each weapon is its own group.
   // TODO(TIC grouping): replace per-weapon conversion with grouped sums.
-  const isMissile = !unknown && isMissileWeapon(normalizeWeaponName(w.name));
+  const isMissile = !unknown && isMissileWeapon(key);
   const profile = computeDamageProfile(twDamage, isMissile);
+  // Range data is a separate, growing table; weapons absent from it have no row.
+  const rangeData = WEAPON_RANGES[key];
+  const range = rangeData ? computeRangeBrackets(rangeData) : null;
   return {
     name: w.name,
     location: w.location,
@@ -193,6 +279,8 @@ function convertWeapon(w: Weapon, techBase: TechBase): CardWeapon {
     damage: profile.max,
     profile,
     damageText: formatDamage(profile),
+    range,
+    rangeText: range ? formatRangeBrackets(range) : null,
     unknown,
   };
 }

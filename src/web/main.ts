@@ -65,16 +65,23 @@ function weaponRows(weapons: CardWeapon[]): string {
     .map((w) => {
       const rear = w.rearMounted ? ' <span class="rear">(R)</span>' : "";
       const flag = w.unknown ? ' <span class="warn-flag">unknown</span>' : "";
+      const r = w.range;
+      const brackets = r
+        ? [r.pb, r.s, r.m, r.l, r.x]
+            .map((v) => `<td class="num">${esc(v === null ? "–" : v >= 0 ? `+${v}` : `${v}`)}</td>`)
+            .join("")
+        : `<td class="num muted" colspan="5">–</td>`;
       return `<tr>
         <td>${esc(w.name)}${rear}${flag}</td>
         <td>${esc(w.location)}</td>
         <td class="num">${esc(w.damageText)}</td>
         <td class="num muted">${esc(w.twDamage)}</td>
+        ${brackets}
       </tr>`;
     })
     .join("");
   return `<table class="weapons">
-    <thead><tr><th>Weapon</th><th>Loc</th><th>Dmg</th><th>TW</th></tr></thead>
+    <thead><tr><th>Weapon</th><th>Loc</th><th>Dmg</th><th>TW</th><th>PB</th><th>S</th><th>M</th><th>L</th><th>X</th></tr></thead>
     <tbody>${rows}</tbody>
   </table>`;
 }
