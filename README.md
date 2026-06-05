@@ -90,6 +90,11 @@ non-standard tonnage fails loudly. The card then reports structure **per
 section** (torso from CT, head, each arm, each leg), each = roundNearest(IS ÷ 3)
 with a minimum of 1.
 
+The official builder's **torso** structure does not track `CT_internal ÷ 3`
+exactly at every weight, so `TORSO_STRUCTURE_BY_TONNAGE` in `constants.ts` holds
+per-tonnage corrections that take precedence over the formula (verified so far:
+50t → 6). Add a row there whenever a verified builder value differs.
+
 ## Validation method — the DFA oracle
 
 **The DFA Override Card Generator is the ground-truth oracle.** To validate

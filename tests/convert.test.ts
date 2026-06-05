@@ -113,7 +113,7 @@ describe("convertUnit: Hunchback HBK-4G", () => {
     expect(c.armor.rear).toBe(3); // (6+6+6)/6
     expect(c.armor.head).toBe(4); // HD TW 9
     expect(c.armor.leftArm).toBe(5); // 16/3 -> 5.33
-    expect(c.structure.torso).toBe(5); // CT IS 16 /3 -> 5.33
+    expect(c.structure.torso).toBe(6); // 50t correction to match official builder
     expect(c.structure.leftArm).toBe(3); // arm IS 8 /3 -> 2.67
     expect(c.structure.leftLeg).toBe(4); // leg IS 12 /3
     expect(c.heatDissipation).toBe(3); // 13/5 -> 2.6

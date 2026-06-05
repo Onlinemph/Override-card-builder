@@ -27,6 +27,7 @@ import {
   TMM_JUMP_BONUS,
   TMM_SPRINT_BONUS,
   TORSO_ARMOR_DIVISOR,
+  TORSO_STRUCTURE_BY_TONNAGE,
   WEAPON_DAMAGE,
   WEAPON_DAMAGE_DIVISOR,
 } from "./constants.js";
@@ -172,10 +173,11 @@ export function convertUnit(unit: Unit): OverrideCard {
   );
   const head = lookupHeadArmor(a.HD ?? 0);
 
-  // Per-section structure: IS / 3, round nearest, min 1. Torso uses CT internal.
+  // Per-section structure: IS / 3, round nearest, min 1. Torso uses CT internal,
+  // except where a tonnage correction matches the official builder more closely.
   const s = unit.structure;
   const structure = {
-    torso: convertStructure(s.CT),
+    torso: TORSO_STRUCTURE_BY_TONNAGE[unit.mass] ?? convertStructure(s.CT),
     head: convertStructure(s.HD),
     leftArm: convertStructure(s.LA),
     rightArm: convertStructure(s.RA),

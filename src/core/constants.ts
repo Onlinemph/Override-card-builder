@@ -219,6 +219,23 @@ export const INTERNAL_STRUCTURE_BY_TONNAGE: Readonly<Record<number, InternalStru
   100: { HD: 3, CT: 31, sideTorso: 21, arm: 17, leg: 21 },
 } as const;
 
+/**
+ * Torso-structure corrections keyed on tonnage, to match the official Override
+ * card builder where it diverges from the base formula (CT internal / 3, round
+ * nearest).
+ *
+ * The base formula matches the builder at most weights we've checked (e.g.
+ * 20t -> 2, 100t -> 10), but the builder's torso value does not track
+ * CT_internal / 3 exactly. When a verified builder value differs, add a row
+ * here; convert.ts prefers this table over the formula. Easily extended.
+ *
+ * Verified data points:
+ *   50t -> 6  (Hunchback HBK-4G; CT internal 16, base formula would give 5)
+ */
+export const TORSO_STRUCTURE_BY_TONNAGE: Readonly<Record<number, number>> = {
+  50: 6,
+};
+
 /** Run MP multiplier when the MTF omits an explicit run value: ceil(walk * 1.5). */
 export const RUN_MP_MULTIPLIER = 1.5;
 
