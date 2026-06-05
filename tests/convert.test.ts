@@ -8,6 +8,7 @@ import {
   convertUnit,
   lookupHeadArmor,
   lookupTmm,
+  lookupWeaponDamage,
   normalizeWeaponName,
   parseMtf,
   roundNearest,
@@ -74,6 +75,28 @@ describe("normalizeWeaponName", () => {
     expect(normalizeWeaponName("LRM 20")).toBe("lrm 20");
     expect(normalizeWeaponName("SRM-6")).toBe("srm 6");
     expect(normalizeWeaponName("1 Small Laser")).toBe("small laser");
+  });
+});
+
+describe("lookupWeaponDamage (TW values, tech-base aware)", () => {
+  it("returns shared/IS values by default", () => {
+    expect(lookupWeaponDamage("Medium Laser")).toEqual({ twDamage: 5, unknown: false });
+    expect(lookupWeaponDamage("Gauss Rifle")).toEqual({ twDamage: 15, unknown: false });
+    expect(lookupWeaponDamage("Streak SRM 6")).toEqual({ twDamage: 12, unknown: false });
+    expect(lookupWeaponDamage("MRM 40")).toEqual({ twDamage: 40, unknown: false });
+  });
+  it("disambiguates ER weapons by tech base", () => {
+    expect(lookupWeaponDamage("ER PPC", "IS").twDamage).toBe(10);
+    expect(lookupWeaponDamage("ER PPC", "Clan").twDamage).toBe(15);
+    expect(lookupWeaponDamage("ER Large Laser", "IS").twDamage).toBe(8);
+    expect(lookupWeaponDamage("ER Large Laser", "Clan").twDamage).toBe(10);
+    expect(lookupWeaponDamage("ER Medium Laser", "Clan").twDamage).toBe(7);
+  });
+  it("falls back to the shared table for Clan units when no override exists", () => {
+    expect(lookupWeaponDamage("AC/20", "Clan").twDamage).toBe(20);
+  });
+  it("flags unknown weapons", () => {
+    expect(lookupWeaponDamage("Death Ray")).toEqual({ twDamage: 0, unknown: true });
   });
 });
 

@@ -29,9 +29,10 @@ import {
   TORSO_ARMOR_DIVISOR,
   TORSO_STRUCTURE_BY_TONNAGE,
   WEAPON_DAMAGE,
+  WEAPON_DAMAGE_CLAN,
   WEAPON_DAMAGE_DIVISOR,
 } from "./constants.js";
-import type { CardWeapon, OverrideCard, Unit, Weapon } from "./types.js";
+import type { CardWeapon, OverrideCard, TechBase, Unit, Weapon } from "./types.js";
 
 // ---------------------------------------------------------------------------
 // Rounding helpers — explicit and used per field. Damage rounds UP;
@@ -94,10 +95,17 @@ export function normalizeWeaponName(raw: string): string {
   return s.replace(/\s+/g, " ").trim();
 }
 
-/** Look up TW damage for a weapon name; unknown=true when not in the table. */
-export function lookupWeaponDamage(name: string): { twDamage: number; unknown: boolean } {
+/**
+ * Look up TW damage for a weapon name; unknown=true when not in the table.
+ * For Clan units, the Clan override table is consulted first (some weapons do
+ * different damage by tech base, e.g. ER PPC: IS 10, Clan 15).
+ */
+export function lookupWeaponDamage(
+  name: string,
+  techBase: TechBase = "IS",
+): { twDamage: number; unknown: boolean } {
   const key = normalizeWeaponName(name);
-  const tw = WEAPON_DAMAGE[key];
+  const tw = techBase === "Clan" ? (WEAPON_DAMAGE_CLAN[key] ?? WEAPON_DAMAGE[key]) : WEAPON_DAMAGE[key];
   if (tw === undefined) return { twDamage: 0, unknown: true };
   return { twDamage: tw, unknown: false };
 }
@@ -135,8 +143,8 @@ export function formatMove(walk: number, run: number, jump: number): string {
   return `${walk}/${run}${jump > 0 ? " (J)" : ""}`;
 }
 
-function convertWeapon(w: Weapon): CardWeapon {
-  const { twDamage, unknown } = lookupWeaponDamage(w.name);
+function convertWeapon(w: Weapon, techBase: TechBase): CardWeapon {
+  const { twDamage, unknown } = lookupWeaponDamage(w.name, techBase);
   // v1: one weapon per TIC, so each weapon is its own group.
   // TODO(TIC grouping): replace per-weapon conversion with grouped sums.
   const damage = unknown ? 0 : convertWeaponDamage(twDamage);
@@ -191,7 +199,7 @@ export function convertUnit(unit: Unit): OverrideCard {
 
   const tmm = lookupTmm(unit.movement.runMP);
 
-  const weapons = unit.weapons.map(convertWeapon);
+  const weapons = unit.weapons.map((w) => convertWeapon(w, unit.techBase));
   for (const w of weapons) {
     if (w.unknown) {
       warnings.push(`weapon not in TW damage table: "${w.name}" (damage set to 0)`);

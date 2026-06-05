@@ -128,7 +128,12 @@ Mismatches almost always point to one of two things:
 
 `WEAPON_DAMAGE` is a separate, easily-extended export — add a row (with a rule
 citation) when you hit an unknown weapon. Unknown weapons do not crash; they
-convert to damage 0 and produce a warning on the card.
+convert to damage 0 and produce a warning on the card. Weapons whose TW damage
+differs by tech base (ER lasers, pulse lasers, ER PPC) keep the Inner Sphere /
+shared value in `WEAPON_DAMAGE` and Clan overrides in `WEAPON_DAMAGE_CLAN`;
+`lookupWeaponDamage(name, techBase)` picks the right one. Variable-damage weapons
+(ATM, MML, HAG, Rotary/Ultra bursts) are intentionally left out pending the
+range-bracket work, so they surface as warnings rather than wrong numbers.
 
 > ⚠️ **TMM bands for run ≥ 13 are INFERRED** (from Alpha Strike CE) and
 > UNVERIFIED. Confirm them against a fast light 'Mech (e.g. a 8/12+ scout) on a

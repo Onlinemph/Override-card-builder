@@ -122,60 +122,148 @@ export const TMM_SPRINT_BONUS = 1;
 export const TMM_JUMP_BONUS = 1;
 
 // ---------------------------------------------------------------------------
-// TW weapon-damage table. Separate, easily-extended export keyed on a NORMALIZED
-// weapon name (see normalizeWeaponName in convert.ts). Values are Total Warfare
-// single-shot/full-burst damage. SRM/LRM are enumerated by rack size.
+// TW weapon-damage tables. Separate, easily-extended exports keyed on a
+// NORMALIZED weapon name (see normalizeWeaponName in convert.ts). Values are
+// Total Warfare damage; missiles are enumerated by rack size.
 //
-// To extend: add a row. Each entry cites the weapon/rule it implements.
+// IS vs Clan: many weapons do different damage by tech base, but the normalizer
+// strips the IS/CL prefix. So WEAPON_DAMAGE holds the Inner Sphere / tech-shared
+// value, and WEAPON_DAMAGE_CLAN holds Clan OVERRIDES for the weapons that
+// differ. lookupWeaponDamage() consults the Clan table first for Clan units,
+// then falls back to WEAPON_DAMAGE. Add a Clan row only where it diverges.
+//
+// VARIABLE-DAMAGE weapons (ATM, MML, HAG, Rotary AC bursts, Ultra double-tap)
+// depend on range/mode/ammo and are left as TODO hooks below — better a known
+// gap (damage 0 + warning) than a silently wrong number. Resolve them with the
+// range-bracket work in Track A.
+//
+// To extend: add a row, each citing the weapon it implements.
 // ---------------------------------------------------------------------------
 
 export const WEAPON_DAMAGE: Readonly<Record<string, number>> = {
-  // --- Energy: lasers (TW damage) ---
+  // --- Energy: standard lasers ---
   "small laser": 3,
   "medium laser": 5,
   "large laser": 8,
-  "er small laser": 5,
-  "er medium laser": 7,
+
+  // --- Energy: IS ER lasers (Clan values differ; see WEAPON_DAMAGE_CLAN) ---
+  "er small laser": 3,
+  "er medium laser": 5,
   "er large laser": 8,
+
+  // --- Energy: IS pulse lasers (Clan values differ) ---
   "small pulse laser": 3,
   "medium pulse laser": 6,
   "large pulse laser": 9,
 
-  // --- Energy: PPC / flamer ---
+  // --- Energy: PPCs ---
   ppc: 10,
-  "er ppc": 15,
+  "er ppc": 10, // IS ER PPC; Clan ER PPC is 15 (see WEAPON_DAMAGE_CLAN)
   "light ppc": 5,
   "heavy ppc": 15,
-  flamer: 2,
+  "snub-nose ppc": 10, // 10 short / 8 med / 5 long; nominal short-range value
 
-  // --- Ballistic: autocannon (class = damage) ---
+  // --- Energy: flamers (heat weapons; 2 damage in damage mode) ---
+  flamer: 2,
+  "er flamer": 2,
+  "vehicle flamer": 2,
+
+  // --- Ballistic: standard autocannon (class = damage) ---
   "ac/2": 2,
   "ac/5": 5,
   "ac/10": 10,
   "ac/20": 20,
-  // LB-X cluster/slug share the class damage
+
+  // --- Ballistic: LB-X (slug/cluster share the class damage) ---
   "lb 2-x ac": 2,
   "lb 5-x ac": 5,
   "lb 10-x ac": 10,
   "lb 20-x ac": 20,
-  // Ultra ACs: base (single-shot) class damage; double-tap is a TODO range/mode hook
+
+  // --- Ballistic: Ultra AC (single-shot class damage; double-tap = TODO) ---
   "ultra ac/2": 2,
   "ultra ac/5": 5,
   "ultra ac/10": 10,
   "ultra ac/20": 20,
+
+  // --- Ballistic: Light AC ---
+  "light ac/2": 2,
+  "light ac/5": 5,
+
+  // --- Ballistic: Protomech / light autocannon family ---
+  "ap gauss rifle": 3,
+
+  // --- Ballistic: machine guns ---
   "machine gun": 2,
+  "light machine gun": 1,
+  "heavy machine gun": 3,
+
+  // --- Ballistic: Gauss family ---
   "gauss rifle": 15,
+  "light gauss rifle": 8,
+  "heavy gauss rifle": 25, // 25 short / 20 med / 10 long; nominal short-range value
+  "magshot gauss rifle": 2,
+  magshot: 2,
 
-  // --- Missiles: SRM, 2 damage per missile, full rack ---
-  "srm 2": 4, // 2 missiles x 2
-  "srm 4": 8, // 4 x 2
-  "srm 6": 12, // 6 x 2
+  // --- Ballistic: Plasma (IS Plasma Rifle deals damage; Clan cannon is heat-only) ---
+  "plasma rifle": 10,
 
-  // --- Missiles: LRM, 1 damage per missile, full rack ---
+  // --- Missiles: SRM (2 damage per missile, full rack) ---
+  "srm 2": 4,
+  "srm 4": 8,
+  "srm 6": 12,
+
+  // --- Missiles: Streak SRM (2 per missile, all hit) ---
+  "streak srm 2": 4,
+  "streak srm 4": 8,
+  "streak srm 6": 12,
+
+  // --- Missiles: LRM (1 damage per missile, full rack) ---
   "lrm 5": 5,
   "lrm 10": 10,
   "lrm 15": 15,
   "lrm 20": 20,
+
+  // --- Missiles: MRM (1 damage per missile) ---
+  "mrm 10": 10,
+  "mrm 20": 20,
+  "mrm 30": 30,
+  "mrm 40": 40,
+
+  // --- Missiles: Rocket Launcher (1 damage per tube, one-shot) ---
+  "rocket launcher 10": 10,
+  "rocket launcher 15": 15,
+  "rocket launcher 20": 20,
+
+  // --- Missiles: utility (no direct damage) ---
+  narc: 0,
+  "improved narc": 0,
+  "inarc": 0,
+
+  // TODO(variable damage / Track A range brackets): ATM 3/6/9/12, MML 3/5/7/9,
+  // HAG 20/30/40, Rotary AC bursts. These vary by range/mode/ammo; left unset
+  // so they surface as warnings rather than wrong numbers.
+} as const;
+
+/**
+ * Clan OVERRIDES — only weapons whose Clan TW damage differs from the IS /
+ * shared value in WEAPON_DAMAGE. Consulted first for Clan units.
+ */
+export const WEAPON_DAMAGE_CLAN: Readonly<Record<string, number>> = {
+  // Clan ER lasers hit harder than IS.
+  "er small laser": 5,
+  "er medium laser": 7,
+  "er large laser": 10,
+  "er micro laser": 2,
+
+  // Clan pulse lasers.
+  "micro pulse laser": 3,
+  "small pulse laser": 3,
+  "medium pulse laser": 7,
+  "large pulse laser": 10,
+
+  // Clan ER PPC.
+  "er ppc": 15,
 } as const;
 
 // ---------------------------------------------------------------------------
