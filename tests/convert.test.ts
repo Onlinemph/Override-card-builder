@@ -225,6 +225,75 @@ describe("cluster damage profile (C dice, VERIFIED vs DFA card)", () => {
   });
 });
 
+describe("TIC grouping (page 41 caps: base <= 5, max <= 14)", () => {
+  const W = (name: string, location: string, rearMounted = false) => ({
+    name,
+    location: location as never,
+    rawLocation: location,
+    rearMounted,
+  });
+  const ticsFor = (weapons: ReturnType<typeof W>[], mass = 55) =>
+    convertUnit({
+      chassis: "T",
+      model: "1",
+      mass,
+      techBase: "IS",
+      config: "Biped",
+      engine: { rating: 275, type: "Fusion" },
+      movement: { walkMP: 5, runMP: 8, jumpMP: 0, runDerived: true },
+      heatSinks: { count: 10, type: "single" },
+      armor: { CT: 10 },
+      structure: {},
+      weapons,
+    }).tics;
+
+  it("groups identical weapons in the same location, summing TW", () => {
+    const tics = ticsFor([W("Medium Laser", "LA"), W("Medium Laser", "LA")]);
+    expect(tics).toHaveLength(1);
+    expect(tics[0]!.label).toBe("2x Medium Laser"); // TW 10 -> ceil/3 = 4
+    expect(tics[0]!.damageText).toBe("4");
+  });
+
+  it("does not group across different locations", () => {
+    const tics = ticsFor([W("Medium Laser", "LA"), W("Medium Laser", "RA")]);
+    expect(tics).toHaveLength(2);
+    expect(tics.every((t) => t.count === 1)).toBe(true);
+  });
+
+  it("splits a group when the base cap (5) would be exceeded", () => {
+    // 4 Medium Lasers: TW 20 -> max 7, base 7 > 5. Largest legal group is 3 (TW 15 -> 5).
+    const tics = ticsFor([0, 1, 2, 3].map(() => W("Medium Laser", "RA")));
+    expect(tics.map((t) => t.count)).toEqual([3, 1]);
+    expect(tics[0]!.damageText).toBe("5");
+    expect(tics[1]!.damageText).toBe("2");
+  });
+
+  it("splits missiles when the max cap (14) would be exceeded", () => {
+    // 3 LRM-15: TW 45 -> max 15 > 14. Legal pair (TW 30 -> 3+M3 (10)) + single.
+    const tics = ticsFor([0, 1, 2].map(() => W("LRM 15", "LT")));
+    expect(tics.map((t) => t.count)).toEqual([2, 1]);
+    expect(tics[0]!.damageText).toBe("3+M3 (10)");
+    expect(tics[1]!.damageText).toBe("1+M2 (5)");
+  });
+
+  it("keeps an over-cap single weapon as its own legal TIC (Heavy Gauss)", () => {
+    const tics = ticsFor([W("Heavy Gauss Rifle", "RT")]);
+    expect(tics).toHaveLength(1);
+    expect(tics[0]!.count).toBe(1);
+    expect(tics[0]!.damageText).toBe("9|7|4"); // variable, never grouped
+  });
+
+  it("converts the Atlas into per-location TICs", () => {
+    const c = card("Atlas AS7-D.mtf");
+    // 4 Medium Lasers: 2 in arms (LA, RA -> separate), 2 rear in CT -> grouped.
+    const ml = c.tics.filter((t) => t.label.includes("Medium Laser"));
+    const grouped = ml.find((t) => t.count === 2);
+    expect(grouped?.location).toBe("CT");
+    expect(grouped?.rearMounted).toBe(true);
+    expect(grouped?.damageText).toBe("4"); // 2x ML: TW 10 -> ceil(10/3) = 4
+  });
+});
+
 describe("melee (Punch/Kick auto-generated + physical weapons)", () => {
   it("derives Punch/Kick from tonnage (VERIFIED 100t -> 4/7)", () => {
     expect(card("Atlas AS7-D.mtf").melee).toEqual({ punch: 4, kick: 7 }); // 100t

@@ -7,7 +7,7 @@
 import "./style.css";
 
 import { convertUnit, parseMtf, ParseError } from "../core/index.js";
-import type { CardWeapon, MeleeProfile, OverrideCard } from "../core/index.js";
+import type { MeleeProfile, OverrideCard, Tic } from "../core/index.js";
 
 const EXAMPLE_LOCUST = `chassis:Locust
 model:LCT-1V
@@ -59,35 +59,33 @@ function esc(s: string | number): string {
   );
 }
 
-function weaponRows(weapons: CardWeapon[], melee: MeleeProfile): string {
+function ticRows(tics: Tic[], melee: MeleeProfile): string {
   const meleeRow = `<tr class="melee">
         <td>Punch / Kick</td>
         <td>–</td>
         <td class="num">${esc(melee.punch)} / ${esc(melee.kick)}</td>
-        <td class="num muted">–</td>
         <td class="num">+0</td><td class="num">–</td><td class="num">–</td><td class="num">–</td><td class="num">–</td>
       </tr>`;
-  const rows = weapons
-    .map((w) => {
-      const rear = w.rearMounted ? ' <span class="rear">(R)</span>' : "";
-      const flag = w.unknown ? ' <span class="warn-flag">unknown</span>' : "";
-      const r = w.range;
+  const rows = tics
+    .map((t) => {
+      const rear = t.rearMounted ? ' <span class="rear">(R)</span>' : "";
+      const flag = t.weapons.some((w) => w.unknown) ? ' <span class="warn-flag">unknown</span>' : "";
+      const r = t.range;
       const brackets = r
         ? [r.pb, r.s, r.m, r.l, r.x]
             .map((v) => `<td class="num">${esc(v === null ? "–" : v >= 0 ? `+${v}` : `${v}`)}</td>`)
             .join("")
         : `<td class="num muted" colspan="5">–</td>`;
       return `<tr>
-        <td>${esc(w.name)}${rear}${flag}</td>
-        <td>${esc(w.location)}</td>
-        <td class="num">${esc(w.damageText)}</td>
-        <td class="num muted">${esc(w.twDamage)}</td>
+        <td>${esc(t.label)}${rear}${flag}</td>
+        <td>${esc(t.location)}</td>
+        <td class="num">${esc(t.damageText)}</td>
         ${brackets}
       </tr>`;
     })
     .join("");
   return `<table class="weapons">
-    <thead><tr><th>Weapon</th><th>Loc</th><th>Dmg</th><th>TW</th><th>PB</th><th>S</th><th>M</th><th>L</th><th>X</th></tr></thead>
+    <thead><tr><th>TIC</th><th>Loc</th><th>Dmg</th><th>PB</th><th>S</th><th>M</th><th>L</th><th>X</th></tr></thead>
     <tbody>${rows}${meleeRow}</tbody>
   </table>`;
 }
@@ -123,9 +121,9 @@ function renderCard(card: OverrideCard): string {
       ${stat("Arms (L/R)", `${card.structure.leftArm}/${card.structure.rightArm}`)}
       ${stat("Legs (L/R)", `${card.structure.leftLeg}/${card.structure.rightLeg}`)}
     </div>
-    <h3>Heat &amp; Weapons</h3>
+    <h3>Heat &amp; TICs</h3>
     <div class="stats">${stat("Heat dissipation", card.heatDissipation)}</div>
-    ${weaponRows(card.weapons, card.melee)}
+    ${ticRows(card.tics, card.melee)}
     ${warnings}
   </article>`;
 }
@@ -180,10 +178,12 @@ $("clear").addEventListener("click", () => {
 fileInput.addEventListener("change", async () => {
   const files = Array.from(fileInput.files ?? []);
   if (files.length === 0) return;
-  const results = await Promise.all(
-    files.map(async (f) => convertOne((await f.text()).trim(), f.name)),
-  );
+  // Read each file once.
+  const texts = await Promise.all(files.map((f) => f.text()));
+  const results = texts.map((text, i) => convertOne(text.trim(), files[i]!.name));
   // Show the first file's text in the editor for reference.
-  textarea.value = await files[0]!.text();
+  textarea.value = texts[0]!;
   showResults(results.join(""));
+  // Reset so selecting the SAME file again still fires "change".
+  fileInput.value = "";
 });

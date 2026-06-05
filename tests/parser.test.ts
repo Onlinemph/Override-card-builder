@@ -61,6 +61,38 @@ describe("parseMtf", () => {
     expect(rear.every((w) => w.name === "Medium Laser" && w.location === "CT")).toBe(true);
   });
 
+  it("parses weapon lines with extra fields (ammo/facing/trailing commas) from real exports", () => {
+    const mtf = `chassis:Test
+model:TST-1
+Config:Biped
+techbase:Inner Sphere
+mass:55
+engine:275 Fusion Engine
+heat sinks:10 Single
+walk mp:5
+armor:Standard
+CT armor:10
+LT armor:8
+RT armor:8
+LA armor:6
+RA armor:6
+LL armor:8
+RL armor:8
+HD armor:9
+Weapons:3
+Medium Laser, Left Arm, ,
+SRM 6, Left Torso, 2
+Medium Laser, Center Torso (R)
+`;
+    const u = parseMtf(mtf, "real.mtf");
+    // Location is the SECOND field; trailing fields ignored; rear flag honored.
+    expect(u.weapons.map((w) => [w.name, w.location, w.rearMounted])).toEqual([
+      ["Medium Laser", "LA", false],
+      ["SRM 6", "LT", false],
+      ["Medium Laser", "CT", true],
+    ]);
+  });
+
   it("fails loudly, naming the file and field, on a missing required field", () => {
     const bad = "chassis:Foo\nmodel:Bar\nTechBase:Inner Sphere\nWalk MP:4\n";
     expect(() => parseMtf(bad, "broken.mtf")).toThrowError(ParseError);

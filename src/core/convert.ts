@@ -30,6 +30,8 @@ import {
   RANGE_VARYING_CLUSTER_FAMILIES,
   REAR_ARMOR_DIVISOR,
   STRUCTURE_DIVISOR,
+  TIC_MAX_BASE,
+  TIC_MAX_DAMAGE,
   WEAPON_DAMAGE_BY_RANGE,
   WEAPON_RANGES,
   WEAPON_RANGES_CLAN,
@@ -49,6 +51,7 @@ import type {
   OverrideCard,
   RangeBrackets,
   TechBase,
+  Tic,
   Unit,
   Weapon,
   WeaponRange,
@@ -408,6 +411,113 @@ function convertWeapon(w: Weapon, techBase: TechBase, mass: number): CardWeapon 
 }
 
 // ---------------------------------------------------------------------------
+// TIC grouping (page 41). Auto-group identical weapons in the same location and
+// facing, summing their TW before the ÷3, subject to the base/max caps. A
+// single weapon is always its own legal TIC even if it exceeds the caps.
+// ---------------------------------------------------------------------------
+
+/**
+ * Damage used for the ≤ TIC_MAX_BASE cap. Missiles count only their guaranteed
+ * base (M dice are not guaranteed); cluster and direct count the full value
+ * (clusters can be slug-fired), which equals max.
+ */
+export function ticCapBase(p: DamageProfile): number {
+  return p.kind === "missile" ? p.base : p.max;
+}
+
+/** True if a combined profile is within both TIC caps (page 41). */
+export function isLegalTicProfile(p: DamageProfile): boolean {
+  return ticCapBase(p) <= TIC_MAX_BASE && p.max <= TIC_MAX_DAMAGE;
+}
+
+/** Combine k identical weapons (by summed TW) into one profile. */
+function combineProfile(key: string, summedTw: number): DamageProfile {
+  return computeDamageProfile(
+    summedTw,
+    classifyDamage(key),
+    isRangeVaryingCluster(key),
+    isRocketLauncher(key),
+  );
+}
+
+/** Only flat/missile/cluster weapons auto-group; variable, melee, and unknown stand alone. */
+function isGroupable(w: CardWeapon): boolean {
+  return !w.unknown && (w.profile.kind === "direct" || w.profile.kind === "missile" || w.profile.kind === "cluster");
+}
+
+function makeTic(members: CardWeapon[], key: string): Tic {
+  const first = members[0]!;
+  const profile =
+    members.length === 1
+      ? first.profile
+      : combineProfile(key, members.reduce((sum, m) => sum + m.twDamage, 0));
+  return {
+    weapons: members,
+    label: members.length > 1 ? `${members.length}x ${first.name}` : first.name,
+    location: first.location,
+    rearMounted: first.rearMounted,
+    count: members.length,
+    profile,
+    damageText: formatDamage(profile),
+    range: first.range,
+    rangeText: first.rangeText,
+  };
+}
+
+/**
+ * Auto-group converted weapons into TICs. Identical weapons (same normalized
+ * name, location, and facing) are greedily packed into the largest legal TIC,
+ * remainder spilling into further TICs. Order follows first appearance.
+ */
+export function groupIntoTics(weapons: CardWeapon[]): Tic[] {
+  const tics: Tic[] = [];
+  const used = new Array(weapons.length).fill(false);
+
+  for (let i = 0; i < weapons.length; i++) {
+    if (used[i]) continue;
+    const w = weapons[i]!;
+    used[i] = true;
+    const key = normalizeWeaponName(w.name);
+
+    if (!isGroupable(w)) {
+      tics.push(makeTic([w], key)); // variable/melee/unknown: never grouped
+      continue;
+    }
+
+    // Gather all identical, groupable weapons (same type, location, facing).
+    const members = [w];
+    for (let j = i + 1; j < weapons.length; j++) {
+      const x = weapons[j]!;
+      if (
+        !used[j] &&
+        isGroupable(x) &&
+        x.location === w.location &&
+        x.rearMounted === w.rearMounted &&
+        normalizeWeaponName(x.name) === key
+      ) {
+        members.push(x);
+        used[j] = true;
+      }
+    }
+
+    // Greedily pack: largest leading subset that stays within the caps (k ≥ 1).
+    let remaining = members;
+    while (remaining.length > 0) {
+      let k = remaining.length;
+      while (k > 1) {
+        const summedTw = remaining.slice(0, k).reduce((sum, m) => sum + m.twDamage, 0);
+        if (isLegalTicProfile(combineProfile(key, summedTw))) break;
+        k--;
+      }
+      tics.push(makeTic(remaining.slice(0, k), key));
+      remaining = remaining.slice(k);
+    }
+  }
+
+  return tics;
+}
+
+// ---------------------------------------------------------------------------
 // Top-level conversion
 // ---------------------------------------------------------------------------
 
@@ -488,6 +598,7 @@ export function convertUnit(unit: Unit): OverrideCard {
     structure,
     heatDissipation,
     weapons,
+    tics: groupIntoTics(weapons),
     melee,
     warnings,
     sourceFile: unit.sourceFile,

@@ -519,6 +519,18 @@ export const WEAPON_DAMAGE_BY_RANGE: Readonly<Record<string, readonly [number, n
 // kick TW = ceil(mass/5). VERIFIED vs DFA card: 100t -> Punch 4 / Kick 7.
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// TIC (Targeting & Interface Circuit) grouping caps (page 41). A single TIC's
+// "base" damage may not exceed TIC_MAX_BASE and its max may not exceed
+// TIC_MAX_DAMAGE. Base damage = the first number printed plus any C dice (since
+// clusters can be slug-fired); missiles count only their guaranteed base, not
+// the M dice. A SINGLE weapon is always its own legal TIC even if it exceeds
+// these (e.g. Heavy Gauss) — the caps only constrain grouping.
+// ---------------------------------------------------------------------------
+
+export const TIC_MAX_BASE = 5;
+export const TIC_MAX_DAMAGE = 14;
+
 /** Classic-TW divisors for the universal physical attacks (then divided by WEAPON_DAMAGE_DIVISOR). */
 export const PUNCH_TW_DIVISOR = 10;
 export const KICK_TW_DIVISOR = 5;

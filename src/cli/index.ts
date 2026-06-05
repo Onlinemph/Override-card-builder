@@ -130,13 +130,13 @@ function printSummary(card: OverrideCard): void {
       `  legs ${card.structure.leftLeg}/${card.structure.rightLeg}`,
   );
   lines.push(`  Heat dissipation ${card.heatDissipation}`);
-  if (card.weapons.length > 0) {
-    lines.push("  Weapons:");
-    for (const w of card.weapons) {
-      const rear = w.rearMounted ? " (R)" : "";
-      const flag = w.unknown ? "  [!] unknown weapon" : "";
-      const rng = w.rangeText ? ` [${w.rangeText}]` : "";
-      lines.push(`    - ${w.name}${rear} @ ${w.location}: dmg ${w.damageText} (TW ${w.twDamage})${rng}${flag}`);
+  if (card.tics.length > 0) {
+    lines.push("  TICs:");
+    for (const t of card.tics) {
+      const rear = t.rearMounted ? " (R)" : "";
+      const flag = t.weapons.some((w) => w.unknown) ? "  [!] unknown weapon" : "";
+      const rng = t.rangeText ? ` [${t.rangeText}]` : "";
+      lines.push(`    - ${t.label}${rear} @ ${t.location}: dmg ${t.damageText}${rng}${flag}`);
     }
   }
   lines.push(`  Melee: Punch / Kick ${card.melee.punch} / ${card.melee.kick}`);

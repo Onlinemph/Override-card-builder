@@ -263,8 +263,12 @@ function deriveStructure(mass: number, file: string) {
 }
 
 /**
- * Weapons block: a `Weapons:N` line followed by N entries "Name, Location".
- * A trailing "(R)" on the name marks a rear-mounted weapon.
+ * Weapons block: a `Weapons:N` line followed by N entries. The canonical form
+ * is "Name, Location", but real MegaMek exports often append extra
+ * comma-separated fields (ammo count, facing, omni flags), e.g.
+ * "SRM 6, Left Torso, 2" or "Medium Laser, Left Arm, , ". So the NAME is the
+ * first field and the LOCATION is the SECOND; any further fields are ignored.
+ * A "(R)" marker on the name or location marks a rear-mounted weapon.
  */
 function parseWeapons(lines: RawLine[], file: string): Weapon[] {
   const idx = lines.findIndex((l) => /^weapons\s*:/i.test(l.text));
@@ -281,8 +285,8 @@ function parseWeapons(lines: RawLine[], file: string): Weapon[] {
     cursor++;
     if (line.text === "") continue;
 
-    const comma = line.text.lastIndexOf(",");
-    if (comma < 0) {
+    const fields = line.text.split(",").map((f) => f.trim());
+    if (fields.length < 2 || fields[0] === "") {
       throw new ParseError(
         `malformed weapon line "${line.text}" (expected "Name, Location")`,
         file,
@@ -290,8 +294,8 @@ function parseWeapons(lines: RawLine[], file: string): Weapon[] {
       );
     }
 
-    let name = line.text.slice(0, comma).trim();
-    let rawLocation = line.text.slice(comma + 1).trim();
+    let name = fields[0]!;
+    let rawLocation = fields[1]!; // location is the SECOND field; ignore any after
 
     // Rear-mounted flag. MTF variants put the "(R)" marker on either side:
     // "Medium Laser (R), Center Torso" or "Medium Laser, Center Torso (R)".

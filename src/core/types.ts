@@ -207,6 +207,31 @@ export interface CardWeapon {
   unknown: boolean;
 }
 
+/**
+ * A TIC (Targeting & Interface Circuit) — one or more weapons fired as a single
+ * attack. Auto-grouping combines identical weapons in the same location/facing,
+ * summing their TW damage before the ÷3, subject to the page-41 caps (base ≤ 5,
+ * max ≤ 14). A single weapon is always its own legal TIC even if it exceeds the
+ * cap (e.g. Heavy Gauss). Users may later re-group freely within those caps.
+ */
+export interface Tic {
+  /** Member weapons (≥1). When count > 1 they share name, location, and facing. */
+  weapons: CardWeapon[];
+  /** Display label, e.g. "Medium Laser" or "3x Medium Laser". */
+  label: string;
+  location: MechLocation;
+  rearMounted: boolean;
+  /** Number of weapons combined. */
+  count: number;
+  /** Combined damage profile (summed TW). */
+  profile: DamageProfile;
+  /** Printed combined damage string. */
+  damageText: string;
+  /** Range brackets (shared by the identical members), or null if unknown. */
+  range: RangeBrackets | null;
+  rangeText: string | null;
+}
+
 /** Per-section armor on the Override card. */
 export interface CardArmor {
   /** (CT + LT + RT) / 6, round nearest. */
@@ -266,7 +291,10 @@ export interface OverrideCard {
   structure: CardStructure;
   /** Total dissipated per round / 5, round nearest. */
   heatDissipation: number;
+  /** Individual converted weapons (ungrouped), kept for reference/editing. */
   weapons: CardWeapon[];
+  /** Weapons auto-grouped into TICs (what the card fires). */
+  tics: Tic[];
   /** Auto-generated Punch / Kick damage from tonnage. */
   melee: MeleeProfile;
   /** Non-fatal notes (e.g. weapons missing from the TW damage table). */
