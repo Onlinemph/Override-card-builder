@@ -5,6 +5,7 @@ import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import {
+  buildTic,
   classifyDamage,
   computeDamageProfile,
   computeRangeBrackets,
@@ -12,6 +13,7 @@ import {
   convertUnit,
   formatDamage,
   formatRangeBrackets,
+  isLegalTic,
   isMissileWeapon,
   isRangeVaryingCluster,
   isRocketLauncher,
@@ -281,6 +283,33 @@ describe("TIC grouping (page 41 caps: base <= 5, max <= 14)", () => {
     expect(tics).toHaveLength(1);
     expect(tics[0]!.count).toBe(1);
     expect(tics[0]!.damageText).toBe("9|7|4"); // variable, never grouped
+  });
+
+  it("buildTic combines a same-kind group and reports legality", () => {
+    const ws = convertUnit({
+      chassis: "T", model: "1", mass: 55, techBase: "IS", config: "Biped",
+      engine: { rating: 275, type: "Fusion" },
+      movement: { walkMP: 5, runMP: 8, jumpMP: 0, runDerived: true },
+      heatSinks: { count: 10, type: "single" }, armor: { CT: 10 }, structure: {},
+      weapons: [W("LRM 10", "LT"), W("LRM 5", "LT")],
+    }).weapons;
+    const tic = buildTic(ws);
+    expect(tic.damageText).toBe("1+M2 (5)"); // TW 15 combined
+    expect(tic.label).toBe("LRM 10 + LRM 5"); // different names
+    expect(tic.rangeText).toBe("+4 +2 +0 +2 +4"); // both LRM, same range
+    expect(isLegalTic(ws)).toBe(true);
+  });
+
+  it("isLegalTic: single over-cap weapon legal; cross-location illegal", () => {
+    const ws = convertUnit({
+      chassis: "T", model: "1", mass: 55, techBase: "IS", config: "Biped",
+      engine: { rating: 275, type: "Fusion" },
+      movement: { walkMP: 5, runMP: 8, jumpMP: 0, runDerived: true },
+      heatSinks: { count: 10, type: "single" }, armor: { CT: 10 }, structure: {},
+      weapons: [W("Heavy Gauss Rifle", "RT"), W("Medium Laser", "LA")],
+    }).weapons;
+    expect(isLegalTic([ws[0]!])).toBe(true); // over-cap single allowed
+    expect(isLegalTic(ws)).toBe(false); // different locations
   });
 
   it("converts the Atlas into per-location TICs", () => {

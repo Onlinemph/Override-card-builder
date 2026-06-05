@@ -430,14 +430,19 @@ export function isLegalTicProfile(p: DamageProfile): boolean {
   return ticCapBase(p) <= TIC_MAX_BASE && p.max <= TIC_MAX_DAMAGE;
 }
 
-/** Combine k identical weapons (by summed TW) into one profile. */
-function combineProfile(key: string, summedTw: number): DamageProfile {
-  return computeDamageProfile(
-    summedTw,
-    classifyDamage(key),
-    isRangeVaryingCluster(key),
-    isRocketLauncher(key),
+/**
+ * True if a proposed set of weapons forms a legal TIC: a single weapon is
+ * always legal (even over-cap, e.g. Heavy Gauss); a group must be within the
+ * caps and share one location/facing. Used by the editable-grouping UI.
+ */
+export function isLegalTic(members: CardWeapon[]): boolean {
+  if (members.length === 0) return false;
+  if (members.length === 1) return true;
+  const first = members[0]!;
+  const sameLocation = members.every(
+    (m) => m.location === first.location && m.rearMounted === first.rearMounted,
   );
+  return sameLocation && isLegalTicProfile(buildTic(members).profile);
 }
 
 /** Only flat/missile/cluster weapons auto-group; variable, melee, and unknown stand alone. */
@@ -445,22 +450,52 @@ function isGroupable(w: CardWeapon): boolean {
   return !w.unknown && (w.profile.kind === "direct" || w.profile.kind === "missile" || w.profile.kind === "cluster");
 }
 
-function makeTic(members: CardWeapon[], key: string): Tic {
+/**
+ * Build a TIC from a set of weapons (the unit of manual editing). A single
+ * weapon keeps its own profile. For a group, TW is summed and a combined
+ * profile derived: missile if any member rolls M dice, else cluster if any
+ * rolls C dice, else direct. Range brackets show only when every member shares
+ * the same range (mixed-range groups print no bracket row).
+ *
+ * Callers are responsible for legality (isLegalTicProfile) and for keeping a
+ * group within one location/facing — buildTic does not enforce either.
+ */
+export function buildTic(members: CardWeapon[]): Tic {
   const first = members[0]!;
-  const profile =
-    members.length === 1
-      ? first.profile
-      : combineProfile(key, members.reduce((sum, m) => sum + m.twDamage, 0));
+  if (members.length === 1) {
+    return {
+      weapons: members,
+      label: first.name,
+      location: first.location,
+      rearMounted: first.rearMounted,
+      count: 1,
+      profile: first.profile,
+      damageText: first.damageText,
+      range: first.range,
+      rangeText: first.rangeText,
+    };
+  }
+
+  const keys = members.map((m) => normalizeWeaponName(m.name));
+  const summedTw = members.reduce((sum, m) => sum + m.twDamage, 0);
+  const kinds = new Set(members.map((m) => m.profile.kind));
+  const kind: DamageKind = kinds.has("missile") ? "missile" : kinds.has("cluster") ? "cluster" : "direct";
+  const rangeVarying = keys.some(isRangeVaryingCluster);
+  const allRocket = keys.every(isRocketLauncher);
+  const profile = computeDamageProfile(summedTw, kind, rangeVarying, allRocket);
+
+  const allSameName = keys.every((k) => k === keys[0]);
+  const sameRange = members.every((m) => m.rangeText === first.rangeText);
   return {
     weapons: members,
-    label: members.length > 1 ? `${members.length}x ${first.name}` : first.name,
+    label: allSameName ? `${members.length}x ${first.name}` : members.map((m) => m.name).join(" + "),
     location: first.location,
     rearMounted: first.rearMounted,
     count: members.length,
     profile,
     damageText: formatDamage(profile),
-    range: first.range,
-    rangeText: first.rangeText,
+    range: sameRange ? first.range : null,
+    rangeText: sameRange ? first.rangeText : null,
   };
 }
 
@@ -480,7 +515,7 @@ export function groupIntoTics(weapons: CardWeapon[]): Tic[] {
     const key = normalizeWeaponName(w.name);
 
     if (!isGroupable(w)) {
-      tics.push(makeTic([w], key)); // variable/melee/unknown: never grouped
+      tics.push(buildTic([w])); // variable/melee/unknown: never grouped
       continue;
     }
 
@@ -505,11 +540,10 @@ export function groupIntoTics(weapons: CardWeapon[]): Tic[] {
     while (remaining.length > 0) {
       let k = remaining.length;
       while (k > 1) {
-        const summedTw = remaining.slice(0, k).reduce((sum, m) => sum + m.twDamage, 0);
-        if (isLegalTicProfile(combineProfile(key, summedTw))) break;
+        if (isLegalTicProfile(buildTic(remaining.slice(0, k)).profile)) break;
         k--;
       }
-      tics.push(makeTic(remaining.slice(0, k), key));
+      tics.push(buildTic(remaining.slice(0, k)));
       remaining = remaining.slice(k);
     }
   }

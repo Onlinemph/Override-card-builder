@@ -6,8 +6,8 @@
 
 import "./style.css";
 
-import { convertUnit, parseMtf, ParseError } from "../core/index.js";
-import type { MeleeProfile, OverrideCard, Tic } from "../core/index.js";
+import { buildTic, convertUnit, isLegalTic, parseMtf, ParseError } from "../core/index.js";
+import type { CardWeapon, OverrideCard } from "../core/index.js";
 
 const EXAMPLE_LOCUST = `chassis:Locust
 model:LCT-1V
@@ -59,42 +59,112 @@ function esc(s: string | number): string {
   );
 }
 
-function ticRows(tics: Tic[], melee: MeleeProfile): string {
-  const meleeRow = `<tr class="melee">
-        <td>Punch / Kick</td>
-        <td>–</td>
-        <td class="num">${esc(melee.punch)} / ${esc(melee.kick)}</td>
-        <td class="num">+0</td><td class="num">–</td><td class="num">–</td><td class="num">–</td><td class="num">–</td>
-      </tr>`;
-  const rows = tics
-    .map((t) => {
-      const rear = t.rearMounted ? ' <span class="rear">(R)</span>' : "";
-      const flag = t.weapons.some((w) => w.unknown) ? ' <span class="warn-flag">unknown</span>' : "";
-      const r = t.range;
-      const brackets = r
-        ? [r.pb, r.s, r.m, r.l, r.x]
-            .map((v) => `<td class="num">${esc(v === null ? "–" : v >= 0 ? `+${v}` : `${v}`)}</td>`)
-            .join("")
-        : `<td class="num muted" colspan="5">–</td>`;
-      return `<tr>
-        <td>${esc(t.label)}${rear}${flag}</td>
-        <td>${esc(t.location)}</td>
-        <td class="num">${esc(t.damageText)}</td>
-        ${brackets}
-      </tr>`;
-    })
+function bracketCells(range: CardWeapon["range"]): string {
+  if (!range) return `<td class="num muted" colspan="5">–</td>`;
+  return [range.pb, range.s, range.m, range.l, range.x]
+    .map((v) => `<td class="num">${esc(v === null ? "–" : v >= 0 ? `+${v}` : `${v}`)}</td>`)
     .join("");
-  return `<table class="weapons">
-    <thead><tr><th>TIC</th><th>Loc</th><th>Dmg</th><th>PB</th><th>S</th><th>M</th><th>L</th><th>X</th></tr></thead>
-    <tbody>${rows}${meleeRow}</tbody>
-  </table>`;
+}
+
+/**
+ * Interactive TIC grouping editor. Holds editable groups of weapon indices and
+ * lets the user move a weapon to another TIC in the same location, or split it
+ * into its own. Illegal moves (over the page-41 caps) are rejected.
+ */
+class TicEditor {
+  private groups: number[][];
+  constructor(
+    private readonly host: HTMLElement,
+    private readonly card: OverrideCard,
+  ) {
+    // Seed editable state from the auto-grouped TICs, as indices into card.weapons.
+    const indexOf = new Map(card.weapons.map((w, i) => [w, i] as const));
+    this.groups = card.tics.map((t) => t.weapons.map((w) => indexOf.get(w)!));
+    this.host.addEventListener("change", (e) => this.onChange(e));
+    this.render();
+  }
+
+  private weaponsOf(group: number[]): CardWeapon[] {
+    return group.map((i) => this.card.weapons[i]!);
+  }
+
+  private onChange(e: Event): void {
+    const sel = e.target as HTMLSelectElement;
+    if (!sel.matches("select.move")) return;
+    const weaponIdx = Number(sel.dataset.weapon);
+    const target = sel.value; // group index, or "new"
+    const fromGi = this.groups.findIndex((g) => g.includes(weaponIdx));
+    if (fromGi < 0) return;
+
+    if (target === "new") {
+      this.groups[fromGi] = this.groups[fromGi]!.filter((i) => i !== weaponIdx);
+      this.groups.push([weaponIdx]);
+    } else {
+      const toGi = Number(target);
+      if (toGi === fromGi) return;
+      const proposed = [...this.groups[toGi]!, weaponIdx];
+      if (!isLegalTic(this.weaponsOf(proposed))) {
+        const dmg = buildTic(this.weaponsOf(proposed)).damageText;
+        this.flash(`Can't group: ${dmg} exceeds the TIC cap (base ≤ 5, max ≤ 14).`);
+        this.render(); // revert the select
+        return;
+      }
+      this.groups[fromGi] = this.groups[fromGi]!.filter((i) => i !== weaponIdx);
+      this.groups[toGi] = proposed;
+    }
+    this.groups = this.groups.filter((g) => g.length > 0);
+    this.render();
+  }
+
+  private flash(message: string): void {
+    const note = this.host.querySelector(".tic-note");
+    if (note) note.textContent = message;
+  }
+
+  private render(): void {
+    const ticHtml = this.groups
+      .map((group, gi) => {
+        const tic = buildTic(this.weaponsOf(group));
+        const rear = tic.rearMounted ? ' <span class="rear">(R)</span>' : "";
+        const members = group
+          .map((wi) => {
+            const w = this.card.weapons[wi]!;
+            // Valid move targets: other groups in the SAME location/facing, plus "new".
+            const opts = this.groups
+              .map((g, ti) => ({ g, ti }))
+              .filter(({ g }) => {
+                const f = this.card.weapons[g[0]!]!;
+                return f.location === w.location && f.rearMounted === w.rearMounted;
+              })
+              .map(({ ti }) => `<option value="${ti}"${ti === gi ? " selected" : ""}>TIC ${ti + 1}</option>`)
+              .join("");
+            return `<li>${esc(w.name)}
+              <select class="move" data-weapon="${wi}">${opts}<option value="new">＋ new TIC</option></select>
+            </li>`;
+          })
+          .join("");
+        return `<div class="tic">
+          <div class="tic-head"><strong>TIC ${gi + 1}</strong> <span class="muted">${esc(tic.location)}${rear}</span>
+            <span class="tic-dmg">${esc(tic.damageText)}</span></div>
+          <table class="tic-range"><tr><th>PB</th><th>S</th><th>M</th><th>L</th><th>X</th></tr><tr>${bracketCells(tic.range)}</tr></table>
+          <ul class="tic-weapons">${members}</ul>
+        </div>`;
+      })
+      .join("");
+    const melee = this.card.melee;
+    this.host.innerHTML = `
+      <div class="tics">${ticHtml}</div>
+      <div class="melee-row"><strong>Punch / Kick</strong> <span class="tic-dmg">${esc(melee.punch)} / ${esc(melee.kick)}</span></div>
+      <p class="tic-note muted">Move a weapon to another TIC in the same location, or split it into its own. Illegal groups are rejected.</p>`;
+  }
 }
 
 function stat(label: string, value: string | number): string {
   return `<div class="stat"><span class="label">${esc(label)}</span><span class="value">${esc(value)}</span></div>`;
 }
 
-function renderCard(card: OverrideCard): string {
+/** Static (non-TIC) card HTML, with a placeholder div the TIC editor mounts into. */
+function cardShell(card: OverrideCard, idx: number): string {
   const warnings = card.warnings.length
     ? `<ul class="warnings">${card.warnings.map((w) => `<li>${esc(w)}</li>`).join("")}</ul>`
     : "";
@@ -123,50 +193,59 @@ function renderCard(card: OverrideCard): string {
     </div>
     <h3>Heat &amp; TICs</h3>
     <div class="stats">${stat("Heat dissipation", card.heatDissipation)}</div>
-    ${ticRows(card.tics, card.melee)}
+    <div class="tic-editor" data-card="${idx}"></div>
     ${warnings}
   </article>`;
 }
 
-function renderError(file: string, message: string): string {
+function errorCard(file: string, message: string): string {
   return `<article class="card error">
     <h2>Could not convert ${esc(file)}</h2>
     <p>${esc(message)}</p>
   </article>`;
 }
 
-/** Convert one MTF source and return its rendered HTML (card or error). */
-function convertOne(text: string, file: string): string {
+type ConvertResult = { ok: true; card: OverrideCard } | { ok: false; html: string };
+
+/** Parse + convert one MTF source. */
+function convertOne(text: string, file: string): ConvertResult {
   try {
-    const unit = parseMtf(text, file);
-    return renderCard(convertUnit(unit));
+    return { ok: true, card: convertUnit(parseMtf(text, file)) };
   } catch (err) {
     const message =
-      err instanceof ParseError
-        ? err.message
-        : err instanceof Error
-          ? err.message
-          : String(err);
-    return renderError(file, message);
+      err instanceof ParseError ? err.message : err instanceof Error ? err.message : String(err);
+    return { ok: false, html: errorCard(file, message) };
   }
 }
 
-function showResults(html: string): void {
-  output.innerHTML = html || `<p class="muted">Nothing to convert.</p>`;
+/** Render results and mount an interactive TIC editor into each successful card. */
+function showResults(results: ConvertResult[]): void {
+  if (results.length === 0) {
+    output.innerHTML = `<p class="muted">Nothing to convert.</p>`;
+    return;
+  }
+  output.innerHTML = results
+    .map((r, i) => (r.ok ? cardShell(r.card, i) : r.html))
+    .join("");
+  results.forEach((r, i) => {
+    if (!r.ok) return;
+    const host = output.querySelector<HTMLElement>(`.tic-editor[data-card="${i}"]`);
+    if (host) new TicEditor(host, r.card);
+  });
 }
 
 $("convert").addEventListener("click", () => {
   const text = textarea.value.trim();
   if (!text) {
-    showResults(`<p class="muted">Paste or upload an .mtf first.</p>`);
+    output.innerHTML = `<p class="muted">Paste or upload an .mtf first.</p>`;
     return;
   }
-  showResults(convertOne(text, "pasted.mtf"));
+  showResults([convertOne(text, "pasted.mtf")]);
 });
 
 $("example").addEventListener("click", () => {
   textarea.value = EXAMPLE_LOCUST;
-  showResults(convertOne(EXAMPLE_LOCUST, "Locust LCT-1V.mtf"));
+  showResults([convertOne(EXAMPLE_LOCUST, "Locust LCT-1V.mtf")]);
 });
 
 $("clear").addEventListener("click", () => {
@@ -178,12 +257,9 @@ $("clear").addEventListener("click", () => {
 fileInput.addEventListener("change", async () => {
   const files = Array.from(fileInput.files ?? []);
   if (files.length === 0) return;
-  // Read each file once.
   const texts = await Promise.all(files.map((f) => f.text()));
   const results = texts.map((text, i) => convertOne(text.trim(), files[i]!.name));
-  // Show the first file's text in the editor for reference.
-  textarea.value = texts[0]!;
-  showResults(results.join(""));
-  // Reset so selecting the SAME file again still fires "change".
-  fileInput.value = "";
+  textarea.value = texts[0]!; // show the first file for reference
+  showResults(results);
+  fileInput.value = ""; // reset so re-selecting the same file fires "change"
 });
