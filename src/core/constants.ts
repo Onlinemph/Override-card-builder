@@ -413,7 +413,9 @@ export const WEAPON_RANGES: Readonly<Record<string, WeaponRange>> = {
   "light ac/2": { min: 0, medium: 12, long: 18 }, // CONFIRM
   "light ac/5": { min: 0, medium: 10, long: 15 }, // CONFIRM
 
-  // --- Ballistic: Ultra AC (VERIFIED: UAC/10 IS +0/+0/+2/+4/–, UAC/20 +0/+0/+2/–/–) ---
+  // --- Ballistic: Ultra AC (VERIFIED: UAC/10 IS, UAC/20; /2 and /5 extrapolated from the pattern) ---
+  "ultra ac/2": { min: 0, medium: 18, long: 27 }, // CONFIRM (extrapolated)
+  "ultra ac/5": { min: 0, medium: 14, long: 21 }, // CONFIRM (extrapolated)
   "ultra ac/10": { min: 0, medium: 12, long: 18 }, // VERIFIED (IS)
   "ultra ac/20": { min: 0, medium: 8, long: 12 }, // VERIFIED (cUAC/20)
 
@@ -421,8 +423,11 @@ export const WEAPON_RANGES: Readonly<Record<string, WeaponRange>> = {
   "rotary ac/2": { min: 0, medium: 12, long: 18 }, // VERIFIED (IS RAC/2)
   "rotary ac/5": { min: 0, medium: 12, long: 18 }, // VERIFIED (IS); Clan in WEAPON_RANGES_CLAN
 
-  // --- Ballistic: LB-X cluster (range tech-independent; VERIFIED both IS LB 10-X and cLB 10-X) ---
-  "lb 10-x ac": { min: 0, medium: 12, long: 18 },
+  // --- Ballistic: LB-X cluster (LB 10-X range tech-independent, VERIFIED; others extrapolated) ---
+  "lb 2-x ac": { min: 0, medium: 18, long: 27 }, // CONFIRM
+  "lb 5-x ac": { min: 0, medium: 14, long: 21 }, // CONFIRM
+  "lb 10-x ac": { min: 0, medium: 12, long: 18 }, // VERIFIED (IS and Clan)
+  "lb 20-x ac": { min: 0, medium: 8, long: 12 }, // CONFIRM
 
   // --- Ballistic: HAG (Clan-only; all classes share range 2/16/24; VERIFIED vs DFA card HAG/30: +2/+0/+0/+2/+4) ---
   "hag/20": { min: 2, medium: 16, long: 24 },
@@ -438,9 +443,14 @@ export const WEAPON_RANGES: Readonly<Record<string, WeaponRange>> = {
   magshot: { min: 0, medium: 6, long: 9 }, // CONFIRM
   "magshot gauss rifle": { min: 0, medium: 6, long: 9 }, // CONFIRM
 
-  // --- Energy/ballistic: plasma + vehicle flamer (canonical) ---
+  // --- Energy/ballistic: plasma + flamers (canonical) ---
   "plasma rifle": { min: 0, medium: 10, long: 15 }, // CONFIRM
   "vehicle flamer": { min: 0, medium: 2, long: 3 }, // CONFIRM
+  "er flamer": { min: 0, medium: 4, long: 5 }, // CONFIRM
+
+  // --- Ballistic: light/heavy machine guns (canonical, short range) ---
+  "light machine gun": { min: 0, medium: 4, long: 6 }, // CONFIRM
+  "heavy machine gun": { min: 0, medium: 1, long: 2 }, // CONFIRM
 } as const;
 
 /**
@@ -501,6 +511,35 @@ export const WEAPON_DAMAGE_CLAN: Readonly<Record<string, number>> = {
 export const WEAPON_DAMAGE_BY_RANGE: Readonly<Record<string, readonly [number, number, number]>> = {
   "snub-nose ppc": [10, 8, 5], // VERIFIED -> 4|3|2
   "heavy gauss rifle": [25, 20, 10], // VERIFIED -> 9|7|4
+} as const;
+
+// ---------------------------------------------------------------------------
+// MELEE. Punch/Kick are auto-generated for every BattleMech from tonnage;
+// Override damage = ceil(classic TW / 3). Classic punch TW = ceil(mass/10),
+// kick TW = ceil(mass/5). VERIFIED vs DFA card: 100t -> Punch 4 / Kick 7.
+// ---------------------------------------------------------------------------
+
+/** Classic-TW divisors for the universal physical attacks (then divided by WEAPON_DAMAGE_DIVISOR). */
+export const PUNCH_TW_DIVISOR = 10;
+export const KICK_TW_DIVISOR = 5;
+
+/**
+ * Physical melee weapons carried in the MTF. Override damage = ceil(tonnage /
+ * divisor) (page 40), plus a flat to-hit modifier shown in the PB bracket
+ * (melee is point-blank only). VERIFIED formulas pending a melee-weapon card.
+ */
+export interface MeleeWeaponSpec {
+  /** Tonnage divisor for Override damage (page 40). */
+  divisor: number;
+  /** Flat to-hit modifier (page 40), shown in the PB bracket. */
+  tnMod: number;
+}
+
+export const MELEE_WEAPONS: Readonly<Record<string, MeleeWeaponSpec>> = {
+  hatchet: { divisor: 15, tnMod: 0 },
+  sword: { divisor: 30, tnMod: -2 },
+  mace: { divisor: 12, tnMod: 1 },
+  claws: { divisor: 20, tnMod: 1 },
 } as const;
 
 // ---------------------------------------------------------------------------

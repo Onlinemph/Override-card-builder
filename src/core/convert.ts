@@ -20,10 +20,13 @@ import {
   HEAT_PER_DOUBLE_SINK,
   CLUSTER_WEAPON_FAMILIES,
   HEAT_PER_SINGLE_SINK,
+  KICK_TW_DIVISOR,
   M_DICE_DIVISOR,
+  MELEE_WEAPONS,
   MIN_ARM_LEG_ARMOR,
   MIN_STRUCTURE,
   MISSILE_WEAPON_FAMILIES,
+  PUNCH_TW_DIVISOR,
   RANGE_VARYING_CLUSTER_FAMILIES,
   REAR_ARMOR_DIVISOR,
   STRUCTURE_DIVISOR,
@@ -342,8 +345,35 @@ export function formatMove(walk: number, run: number, jump: number): string {
   return `${walk}/${run}${jump > 0 ? " (J)" : ""}`;
 }
 
-function convertWeapon(w: Weapon, techBase: TechBase): CardWeapon {
+/** Build the point-blank-only range row for a melee weapon (its to-hit mod in PB, rest "–"). */
+function meleeRange(tnMod: number): RangeBrackets {
+  return { pb: tnMod, s: null, m: null, l: null, x: null };
+}
+
+function convertWeapon(w: Weapon, techBase: TechBase, mass: number): CardWeapon {
   const key = normalizeWeaponName(w.name);
+
+  // Physical melee weapons (Hatchet/Sword/Mace/Claws): damage from tonnage, not
+  // a TW table; point-blank only, with a flat to-hit modifier (page 40).
+  const meleeSpec = MELEE_WEAPONS[key];
+  if (meleeSpec) {
+    const dmg = roundUp(mass / meleeSpec.divisor);
+    const profile: DamageProfile = { kind: "direct", base: dmg, mDice: 0, cDice: [], byRange: [], max: dmg };
+    const range = meleeRange(meleeSpec.tnMod);
+    return {
+      name: w.name,
+      location: w.location,
+      rearMounted: w.rearMounted,
+      twDamage: dmg,
+      damage: dmg,
+      profile,
+      damageText: formatDamage(profile),
+      range,
+      rangeText: formatRangeBrackets(range),
+      unknown: false,
+    };
+  }
+
   const { twDamage, unknown } = lookupWeaponDamage(w.name, techBase);
   // v1: one weapon per TIC, so each weapon is its own group.
   // TODO(TIC grouping): replace per-weapon conversion with grouped sums.
@@ -418,12 +448,20 @@ export function convertUnit(unit: Unit): OverrideCard {
 
   const tmm = lookupTmm(unit.movement.runMP);
 
-  const weapons = unit.weapons.map((w) => convertWeapon(w, unit.techBase));
+  const weapons = unit.weapons.map((w) => convertWeapon(w, unit.techBase, unit.mass));
   for (const w of weapons) {
     if (w.unknown) {
       warnings.push(`weapon not in TW damage table: "${w.name}" (damage set to 0)`);
     }
   }
+
+  // Universal Punch/Kick: Override damage = ceil(classic TW / 3), classic TW =
+  // ceil(mass/10) punch, ceil(mass/5) kick. VERIFIED 100t -> 4 / 7.
+  // TODO(quads): quad 'Mechs cannot punch — suppress punch when config is Quad.
+  const melee = {
+    punch: roundUp(roundUp(unit.mass / PUNCH_TW_DIVISOR) / WEAPON_DAMAGE_DIVISOR),
+    kick: roundUp(roundUp(unit.mass / KICK_TW_DIVISOR) / WEAPON_DAMAGE_DIVISOR),
+  };
 
   return {
     name: `${unit.chassis} ${unit.model}`.trim(),
@@ -450,6 +488,7 @@ export function convertUnit(unit: Unit): OverrideCard {
     structure,
     heatDissipation,
     weapons,
+    melee,
     warnings,
     sourceFile: unit.sourceFile,
   };

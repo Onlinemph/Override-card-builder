@@ -7,7 +7,7 @@
 import "./style.css";
 
 import { convertUnit, parseMtf, ParseError } from "../core/index.js";
-import type { CardWeapon, OverrideCard } from "../core/index.js";
+import type { CardWeapon, MeleeProfile, OverrideCard } from "../core/index.js";
 
 const EXAMPLE_LOCUST = `chassis:Locust
 model:LCT-1V
@@ -59,8 +59,14 @@ function esc(s: string | number): string {
   );
 }
 
-function weaponRows(weapons: CardWeapon[]): string {
-  if (weapons.length === 0) return `<p class="muted">No weapons.</p>`;
+function weaponRows(weapons: CardWeapon[], melee: MeleeProfile): string {
+  const meleeRow = `<tr class="melee">
+        <td>Punch / Kick</td>
+        <td>–</td>
+        <td class="num">${esc(melee.punch)} / ${esc(melee.kick)}</td>
+        <td class="num muted">–</td>
+        <td class="num">+0</td><td class="num">–</td><td class="num">–</td><td class="num">–</td><td class="num">–</td>
+      </tr>`;
   const rows = weapons
     .map((w) => {
       const rear = w.rearMounted ? ' <span class="rear">(R)</span>' : "";
@@ -82,7 +88,7 @@ function weaponRows(weapons: CardWeapon[]): string {
     .join("");
   return `<table class="weapons">
     <thead><tr><th>Weapon</th><th>Loc</th><th>Dmg</th><th>TW</th><th>PB</th><th>S</th><th>M</th><th>L</th><th>X</th></tr></thead>
-    <tbody>${rows}</tbody>
+    <tbody>${rows}${meleeRow}</tbody>
   </table>`;
 }
 
@@ -119,7 +125,7 @@ function renderCard(card: OverrideCard): string {
     </div>
     <h3>Heat &amp; Weapons</h3>
     <div class="stats">${stat("Heat dissipation", card.heatDissipation)}</div>
-    ${weaponRows(card.weapons)}
+    ${weaponRows(card.weapons, card.melee)}
     ${warnings}
   </article>`;
 }

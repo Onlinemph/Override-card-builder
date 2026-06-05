@@ -222,6 +222,15 @@ export interface CardArmor {
   rightLeg: number;
 }
 
+/**
+ * Auto-generated melee damage, derived from tonnage and printed as a combined
+ * "Punch / Kick" row. Punch = ceil(ceil(mass/10)/3), Kick = ceil(ceil(mass/5)/3).
+ */
+export interface MeleeProfile {
+  punch: number;
+  kick: number;
+}
+
 /** Per-section internal structure on the Override card. Each = IS / 3, round nearest, min 1. */
 export interface CardStructure {
   /** Torso structure, from center-torso internal structure. */
@@ -258,6 +267,8 @@ export interface OverrideCard {
   /** Total dissipated per round / 5, round nearest. */
   heatDissipation: number;
   weapons: CardWeapon[];
+  /** Auto-generated Punch / Kick damage from tonnage. */
+  melee: MeleeProfile;
   /** Non-fatal notes (e.g. weapons missing from the TW damage table). */
   warnings: string[];
   sourceFile?: string;

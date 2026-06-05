@@ -139,6 +139,7 @@ function printSummary(card: OverrideCard): void {
       lines.push(`    - ${w.name}${rear} @ ${w.location}: dmg ${w.damageText} (TW ${w.twDamage})${rng}${flag}`);
     }
   }
+  lines.push(`  Melee: Punch / Kick ${card.melee.punch} / ${card.melee.kick}`);
   for (const warn of card.warnings) lines.push(`  ! ${warn}`);
   process.stdout.write(lines.join("\n") + "\n\n");
 }

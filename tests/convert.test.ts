@@ -225,6 +225,29 @@ describe("cluster damage profile (C dice, VERIFIED vs DFA card)", () => {
   });
 });
 
+describe("melee (Punch/Kick auto-generated + physical weapons)", () => {
+  it("derives Punch/Kick from tonnage (VERIFIED 100t -> 4/7)", () => {
+    expect(card("Atlas AS7-D.mtf").melee).toEqual({ punch: 4, kick: 7 }); // 100t
+    expect(card("Hunchback HBK-4G.mtf").melee).toEqual({ punch: 2, kick: 4 }); // 50t
+    expect(card("Locust LCT-1V.mtf").melee).toEqual({ punch: 1, kick: 2 }); // 20t
+  });
+
+  it("converts physical melee weapons from tonnage with a PB-only to-hit mod", () => {
+    // Hatchet on a 100t 'Mech: ceil(100/15)=7, PB +0 only.
+    const u = parseMtf(
+      readFileSync(join(FIXTURES, "Atlas AS7-D.mtf"), "utf8"),
+      "Atlas AS7-D.mtf",
+    );
+    const withHatchet = convertUnit({
+      ...u,
+      weapons: [{ name: "Hatchet", location: "RA", rawLocation: "Right Arm", rearMounted: false }],
+    });
+    const hatchet = withHatchet.weapons[0]!;
+    expect(hatchet.damageText).toBe("7");
+    expect(hatchet.rangeText).toBe("+0 – – – –");
+  });
+});
+
 describe("variable (range-dependent) damage (VERIFIED vs DFA card)", () => {
   it("classifies and formats short|med|long damage", () => {
     expect(classifyDamage("snub-nose ppc")).toBe("variable");
