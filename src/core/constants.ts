@@ -38,8 +38,46 @@ export const ROUNDING: Record<string, RoundMode> = {
 // Divisors. One named constant per conversion rule.
 // ---------------------------------------------------------------------------
 
-/** Weapon group damage: sum of TW damage / 3, round UP. */
+/** Weapon group damage (the printed MAX): sum of TW damage / 3, round UP. */
 export const WEAPON_DAMAGE_DIVISOR = 3;
+
+/**
+ * Missile-cluster M (missile) dice. For a missile rack the Override card prints
+ * `base+M{mDice} (max)`, where both base and mDice derive from the rack's TW
+ * damage over this divisor:
+ *   - mDice = ceil(rackTW / 10)   (round UP)
+ *   - base  = max(1, floor(rackTW / 10))  (round DOWN, min 1)
+ *   - max   = ceil(rackTW / 3)    (WEAPON_DAMAGE_DIVISOR)
+ *
+ * So for a rackTW that is a multiple of 10, base === mDice (MRM-30 -> 3+M3);
+ * otherwise mDice is one higher than base (SRM-6, TW 12 -> 1+M2).
+ *
+ * VERIFIED vs DFA cards across rackTW 4..40: LRM 5/10/15/20, SRM 2/4/6,
+ * Streak SRM 2/4/6, MRM 10/20/30/40. Direct-fire weapons roll no M dice
+ * (base === max, mDice 0) — see MISSILE_WEAPON_FAMILIES.
+ */
+export const M_DICE_DIVISOR = 10;
+
+/**
+ * Weapon families that fire a missile cluster and therefore roll M dice on the
+ * Override card. Matched against the LEADING token(s) of the normalized weapon
+ * name (see normalizeWeaponName). Everything not listed here is direct-fire and
+ * prints flat damage.
+ *
+ * Confirmed by DFA cards: LRM, SRM, Streak SRM, MRM. Rocket Launchers fire the
+ * same one-shot missile cluster and follow the identical rule.
+ *
+ * NOT YET HERE: ATM / MML are missile racks but do variable damage by
+ * range/mode (left as TODO in WEAPON_DAMAGE); add them once their per-bracket
+ * TW values are wired in.
+ */
+export const MISSILE_WEAPON_FAMILIES: ReadonlyArray<string> = [
+  "lrm",
+  "srm",
+  "streak srm",
+  "mrm",
+  "rocket launcher",
+] as const;
 
 /** 'Mech torso armor: (CT + LT + RT) / 6, round nearest. */
 export const TORSO_ARMOR_DIVISOR = 6;

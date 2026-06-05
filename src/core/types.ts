@@ -116,6 +116,19 @@ export interface Unit {
 // Conversion output — the Override record-card stats produced by convert.ts.
 // ---------------------------------------------------------------------------
 
+/**
+ * Override damage profile. Direct-fire weapons deal flat damage (base === max,
+ * mDice 0). Missile racks roll M dice and print `base+M{mDice} (max)`.
+ */
+export interface DamageProfile {
+  /** Guaranteed minimum damage, printed before the dice. floor(rackTW/10), min 1 for missiles; === max for direct-fire. */
+  base: number;
+  /** Number of M (missile) dice = ceil(rackTW / 10). 0 for direct-fire weapons. */
+  mDice: number;
+  /** Maximum damage = ceil(rackTW / 3). */
+  max: number;
+}
+
 /** A weapon as it appears on the Override card. */
 export interface CardWeapon {
   /** Weapon name from the MTF. */
@@ -126,8 +139,12 @@ export interface CardWeapon {
   rearMounted: boolean;
   /** Total Warfare damage looked up for this weapon (0 if unknown). */
   twDamage: number;
-  /** Converted Override damage: roundUp(twDamage / 3). v1 = one weapon per TIC. */
+  /** Converted Override damage (the MAX): roundUp(twDamage / 3). v1 = one weapon per TIC. */
   damage: number;
+  /** Full damage profile (base / mDice / max). */
+  profile: DamageProfile;
+  /** Printed damage string: `base+M{mDice} (max)` for missiles, else flat `max`. */
+  damageText: string;
   /** True when the weapon name was not found in the TW damage table. */
   unknown: boolean;
 }

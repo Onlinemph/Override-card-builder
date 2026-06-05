@@ -19,8 +19,10 @@ import {
   HEAT_DISSIPATION_DIVISOR,
   HEAT_PER_DOUBLE_SINK,
   HEAT_PER_SINGLE_SINK,
+  M_DICE_DIVISOR,
   MIN_ARM_LEG_ARMOR,
   MIN_STRUCTURE,
+  MISSILE_WEAPON_FAMILIES,
   REAR_ARMOR_DIVISOR,
   STRUCTURE_DIVISOR,
   TMM_BY_RUN,
@@ -32,7 +34,7 @@ import {
   WEAPON_DAMAGE_CLAN,
   WEAPON_DAMAGE_DIVISOR,
 } from "./constants.js";
-import type { CardWeapon, OverrideCard, TechBase, Unit, Weapon } from "./types.js";
+import type { CardWeapon, DamageProfile, OverrideCard, TechBase, Unit, Weapon } from "./types.js";
 
 // ---------------------------------------------------------------------------
 // Rounding helpers — explicit and used per field. Damage rounds UP;
@@ -114,9 +116,43 @@ export function lookupWeaponDamage(
 // Field conversions
 // ---------------------------------------------------------------------------
 
-/** Weapon group damage: sum of TW damage / 3, round UP. v1: group of one. */
+/** Weapon group damage (the printed MAX): sum of TW damage / 3, round UP. v1: group of one. */
 export function convertWeaponDamage(sumTw: number): number {
   return roundUp(sumTw / WEAPON_DAMAGE_DIVISOR);
+}
+
+/**
+ * True if a normalized weapon name belongs to a missile family (rolls M dice).
+ * Matches on the leading family token so "streak srm 6" hits "streak srm" (not
+ * "srm"), and "rocket launcher 10" hits "rocket launcher".
+ */
+export function isMissileWeapon(normalizedName: string): boolean {
+  return MISSILE_WEAPON_FAMILIES.some(
+    (family) => normalizedName === family || normalizedName.startsWith(`${family} `),
+  );
+}
+
+/**
+ * Derive the Override damage profile from a rack's TW damage.
+ *
+ *   max   = ceil(rackTW / 3)
+ *   mDice = ceil(rackTW / 10)          (missiles only; 0 for direct-fire)
+ *   base  = max(1, floor(rackTW / 10)) (missiles only; === max for direct-fire)
+ *
+ * Direct-fire weapons (isMissile=false) and zero-damage entries collapse to a
+ * flat profile: base === max, mDice 0.
+ */
+export function computeDamageProfile(twDamage: number, isMissile: boolean): DamageProfile {
+  const max = convertWeaponDamage(twDamage);
+  if (!isMissile || twDamage <= 0) return { base: max, mDice: 0, max };
+  const mDice = roundUp(twDamage / M_DICE_DIVISOR);
+  const base = Math.max(1, Math.floor(twDamage / M_DICE_DIVISOR));
+  return { base, mDice, max };
+}
+
+/** Format a profile for the card: `base+M{mDice} (max)` for missiles, else flat `max`. */
+export function formatDamage(p: DamageProfile): string {
+  return p.mDice > 0 ? `${p.base}+M${p.mDice} (${p.max})` : `${p.max}`;
 }
 
 /** Arm/leg armor: TW / 3, round nearest, min 1. Returns 0 if the location is absent. */
@@ -147,13 +183,16 @@ function convertWeapon(w: Weapon, techBase: TechBase): CardWeapon {
   const { twDamage, unknown } = lookupWeaponDamage(w.name, techBase);
   // v1: one weapon per TIC, so each weapon is its own group.
   // TODO(TIC grouping): replace per-weapon conversion with grouped sums.
-  const damage = unknown ? 0 : convertWeaponDamage(twDamage);
+  const isMissile = !unknown && isMissileWeapon(normalizeWeaponName(w.name));
+  const profile = computeDamageProfile(twDamage, isMissile);
   return {
     name: w.name,
     location: w.location,
     rearMounted: w.rearMounted,
     twDamage,
-    damage,
+    damage: profile.max,
+    profile,
+    damageText: formatDamage(profile),
     unknown,
   };
 }

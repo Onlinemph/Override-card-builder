@@ -135,7 +135,7 @@ function printSummary(card: OverrideCard): void {
     for (const w of card.weapons) {
       const rear = w.rearMounted ? " (R)" : "";
       const flag = w.unknown ? "  [!] unknown weapon" : "";
-      lines.push(`    - ${w.name}${rear} @ ${w.location}: dmg ${w.damage} (TW ${w.twDamage})${flag}`);
+      lines.push(`    - ${w.name}${rear} @ ${w.location}: dmg ${w.damageText} (TW ${w.twDamage})${flag}`);
     }
   }
   for (const warn of card.warnings) lines.push(`  ! ${warn}`);

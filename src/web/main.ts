@@ -68,7 +68,7 @@ function weaponRows(weapons: CardWeapon[]): string {
       return `<tr>
         <td>${esc(w.name)}${rear}${flag}</td>
         <td>${esc(w.location)}</td>
-        <td class="num">${esc(w.damage)}</td>
+        <td class="num">${esc(w.damageText)}</td>
         <td class="num muted">${esc(w.twDamage)}</td>
       </tr>`;
     })

@@ -5,7 +5,10 @@ import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import {
+  computeDamageProfile,
   convertUnit,
+  formatDamage,
+  isMissileWeapon,
   lookupHeadArmor,
   lookupTmm,
   lookupWeaponDamage,
@@ -97,6 +100,50 @@ describe("lookupWeaponDamage (TW values, tech-base aware)", () => {
   });
   it("flags unknown weapons", () => {
     expect(lookupWeaponDamage("Death Ray")).toEqual({ twDamage: 0, unknown: true });
+  });
+});
+
+describe("missile damage profile (M dice, VERIFIED vs DFA cards)", () => {
+  it("classifies missile families, excluding direct-fire weapons", () => {
+    expect(isMissileWeapon("lrm 15")).toBe(true);
+    expect(isMissileWeapon("srm 6")).toBe(true);
+    expect(isMissileWeapon("streak srm 6")).toBe(true); // leading "streak srm", not "srm"
+    expect(isMissileWeapon("mrm 40")).toBe(true);
+    expect(isMissileWeapon("rocket launcher 10")).toBe(true);
+    expect(isMissileWeapon("medium laser")).toBe(false);
+    expect(isMissileWeapon("ac/20")).toBe(false);
+    expect(isMissileWeapon("gauss rifle")).toBe(false);
+  });
+
+  it("derives base/mDice/max for every confirmed card line", () => {
+    // [rackTW, expected "base+M{mDice} (max)"] — exactly the DFA card screenshots.
+    const cases: Array<[number, string]> = [
+      [5, "1+M1 (2)"], // LRM-5
+      [10, "1+M1 (4)"], // LRM-10 / MRM-10
+      [15, "1+M2 (5)"], // LRM-15
+      [20, "2+M2 (7)"], // LRM-20 / MRM-20
+      [4, "1+M1 (2)"], // SRM-2 / Streak SRM-2
+      [8, "1+M1 (3)"], // SRM-4 / Streak SRM-4
+      [12, "1+M2 (4)"], // SRM-6 / Streak SRM-6
+      [30, "3+M3 (10)"], // MRM-30
+      [40, "4+M4 (14)"], // MRM-40
+    ];
+    for (const [tw, expected] of cases) {
+      expect(formatDamage(computeDamageProfile(tw, true))).toBe(expected);
+    }
+  });
+
+  it("leaves direct-fire weapons flat (base === max, no M dice)", () => {
+    expect(computeDamageProfile(5, false)).toEqual({ base: 2, mDice: 0, max: 2 }); // Medium Laser
+    expect(computeDamageProfile(20, false)).toEqual({ base: 7, mDice: 0, max: 7 }); // AC/20
+    expect(formatDamage(computeDamageProfile(20, false))).toBe("7");
+  });
+
+  it("renders missile damageText through full conversion (Atlas LRM-20 + SRM-6)", () => {
+    const c = card("Atlas AS7-D.mtf");
+    const text = c.weapons.map((w) => w.damageText);
+    // AC/20 flat 7, LRM-20 -> 2+M2 (7), SRM-6 -> 1+M2 (4), 4x ML flat 2.
+    expect(text).toEqual(["7", "2+M2 (7)", "1+M2 (4)", "2", "2", "2", "2"]);
   });
 });
 
