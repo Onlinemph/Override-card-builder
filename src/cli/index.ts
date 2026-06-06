@@ -165,7 +165,7 @@ function printBASummary(card: BattleArmorCard): void {
       `   Anti-'Mech: ${card.antiMech ? "yes" : "no"}`,
   );
   lines.push(`  Armor/trooper ${card.armor} (raw ${card.armorPerTrooper})  [mirrored from 'Mech rules]`);
-  if (card.firepower.length > 0) {
+  if (card.firepower.length > 0 || card.antiInfantryByTrooper.length > 0) {
     lines.push("  Firepower (squad damage by surviving troopers, full squad first):");
     for (const w of card.firepower) {
       const flag = w.unknown ? "  [!] unknown weapon" : "";
@@ -173,6 +173,10 @@ function printBASummary(card: BattleArmorCard): void {
       // Descending: full squad -> lone survivor, matching the printed card.
       const byCount = [...w.byTrooper].reverse().join(" | ");
       lines.push(`    - ${w.label}${rng}: ${byCount}${flag}`);
+    }
+    if (card.antiInfantryByTrooper.length > 0) {
+      const byCount = [...card.antiInfantryByTrooper].reverse().join(" | ");
+      lines.push(`    - Anti-Infantry [PB]: ${byCount}`);
     }
   }
   if (card.equipment.length > 0) {

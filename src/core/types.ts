@@ -430,6 +430,12 @@ export interface BattleArmorCard {
   equipment: CardEquipment[];
   /** Whether the squad can make anti-'Mech attacks (best-effort). */
   antiMech: boolean;
+  /**
+   * Anti-infantry damage strings by surviving trooper count. Each suit deals
+   * 1d6 independently, so index i = (i+1) troopers → `"(i+1)d6"`. The value
+   * is a display string only — "3d6", "2d6", etc. — produced by buildFirepower.
+   */
+  antiInfantryByTrooper: string[];
   warnings: string[];
   sourceFile?: string;
 }

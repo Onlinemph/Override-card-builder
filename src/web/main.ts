@@ -327,24 +327,26 @@ function firepowerTable(card: BattleArmorCard): string {
   if (card.firepower.length === 0) {
     return `<p class="muted">No squad weapons.</p>`;
   }
-  const heads = card.firepower
-    .map((w) => {
+  const heads = [
+    ...card.firepower.map((w) => {
       const flag = w.unknown ? ' <span class="warn-flag">[?]</span>' : "";
       const range = w.rangeText
         ? `<div class="ba-range muted">${esc(w.rangeText)}</div>`
         : "";
       return `<th>${esc(w.label)}${flag}${range}</th>`;
-    })
-    .join("");
+    }),
+    `<th class="ba-ai-head">Anti-Infantry<div class="ba-range muted">PB – – –</div></th>`,
+  ].join("");
   // Rows from full squad down to a lone survivor, like the printed card.
   const rows: string[] = [];
   for (let n = card.troopers; n >= 1; n--) {
-    const cells = card.firepower
+    const weaponCells = card.firepower
       .map((w) => `<td class="num">${esc(w.byTrooper[n - 1] ?? "–")}</td>`)
       .join("");
+    const aiCell = `<td class="num ba-ai">${esc(card.antiInfantryByTrooper[n - 1] ?? "–")}</td>`;
     rows.push(`<tr>
       <th class="ba-count"><span class="ba-n">${esc(n)}</span>${pips(card.armor, "armor")}</th>
-      ${cells}
+      ${weaponCells}${aiCell}
     </tr>`);
   }
   return `<table class="ba-firepower">

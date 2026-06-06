@@ -110,6 +110,29 @@ describe("normalizeWeaponName", () => {
     expect(normalizeWeaponName("SRM-6")).toBe("srm 6");
     expect(normalizeWeaponName("1 Small Laser")).toBe("small laser");
   });
+
+  it("strips the MegaMek CLBA/ISBA Battle Armor prefix", () => {
+    // After stripping CL+BA the name falls through to the shared weapon table.
+    expect(normalizeWeaponName("CLBAERSmallLaser")).toBe("er small laser");
+    expect(normalizeWeaponName("CLBAFlamer")).toBe("flamer");
+    expect(normalizeWeaponName("CLBAHeavySmallLaser")).toBe("heavy small laser");
+    expect(normalizeWeaponName("CLBAHeavyMediumLaser")).toBe("heavy medium laser");
+    expect(normalizeWeaponName("ISBAERSmallLaser")).toBe("er small laser");
+    expect(normalizeWeaponName("ISBAMediumLaser")).toBe("medium laser");
+  });
+
+  it("expands the MG abbreviation and strips trailing OS", () => {
+    expect(normalizeWeaponName("CLBAMG")).toBe("machine gun");
+    expect(normalizeWeaponName("CLBAHeavyMG")).toBe("heavy machine gun");
+    expect(normalizeWeaponName("CLBALightMG")).toBe("light machine gun");
+    expect(normalizeWeaponName("CLAdvancedSRM2OS")).toBe("advanced srm 2");
+    expect(normalizeWeaponName("CLBASRM2 (OS)")).toBe("srm 2"); // parens-style still works
+  });
+
+  it("strips the [BA] suffix from display-name style entries", () => {
+    expect(normalizeWeaponName("Flamer [BA]")).toBe("flamer");
+    expect(normalizeWeaponName("BA Support PPC")).toBe("support ppc");
+  });
 });
 
 describe("lookupWeaponDamage (TW values, tech-base aware)", () => {

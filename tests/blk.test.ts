@@ -97,6 +97,11 @@ describe("convertBattleArmor", () => {
     expect(laserTics.map((t) => t.count).sort()).toEqual([2, 3]);
   });
 
+  it("includes anti-infantry damage (1d6 per surviving suit)", () => {
+    // Five troopers: byTrooper[0] = 1 suit = "1d6", byTrooper[4] = full squad = "5d6".
+    expect(card.antiInfantryByTrooper).toEqual(["1d6", "2d6", "3d6", "4d6", "5d6"]);
+  });
+
   it("builds a per-trooper firepower table (damage summed by surviving suits, not TICs)", () => {
     // One row per distinct weapon; byTrooper[i] is (i+1) suits firing.
     expect(card.firepower).toHaveLength(2);

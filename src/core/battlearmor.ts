@@ -173,6 +173,7 @@ export function convertBattleArmor(unit: BattleArmorUnit): BattleArmorCard {
     weapons,
     tics: groupIntoTics(weapons),
     firepower: buildFirepower(weapons, unit.troopers),
+    antiInfantryByTrooper: Array.from({ length: unit.troopers }, (_, i) => `${i + 1}d6`),
     equipment: buildEquipment(otherSlots),
     // PA(L) exoskeletons cannot make anti-'Mech attacks; everything else can.
     // TODO(BA-rules): refine (e.g. some configs/quads) once verified.

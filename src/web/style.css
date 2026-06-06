@@ -334,6 +334,12 @@ footer {
   font-variant-numeric: tabular-nums;
   font-weight: 600;
 }
+.ba-ai-head,
+.ba-ai {
+  border-left: 2px solid var(--accent);
+  color: var(--good);
+}
+.ba-ai { font-weight: 600; }
 .ba-firepower tbody tr:nth-child(even) td,
 .ba-firepower tbody tr:nth-child(even) .ba-count {
   background: rgba(255, 255, 255, 0.02);
