@@ -75,6 +75,7 @@ export const MISSILE_WEAPON_FAMILIES: ReadonlyArray<string> = [
   "lrm",
   "srm",
   "streak srm",
+  "advanced srm", // BA-specific SRM variant; same M-dice mechanic, shorter range
   "mrm",
   "rocket launcher",
 ] as const;
@@ -282,8 +283,12 @@ export const WEAPON_DAMAGE: Readonly<Record<string, number>> = {
   "plasma rifle": 10,
 
   // --- Missiles: SRM (2 damage per missile, full rack) ---
+  // Full 'Mech racks; BA also fields smaller racks (1/3/5 missiles).
+  "srm 1": 2,
   "srm 2": 4,
+  "srm 3": 6,
   "srm 4": 8,
+  "srm 5": 10,
   "srm 6": 12,
 
   // --- Missiles: Streak SRM (2 per missile, all hit) ---
@@ -291,7 +296,21 @@ export const WEAPON_DAMAGE: Readonly<Record<string, number>> = {
   "streak srm 4": 8,
   "streak srm 6": 12,
 
+  // --- Missiles: Advanced SRM (BA-specific; 2 per missile, same as SRM but shorter max range) ---
+  // Ranges differ from standard SRM; see WEAPON_RANGES.
+  "advanced srm 1": 2,
+  "advanced srm 2": 4,
+  "advanced srm 3": 6,
+  "advanced srm 4": 8,
+  "advanced srm 5": 10,
+  "advanced srm 6": 12,
+
   // --- Missiles: LRM (1 damage per missile, full rack) ---
+  // BA fields racks as small as 1 missile; IS BA LRM has min range 6 like standard LRM.
+  "lrm 1": 1,
+  "lrm 2": 2,
+  "lrm 3": 3,
+  "lrm 4": 4,
   "lrm 5": 5,
   "lrm 10": 10,
   "lrm 15": 15,
@@ -312,6 +331,15 @@ export const WEAPON_DAMAGE: Readonly<Record<string, number>> = {
   narc: 0,
   "improved narc": 0,
   "inarc": 0,
+
+  // --- Energy: BA-specific / support-scale weapons ---
+  // Heavy lasers exist in-game as 'Mech tech but are most common in BA. Values
+  // are the IS TW damage; Clan variants differ (see WEAPON_DAMAGE_CLAN).
+  "heavy small laser": 6, // TW 6; sh 1 / med 2 / lg 3
+  "heavy medium laser": 10, // TW 10; sh 3 / med 6 / lg 9
+  "er micro laser": 2, // IS TW 2 (Clan override in WEAPON_DAMAGE_CLAN)
+  "micro pulse laser": 3, // IS TW 3 (Clan override in WEAPON_DAMAGE_CLAN)
+  "support ppc": 2, // BA/support scale PPC
 
   // TODO(variable damage / Track A range brackets): ATM 3/6/9/12, MML 3/5/7/9,
   // HAG 20/30/40, Rotary AC bursts. These vary by range/mode/ammo; left unset
@@ -367,9 +395,22 @@ export const WEAPON_RANGES: Readonly<Record<string, WeaponRange>> = {
   "machine gun": { min: 0, medium: 2, long: 3 },
 
   // --- Missiles: SRM (VERIFIED vs DFA card: +0/+0/+2/–/–) ---
+  // All SRM rack sizes share the same range profile; BA fields 1/3/5-missile racks too.
+  "srm 1": { min: 0, medium: 6, long: 9 },
   "srm 2": { min: 0, medium: 6, long: 9 },
+  "srm 3": { min: 0, medium: 6, long: 9 },
   "srm 4": { min: 0, medium: 6, long: 9 },
+  "srm 5": { min: 0, medium: 6, long: 9 },
   "srm 6": { min: 0, medium: 6, long: 9 },
+
+  // --- Missiles: Advanced SRM (BA-specific; shorter max range: sh 4 / med 8 / lg 12) ---
+  // Same M-dice mechanic as SRM; brackets +0/+0/+2/–/–. Data from MegaMek CSV.
+  "advanced srm 1": { min: 0, medium: 8, long: 12 },
+  "advanced srm 2": { min: 0, medium: 8, long: 12 },
+  "advanced srm 3": { min: 0, medium: 8, long: 12 },
+  "advanced srm 4": { min: 0, medium: 8, long: 12 },
+  "advanced srm 5": { min: 0, medium: 8, long: 12 },
+  "advanced srm 6": { min: 0, medium: 8, long: 12 },
 
   // --- Missiles: Streak SRM (same ranges as SRM; VERIFIED vs DFA card) ---
   "streak srm 2": { min: 0, medium: 6, long: 9 },
@@ -377,6 +418,11 @@ export const WEAPON_RANGES: Readonly<Record<string, WeaponRange>> = {
   "streak srm 6": { min: 0, medium: 6, long: 9 },
 
   // --- Missiles: LRM (min range 6; VERIFIED vs DFA card: +4/+2/+0/+2/+4) ---
+  // BA fields racks as small as 1; all share the standard IS LRM range profile.
+  "lrm 1": { min: 6, medium: 14, long: 21 },
+  "lrm 2": { min: 6, medium: 14, long: 21 },
+  "lrm 3": { min: 6, medium: 14, long: 21 },
+  "lrm 4": { min: 6, medium: 14, long: 21 },
   "lrm 5": { min: 6, medium: 14, long: 21 },
   "lrm 10": { min: 6, medium: 14, long: 21 },
   "lrm 15": { min: 6, medium: 14, long: 21 },
@@ -451,6 +497,20 @@ export const WEAPON_RANGES: Readonly<Record<string, WeaponRange>> = {
   // --- Ballistic: light/heavy machine guns (canonical, short range) ---
   "light machine gun": { min: 0, medium: 4, long: 6 }, // CONFIRM
   "heavy machine gun": { min: 0, medium: 1, long: 2 }, // CONFIRM
+
+  // --- Energy: BA/support-scale weapons (data from MegaMek CSV) ---
+  // Heavy lasers (also Clan-only in-universe; IS entry here for flexibility).
+  "heavy small laser": { min: 0, medium: 2, long: 3 }, // sh 1 / med 2 / lg 3
+  "heavy medium laser": { min: 0, medium: 6, long: 9 }, // sh 3 / med 6 / lg 9
+
+  // ER Micro Laser (Clan dmg=2, IS dmg=2; brackets +0/+0/–/–/–).
+  "er micro laser": { min: 0, medium: 2, long: 4 }, // sh 1 / med 2 / lg 4
+
+  // Micro Pulse Laser (−2 pulse quality; brackets −2/−2/–/–/–).
+  "micro pulse laser": { min: 0, medium: 2, long: 3, toHitMod: -2 }, // sh 1 / med 2 / lg 3
+
+  // Support PPC (BA/support scale; sh 2 / med 5 / lg 7).
+  "support ppc": { min: 0, medium: 5, long: 7 },
 } as const;
 
 /**

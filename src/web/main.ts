@@ -7,6 +7,127 @@
 import "./style.css";
 
 import { buildTic, convertAny, isLegalTic, ParseError } from "../core/index.js";
+
+// ---------------------------------------------------------------------------
+// Unit browser — powered by the pre-built index (src/generated/units-index.json)
+// Vite bundles the JSON at build time; the actual unit files are served from
+// /units/<path> (public/units/, extracted from units.zip by extract-units.mjs).
+// ---------------------------------------------------------------------------
+interface UnitEntry { name: string; path: string; category: string; era: string; }
+
+// Dynamic import so the page loads even when the index hasn't been generated yet.
+async function loadUnitsIndex(): Promise<UnitEntry[] | null> {
+  try {
+    const mod = await import("../generated/units-index.json");
+    return mod.default as UnitEntry[];
+  } catch {
+    return null;
+  }
+}
+
+async function initBrowser(): Promise<void> {
+  const statusEl = document.getElementById("browse-status");
+  const listEl = document.getElementById("browse-list");
+  const countEl = document.getElementById("browse-count");
+  const catSel = document.getElementById("browse-cat") as HTMLSelectElement;
+  const searchInput = document.getElementById("browse-q") as HTMLInputElement;
+  const toggleBtn = document.getElementById("browse-toggle") as HTMLButtonElement;
+  const browseBody = document.getElementById("browse-body") as HTMLElement;
+  if (!statusEl || !listEl || !catSel || !searchInput || !toggleBtn || !browseBody) return;
+
+  const MAX_RESULTS = 80;
+
+  const unitsOrNull = await loadUnitsIndex();
+  if (!unitsOrNull) {
+    statusEl.textContent = "Unit index not found — run 'npm run extract-units' then restart the dev server.";
+    return;
+  }
+  const units: UnitEntry[] = unitsOrNull;
+
+  // Populate category filter.
+  const cats = [...new Set(units.map((u) => u.category))].sort();
+  for (const cat of cats) {
+    const opt = document.createElement("option");
+    opt.value = cat;
+    opt.textContent = cat;
+    catSel.appendChild(opt);
+  }
+
+  function render(): void {
+    const q = searchInput.value.trim().toLowerCase();
+    const cat = catSel.value;
+    const filtered = units.filter(
+      (u) =>
+        (!cat || u.category === cat) &&
+        (!q || u.name.toLowerCase().includes(q) || u.era.toLowerCase().includes(q)),
+    );
+    if (countEl) countEl.textContent = `(${filtered.length.toLocaleString()} units)`;
+    statusEl!.textContent = "";
+
+    const shown = filtered.slice(0, MAX_RESULTS);
+    if (filtered.length === 0) {
+      listEl!.innerHTML = "";
+      statusEl!.textContent = "No units match.";
+      return;
+    }
+
+    listEl!.innerHTML = shown
+      .map(
+        (u, i) =>
+          `<div class="browse-item" role="option" tabindex="0" data-idx="${i}" data-path="${esc(u.path)}" data-name="${esc(u.name)}">
+            <span class="browse-item-name">${esc(u.name)}</span>
+            <span class="browse-item-meta muted">${esc(u.category)}${u.era ? ` · ${esc(u.era)}` : ""}</span>
+          </div>`,
+      )
+      .join("");
+    if (filtered.length > MAX_RESULTS) {
+      statusEl!.textContent = `Showing ${MAX_RESULTS} of ${filtered.length.toLocaleString()} — refine your search.`;
+    }
+  }
+
+  async function loadUnit(path: string, name: string): Promise<void> {
+    statusEl!.textContent = `Loading ${name}…`;
+    try {
+      // Unit files are served as static assets from units/ (extracted from units.zip at build time).
+      const url = `./units/${path}`;
+      const resp = await fetch(url);
+      if (!resp.ok) throw new Error(`HTTP ${resp.status} fetching ${url}`);
+      const text = await resp.text();
+      textarea.value = text;
+      showResults([convertOne(text, name)]);
+      textarea.scrollIntoView({ behavior: "smooth", block: "start" });
+      statusEl!.textContent = "";
+    } catch (err) {
+      statusEl!.textContent = `Error: ${err instanceof Error ? err.message : String(err)}`;
+    }
+  }
+
+  listEl.addEventListener("click", (e) => {
+    const item = (e.target as Element).closest<HTMLElement>(".browse-item");
+    if (!item) return;
+    loadUnit(item.dataset.path!, item.dataset.name!);
+  });
+  listEl.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter" && e.key !== " ") return;
+    const item = e.target as HTMLElement;
+    if (!item.matches(".browse-item")) return;
+    e.preventDefault();
+    loadUnit(item.dataset.path!, item.dataset.name!);
+  });
+
+  catSel.addEventListener("change", render);
+  searchInput.addEventListener("input", render);
+
+  // Collapse toggle.
+  toggleBtn.addEventListener("click", () => {
+    const expanded = toggleBtn.getAttribute("aria-expanded") === "true";
+    toggleBtn.setAttribute("aria-expanded", String(!expanded));
+    browseBody.style.display = expanded ? "none" : "";
+    toggleBtn.textContent = expanded ? "▼ Show" : "▲ Hide";
+  });
+
+  render();
+}
 import type {
   AnyCard,
   BattleArmorCard,
@@ -317,8 +438,47 @@ function equipmentSection(card: { equipment: OverrideCard["equipment"] }, showLo
   return `<h3>Equipment</h3><ul class="equipment">${items}</ul>`;
 }
 
-/** Static Battle Armor card HTML, with a placeholder for the TIC editor. */
-function baCardShell(card: BattleArmorCard, idx: number): string {
+/**
+ * Squad firepower table: weapons across the top, surviving troopers down the
+ * side (full squad first), each cell the damage that many suits deal. This
+ * mirrors the printed Override Battle Armor card — BA does not group into TICs,
+ * it simply sums each trooper's contribution, so damage falls as suits die.
+ */
+function firepowerTable(card: BattleArmorCard): string {
+  if (card.firepower.length === 0) {
+    return `<p class="muted">No squad weapons.</p>`;
+  }
+  const heads = [
+    ...card.firepower.map((w) => {
+      const flag = w.unknown ? ' <span class="warn-flag">[?]</span>' : "";
+      const range = w.rangeText
+        ? `<div class="ba-range muted">${esc(w.rangeText)}</div>`
+        : "";
+      return `<th>${esc(w.label)}${flag}${range}</th>`;
+    }),
+    `<th class="ba-ai-head">Anti-Infantry<div class="ba-range muted">PB – – –</div></th>`,
+  ].join("");
+  // Rows from full squad down to a lone survivor, like the printed card.
+  const rows: string[] = [];
+  for (let n = card.troopers; n >= 1; n--) {
+    const weaponCells = card.firepower
+      .map((w) => `<td class="num">${esc(w.byTrooper[n - 1] ?? "–")}</td>`)
+      .join("");
+    const aiCell = `<td class="num ba-ai">${esc(card.antiInfantryByTrooper[n - 1] ?? "–")}</td>`;
+    rows.push(`<tr>
+      <th class="ba-count"><span class="ba-n">${esc(n)}</span>${pips(card.armor, "armor")}</th>
+      ${weaponCells}${aiCell}
+    </tr>`);
+  }
+  return `<table class="ba-firepower">
+    <thead><tr><th class="ba-corner">Troopers</th>${heads}</tr></thead>
+    <tbody>${rows.join("")}</tbody>
+  </table>
+  <p class="muted ba-legend"><i class="pip armor"></i> armor / trooper &nbsp; damage shown by surviving suits</p>`;
+}
+
+/** Static Battle Armor card HTML. BA prints a per-trooper firepower table, not TICs. */
+function baCardShell(card: BattleArmorCard): string {
   const warnings = card.warnings.length
     ? `<ul class="warnings">${card.warnings.map((w) => `<li>${esc(w)}</li>`).join("")}</ul>`
     : "";
@@ -336,8 +496,8 @@ function baCardShell(card: BattleArmorCard, idx: number): string {
       ${stat("Anti-’Mech", card.antiMech ? "Yes" : "No")}
     </div>
     <p class="muted">Armor &amp; TMM mirror the ’Mech rules (best-effort) — validate against the DFA generator.</p>
-    <h3>TICs <small class="muted">(squad firepower)</small></h3>
-    <div class="tic-editor" data-card="${idx}"></div>
+    <h3>Troopers &amp; Weapons <small class="muted">(squad firepower)</small></h3>
+    ${firepowerTable(card)}
     ${equipmentSection(card, false)}
     ${warnings}
   </article>`;
@@ -366,7 +526,7 @@ function convertOne(text: string, file: string): ConvertResult {
 /** HTML for a successfully converted card, dispatched on unit kind. */
 function cardHtml(result: AnyCard, idx: number): string {
   return result.kind === "battlearmor"
-    ? baCardShell(result.card, idx)
+    ? baCardShell(result.card)
     : cardShell(result.card, idx);
 }
 
@@ -431,6 +591,9 @@ fileInput.addEventListener("change", async () => {
     fileInput.value = ""; // reset so re-selecting the same file fires "change"
   }
 });
+
+// Kick off the unit browser (non-blocking; silently no-ops if index is absent).
+initBrowser().catch(() => { /* already handled inside */ });
 
 // Build stamp — lets you confirm at a glance whether you're on the latest deploy.
 const buildEl = document.getElementById("build");

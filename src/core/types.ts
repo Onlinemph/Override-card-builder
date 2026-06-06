@@ -359,6 +359,36 @@ export interface BattleArmorUnit {
 }
 
 /**
+ * One distinct weapon in a Battle Armor squad's per-trooper loadout, with its
+ * damage read off a row per surviving trooper count.
+ *
+ * Unlike a 'Mech TIC (identical weapons grouped under the page-41 caps), BA
+ * troopers each fire their own copy independently, so a weapon's guaranteed base
+ * and any M/C dice scale linearly with the number of suits still standing, while
+ * the printed max stays ceil(totalTW / 3). The card therefore shows a small
+ * table — surviving troopers down the side, weapons across the top — instead of
+ * a single grouped value.
+ */
+export interface BAFirepower {
+  /** Display label, e.g. "ER Small Laser" or "2x SRM 2" (per-trooper count prefixed). */
+  label: string;
+  /** How many of this weapon each trooper carries. */
+  perTrooper: number;
+  /** True when the weapon name was not found in the TW damage table. */
+  unknown: boolean;
+  /** Range-bracket modifiers (shared by every copy), or null when unknown. */
+  range: RangeBrackets | null;
+  /** Printed range row "PB S M L X", or null when range data is missing. */
+  rangeText: string | null;
+  /**
+   * Printed squad damage by surviving trooper count. Index i is (i + 1) troopers
+   * firing, so `byTrooper[troopers - 1]` is the full squad and `byTrooper[0]` is
+   * a lone survivor.
+   */
+  byTrooper: string[];
+}
+
+/**
  * Converted Override record-card statistics for a Battle Armor squad.
  *
  * The armor/movement/TMM math MIRRORS the 'Mech rules (same divisors and TMM
@@ -389,12 +419,23 @@ export interface BattleArmorCard {
   armor: number;
   /** Squad weapons (per-trooper loadout replicated across the squad). */
   weapons: CardWeapon[];
-  /** Weapons auto-grouped into TICs (what the squad fires). */
+  /** Weapons auto-grouped into TICs (kept for reference; BA cards show `firepower`). */
   tics: Tic[];
+  /**
+   * Per-trooper firepower: each distinct weapon's damage scaled by surviving
+   * trooper count. This is what the BA card prints — BA does not use TICs.
+   */
+  firepower: BAFirepower[];
   /** Notable equipment with mounts (ammo, electronics). */
   equipment: CardEquipment[];
   /** Whether the squad can make anti-'Mech attacks (best-effort). */
   antiMech: boolean;
+  /**
+   * Anti-infantry damage strings by surviving trooper count. Each suit deals
+   * 1d6 independently, so index i = (i+1) troopers → `"(i+1)d6"`. The value
+   * is a display string only — "3d6", "2d6", etc. — produced by buildFirepower.
+   */
+  antiInfantryByTrooper: string[];
   warnings: string[];
   sourceFile?: string;
 }

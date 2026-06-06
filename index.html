@@ -16,6 +16,23 @@
         </p>
       </header>
 
+      <section class="browse" id="browse">
+        <div class="browse-header">
+          <h2 class="browse-title">Browse Units <span class="browse-count muted" id="browse-count"></span></h2>
+          <button id="browse-toggle" type="button" class="browse-toggle" aria-expanded="true" aria-controls="browse-body">▲ Hide</button>
+        </div>
+        <div id="browse-body" class="browse-body">
+          <div class="browse-controls">
+            <select id="browse-cat" class="browse-cat">
+              <option value="">All categories</option>
+            </select>
+            <input id="browse-q" type="search" class="browse-q" placeholder="Search by name…" autocomplete="off" spellcheck="false" />
+          </div>
+          <div id="browse-list" class="browse-list" role="listbox" aria-label="Unit list"></div>
+          <p class="browse-status muted" id="browse-status">Loading unit index…</p>
+        </div>
+      </section>
+
       <section class="input">
         <div class="toolbar">
           <button id="upload" type="button">Upload .mtf / .blk file(s)</button>

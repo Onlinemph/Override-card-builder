@@ -98,32 +98,41 @@ export function lookupTmm(runMP: number): number {
 }
 
 /**
- * Normalize an MTF weapon name to a WEAPON_DAMAGE key.
+ * Normalize an MTF/BLK weapon name to a WEAPON_DAMAGE key.
  *
  * Handles the common spelling variants:
  *   - leading ammo/count prefix ("1 Medium Laser")
  *   - attached tech prefix ("ISMediumLaser", "CLERLargeLaser")
- *   - spaced tech prefix ("IS Medium Laser", "Clan ER PPC")
+ *   - attached BA prefix ("CLBAERSmallLaser" -> "er small laser")
+ *   - spaced tech/BA prefix ("IS Medium Laser", "Clan ER PPC", "BA ER Small Laser")
+ *   - "[BA]" suffix ("Flamer [BA]" -> "flamer")
  *   - camelCase / letter-digit run-together ("ISAC20" -> "ac/20")
  *   - "Autocannon/N" -> "ac/N", "AC N" -> "ac/N"
  *   - "LRM-15"/"SRM-6" -> "lrm 15"/"srm 6"
+ *   - MG abbreviation ("heavy mg" -> "heavy machine gun")
+ *   - trailing OS suffix ("advanced srm 2 os" -> "advanced srm 2")
  */
 export function normalizeWeaponName(raw: string): string {
   let s = raw.trim();
   s = s.replace(/\s*\([^)]*\)/g, ""); // drop qualifiers like "(OS)", "(I-OS)", "(Clan)"
+  s = s.replace(/\s*\[ba\]/gi, ""); // drop "[BA]" suffix ("Flamer [BA]" -> "Flamer")
   s = s.replace(/^\d+\s+/, ""); // drop leading count
-  s = s.replace(/^(IS|CL)(?=[A-Z])/, ""); // drop attached tech prefix
+  s = s.replace(/^(IS|CL)(?=[A-Z])/, ""); // drop attached tech prefix ("ISMediumLaser" -> "MediumLaser")
+  s = s.replace(/^BA(?=[A-Z])/, ""); // drop attached BA prefix ("BAERSmallLaser" -> "ERSmallLaser")
   // Split an acronym run from a following Capitalized word ("ERSmall" -> "ER
   // Small"), then camelCase and letter/digit boundaries ("MediumLaser" ->
   // "Medium Laser"). The first handles BLK's glued names (e.g. "CLERSmallLaser").
   s = s.replace(/([A-Z])([A-Z][a-z])/g, "$1 $2");
-  s = s.replace(/([a-z])([A-Z])/g, "$1 $2").replace(/([A-Za-z])(\d)/g, "$1 $2");
+  s = s.replace(/([a-z])([A-Z])/g, "$1 $2").replace(/([A-Za-z])(\d)/g, "$1 $2").replace(/(\d)([A-Za-z])/g, "$1 $2");
   s = s.toLowerCase().replace(/\s+/g, " ").trim();
   s = s.replace(/^(is|cl|clan)\s+/, ""); // drop spaced tech prefix
+  s = s.replace(/^ba\s+/, ""); // drop spaced BA prefix ("ba er small laser" -> "er small laser")
   s = s.replace(/\bautocannon\//g, "ac/"); // Autocannon/20 -> ac/20
   s = s.replace(/\bhyper assault gauss\b/g, "hag"); // Hyper Assault Gauss/30 -> hag/30
   s = s.replace(/\b(ac|hag)\s+(\d+)/g, "$1/$2"); // "ac 20"/"hag 30" -> "ac/20"/"hag/30" (also Rotary/Ultra/Light AC)
   s = s.replace(/\b(srm|lrm)\s*-\s*(\d+)/g, "$1 $2"); // srm-6 -> srm 6
+  s = s.replace(/\bmg\b/g, "machine gun"); // MG abbreviation -> full name
+  s = s.replace(/\bos\s*$/, "").trimEnd(); // trailing "os" (one-shot variant without parens)
   return s.replace(/\s+/g, " ").trim();
 }
 
@@ -258,6 +267,33 @@ export function formatDamage(p: DamageProfile): string {
   if (p.kind === "cluster" && p.cDice[0]! > 0) return `${p.base}+C${p.cDice.join("|")}`;
   if (p.kind === "variable") return p.byRange.join("|");
   return `${p.max}`;
+}
+
+/**
+ * Squad damage for `copies` identical weapons fired together, Battle-Armor style.
+ *
+ * Unlike a 'Mech TIC (which sums TW and divides once, capped per page 41), each
+ * BA trooper fires its own copy independently. So the guaranteed base and any
+ * M/C dice scale linearly with the copy count, while the printed max stays
+ * ceil(totalTW / 3). Direct-fire and variable weapons collapse to a flat squad
+ * value (base === max). Returns a flat zero profile for copies <= 0.
+ *
+ * Worked example (SRM 2, TW 4 each — single profile 1+M1 (2)):
+ *   1 copy → 1+M1 (2)   2 → 2+M2 (3)   4 → 4+M4 (6)   5 → 5+M5 (7)
+ */
+export function scaleSquadDamage(weapon: CardWeapon, copies: number): DamageProfile {
+  const m = Math.max(0, copies);
+  const totalTw = weapon.twDamage * m;
+  const max = convertWeaponDamage(totalTw);
+  const p = weapon.profile;
+  if (p.kind === "missile") {
+    return { kind: "missile", base: p.base * m, mDice: p.mDice * m, cDice: [], byRange: [], max };
+  }
+  if (p.kind === "cluster") {
+    return { kind: "cluster", base: p.base * m, mDice: 0, cDice: p.cDice.map((c) => c * m), byRange: [], max };
+  }
+  // direct, variable, or unknown -> flat squad damage.
+  return { kind: "direct", base: max, mDice: 0, cDice: [], byRange: [], max };
 }
 
 // ---------------------------------------------------------------------------
