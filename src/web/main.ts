@@ -7,6 +7,7 @@
 import "./style.css";
 
 import { buildTic, convertAny, isLegalTic, ParseError } from "../core/index.js";
+import { renderBACard } from "./ba-card.js";
 
 // ---------------------------------------------------------------------------
 // Unit browser — powered by the pre-built index (src/generated/units-index.json)
@@ -130,7 +131,6 @@ async function initBrowser(): Promise<void> {
 }
 import type {
   AnyCard,
-  BattleArmorCard,
   CardWeapon,
   MeleeProfile,
   OverrideCard,
@@ -444,64 +444,6 @@ function equipmentSection(card: { equipment: OverrideCard["equipment"] }, showLo
  * mirrors the printed Override Battle Armor card — BA does not group into TICs,
  * it simply sums each trooper's contribution, so damage falls as suits die.
  */
-function firepowerTable(card: BattleArmorCard): string {
-  if (card.firepower.length === 0) {
-    return `<p class="muted">No squad weapons.</p>`;
-  }
-  const heads = [
-    ...card.firepower.map((w) => {
-      const flag = w.unknown ? ' <span class="warn-flag">[?]</span>' : "";
-      const range = w.rangeText
-        ? `<div class="ba-range muted">${esc(w.rangeText)}</div>`
-        : "";
-      return `<th>${esc(w.label)}${flag}${range}</th>`;
-    }),
-    `<th class="ba-ai-head">Anti-Infantry<div class="ba-range muted">PB – – –</div></th>`,
-  ].join("");
-  // Rows from full squad down to a lone survivor, like the printed card.
-  const rows: string[] = [];
-  for (let n = card.troopers; n >= 1; n--) {
-    const weaponCells = card.firepower
-      .map((w) => `<td class="num">${esc(w.byTrooper[n - 1] ?? "–")}</td>`)
-      .join("");
-    const aiCell = `<td class="num ba-ai">${esc(card.antiInfantryByTrooper[n - 1] ?? "–")}</td>`;
-    rows.push(`<tr>
-      <th class="ba-count"><span class="ba-n">${esc(n)}</span>${pips(card.armor, "armor")}</th>
-      ${weaponCells}${aiCell}
-    </tr>`);
-  }
-  return `<table class="ba-firepower">
-    <thead><tr><th class="ba-corner">Troopers</th>${heads}</tr></thead>
-    <tbody>${rows.join("")}</tbody>
-  </table>
-  <p class="muted ba-legend"><i class="pip armor"></i> armor / trooper &nbsp; damage shown by surviving suits</p>`;
-}
-
-/** Static Battle Armor card HTML. BA prints a per-trooper firepower table, not TICs. */
-function baCardShell(card: BattleArmorCard): string {
-  const warnings = card.warnings.length
-    ? `<ul class="warnings">${card.warnings.map((w) => `<li>${esc(w)}</li>`).join("")}</ul>`
-    : "";
-  return `<article class="card">
-    <h2>${esc(card.name)} <small>Battle Armor · ${esc(card.weightClass)} · ${esc(card.techBase)}</small></h2>
-    <div class="stats">
-      ${stat("Troopers", card.troopers)}
-      ${stat("Move", card.move)}
-      ${stat("TMM", card.tmm)}
-      ${stat("TMM (jump)", card.tmmJump)}
-    </div>
-    <h3>Armor</h3>
-    <div class="stats">
-      ${stat("Armor / trooper", card.armor)}
-      ${stat("Anti-’Mech", card.antiMech ? "Yes" : "No")}
-    </div>
-    <p class="muted">Armor &amp; TMM mirror the ’Mech rules (best-effort) — validate against the DFA generator.</p>
-    <h3>Troopers &amp; Weapons <small class="muted">(squad firepower)</small></h3>
-    ${firepowerTable(card)}
-    ${equipmentSection(card, false)}
-    ${warnings}
-  </article>`;
-}
 
 function errorCard(file: string, message: string): string {
   return `<article class="card error">
@@ -526,7 +468,7 @@ function convertOne(text: string, file: string): ConvertResult {
 /** HTML for a successfully converted card, dispatched on unit kind. */
 function cardHtml(result: AnyCard, idx: number): string {
   return result.kind === "battlearmor"
-    ? baCardShell(result.card)
+    ? renderBACard(result.card)
     : cardShell(result.card, idx);
 }
 

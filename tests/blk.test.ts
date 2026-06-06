@@ -107,6 +107,7 @@ describe("convertBattleArmor", () => {
     expect(card.firepower).toHaveLength(2);
 
     const srm = card.firepower.find((w) => /srm/i.test(w.label))!;
+    expect(srm.label).toBe("cSRM-2"); // abbreviated, Clan prefix
     expect(srm.perTrooper).toBe(1);
     // Each trooper fires its own SRM 2, so base + M dice scale per suit while the
     // max stays ceil(totalTW / 3). Matches the printed Override BA card.
@@ -119,7 +120,8 @@ describe("convertBattleArmor", () => {
     ]);
 
     // ER Small Laser is direct fire: flat ceil(5 * n / 3) per surviving count.
-    const laser = card.firepower.find((w) => /laser/i.test(w.label))!;
+    const laser = card.firepower.find((w) => /las/i.test(w.label))!;
+    expect(laser.label).toBe("ER SLas"); // abbreviated
     expect(laser.perTrooper).toBe(1);
     expect(laser.byTrooper).toEqual(["2", "4", "5", "7", "9"]);
   });

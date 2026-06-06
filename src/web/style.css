@@ -547,3 +547,162 @@ footer {
   margin: 0.45rem 0 0;
   min-height: 1.2em;
 }
+
+/* ---- Battle Armor record sheet (light, mirrors the printed Override card) -- */
+.ba-sheet {
+  grid-column: 1 / -1; /* span the full results row — the table is wide */
+  background: #f4f4f1;
+  color: #15171c;
+  border: 2px solid #15171c;
+  border-radius: 12px;
+  padding: 0;
+  overflow: hidden;
+}
+.ba-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 1rem 0.6rem;
+}
+.ba-titlebox { flex: 1 1 auto; min-width: 0; }
+.ba-title {
+  font-weight: 800;
+  font-size: 1.3rem;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  border-bottom: 3px solid #15171c;
+  padding-bottom: 0.25rem;
+  margin-bottom: 0.45rem;
+}
+.ba-title .ba-sqd { font-weight: 700; }
+.ba-unitdata {
+  border: 1.5px solid #15171c;
+  border-radius: 10px;
+  padding: 0.5rem 0.8rem;
+  max-width: 540px;
+}
+.ba-ud-h {
+  font-weight: 800;
+  font-size: 0.9rem;
+  letter-spacing: 0.04em;
+  margin-bottom: 0.25rem;
+}
+.ba-ud-row { font-size: 0.9rem; padding: 0.08rem 0; }
+.ba-ud-row b { font-weight: 700; }
+.ba-amech { margin-left: 1.2rem; }
+.ba-check {
+  display: inline-block;
+  width: 1.05em;
+  height: 1.05em;
+  border: 1.5px solid #15171c;
+  border-radius: 2px;
+  text-align: center;
+  line-height: 1em;
+  font-weight: 800;
+  vertical-align: -2px;
+}
+.ba-brand {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.55rem;
+  flex: 0 0 auto;
+}
+.ba-skills { display: flex; gap: 0.6rem; }
+.ba-skill { font-size: 0.6rem; text-align: center; }
+.ba-skill-box {
+  width: 48px;
+  height: 30px;
+  border: 1.5px solid #15171c;
+  border-radius: 5px;
+  margin-top: 2px;
+}
+.ba-wordmark {
+  font-weight: 800;
+  font-size: 1.2rem;
+  line-height: 1.05;
+  text-align: right;
+  color: #8a8f98;
+  letter-spacing: 1px;
+}
+.ba-wordmark b { color: #15171c; font-size: 1.3rem; letter-spacing: 2px; }
+.ba-wm-a { color: #15171c; font-size: 0.75em; }
+
+.ba-fire-wrap { overflow-x: auto; }
+.ba-sheet .ba-firepower {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0;
+  font-size: 0.9rem;
+}
+.ba-sheet .ba-firepower th,
+.ba-sheet .ba-firepower td {
+  border: none;
+  padding: 0.45rem 0.55rem;
+  text-align: center;
+  vertical-align: middle;
+  color: #15171c;
+}
+.ba-sheet .ba-firepower thead th {
+  background: transparent;
+  border-bottom: 2px solid #15171c;
+  vertical-align: bottom;
+}
+.ba-sheet .ba-corner {
+  text-align: left;
+  font-weight: 800;
+  text-transform: uppercase;
+  font-size: 0.95rem;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+.ba-wpn { min-width: 88px; }
+.ba-wname { font-weight: 700; font-size: 0.95rem; }
+.ba-rng {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0 0.3rem;
+  font-size: 0.68rem;
+  margin: 0.2rem 0 0.1rem;
+  font-variant-numeric: tabular-nums;
+}
+.ba-rng-h { color: #6b7079; }
+.ba-rng-v { color: #15171c; }
+.ba-dmg-label { font-size: 0.72rem; color: #6b7079; margin-top: 0.1rem; }
+.ba-sheet .ba-firepower tbody tr:nth-child(odd) td,
+.ba-sheet .ba-firepower tbody tr:nth-child(odd) .ba-count {
+  background: #e7e7e1;
+}
+.ba-sheet .ba-firepower td.num {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.ba-sheet .ba-count {
+  text-align: left;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding-left: 0.6rem;
+}
+.ba-n { font-weight: 800; font-size: 1.15rem; width: 1.1em; text-align: center; }
+.ba-fig { width: 22px; height: 29px; fill: #7a7f88; flex: 0 0 auto; }
+.ba-armor-pips .pips { display: inline-flex; margin: 0; gap: 3px; flex-wrap: nowrap; }
+.ba-sheet .pip.armor {
+  width: 12px;
+  height: 12px;
+  background: #15171c;
+  border: none;
+  border-radius: 0;
+  clip-path: polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%);
+}
+.ba-sheet .ba-armor-pips .pip.armor:first-child { background: #c0392b; }
+.ba-sheet .ba-ai-head,
+.ba-sheet .ba-ai { border-left: 2px solid #15171c; }
+.ba-note { font-size: 0.78rem; color: #6b7079; padding: 0.4rem 1rem 0.7rem; margin: 0; }
+.ba-sheet .warnings { padding: 0 1rem 0.8rem 2rem; }
+
+@media (max-width: 560px) {
+  .ba-top { flex-direction: column; }
+  .ba-brand { align-items: flex-start; flex-direction: row; justify-content: space-between; width: 100%; }
+}

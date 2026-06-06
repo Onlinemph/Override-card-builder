@@ -765,6 +765,56 @@ export const WEAPON_HINTS: ReadonlyArray<string> = [
   "magshot",
 ] as const;
 
+/**
+ * Compact display abbreviations for the Battle Armor firepower table, keyed on
+ * the NORMALIZED weapon name (see normalizeWeaponName). These mirror the short
+ * labels printed on the official Override BA card (e.g. "SLas", "SRM-2"). Names
+ * not listed fall back to a cleaned, spaced version of the original. A Clan
+ * prefix ("c") is added by abbreviateWeapon when appropriate.
+ */
+export const WEAPON_ABBREV: Readonly<Record<string, string>> = {
+  "small laser": "SLas",
+  "medium laser": "MLas",
+  "large laser": "LLas",
+  "er small laser": "ER SLas",
+  "er medium laser": "ER MLas",
+  "er large laser": "ER LLas",
+  "small pulse laser": "SPLas",
+  "medium pulse laser": "MPLas",
+  "large pulse laser": "LPLas",
+  "micro pulse laser": "μPLas",
+  "er micro laser": "ER μLas",
+  ppc: "PPC",
+  "er ppc": "ER PPC",
+  "light ppc": "LPPC",
+  "heavy ppc": "HPPC",
+  "snub-nose ppc": "SNPPC",
+  flamer: "Flmr",
+  "vehicle flamer": "vFlmr",
+  "machine gun": "MG",
+  "light machine gun": "LMG",
+  "heavy machine gun": "HMG",
+  "gauss rifle": "Gauss",
+  "light gauss rifle": "LGauss",
+  "heavy gauss rifle": "HGauss",
+  "ap gauss rifle": "APGauss",
+  magshot: "Magshot",
+  "srm 2": "SRM-2",
+  "srm 4": "SRM-4",
+  "srm 6": "SRM-6",
+  "streak srm 2": "SSRM-2",
+  "streak srm 4": "SSRM-4",
+  "streak srm 6": "SSRM-6",
+  "lrm 5": "LRM-5",
+  "lrm 10": "LRM-10",
+  "lrm 15": "LRM-15",
+  "lrm 20": "LRM-20",
+  "ac/2": "AC/2",
+  "ac/5": "AC/5",
+  "ac/10": "AC/10",
+  "ac/20": "AC/20",
+} as const;
+
 // ---------------------------------------------------------------------------
 // MTF parsing maps. Normalize the many spellings of locations and tech base.
 // ---------------------------------------------------------------------------

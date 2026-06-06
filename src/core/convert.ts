@@ -42,6 +42,7 @@ import {
   TMM_SPRINT_BONUS,
   TORSO_ARMOR_DIVISOR,
   TORSO_STRUCTURE_BY_TONNAGE,
+  WEAPON_ABBREV,
   WEAPON_DAMAGE,
   WEAPON_DAMAGE_CLAN,
   WEAPON_DAMAGE_DIVISOR,
@@ -133,6 +134,30 @@ export function normalizeWeaponName(raw: string): string {
   s = s.replace(/\b(srm|lrm)\s*-\s*(\d+)/g, "$1 $2"); // srm-6 -> srm 6
   s = s.replace(/\bmg\b/g, "machine gun"); // MG abbreviation -> full name
   s = s.replace(/\bos\s*$/, "").trimEnd(); // trailing "os" (one-shot variant without parens)
+  return s.replace(/\s+/g, " ").trim();
+}
+
+/**
+ * Compact display label for a weapon, for the Battle Armor firepower table.
+ * Uses the curated WEAPON_ABBREV map (e.g. "SLas", "SRM-2") when known, else a
+ * cleaned, spaced version of the original name. For Clan units, a lowercase "c"
+ * prefix is added to ballistic/missile abbreviations (matching the printed
+ * card's "cSRM-2"); energy abbreviations are left unprefixed.
+ */
+export function abbreviateWeapon(raw: string, techBase: TechBase = "IS"): string {
+  const key = normalizeWeaponName(raw);
+  const mapped = WEAPON_ABBREV[key];
+  if (mapped) {
+    const clanPrefixable = /^(srm|lrm|ssrm|ac\/|hag|gauss)/i.test(mapped);
+    return techBase === "Clan" && clanPrefixable ? `c${mapped}` : mapped;
+  }
+  // Fallback: strip qualifiers/tech prefixes and split glued names, keep caps.
+  let s = raw.replace(/\([^)]*\)/g, "").replace(/\s*\[ba\]/gi, "").trim();
+  s = s.replace(/^(IS|CL|Clan|BA)\s+/i, "").replace(/^(IS|CL|BA)(?=[A-Z])/, "");
+  s = s
+    .replace(/([A-Z])([A-Z][a-z])/g, "$1 $2")
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/([A-Za-z])(\d)/g, "$1 $2");
   return s.replace(/\s+/g, " ").trim();
 }
 

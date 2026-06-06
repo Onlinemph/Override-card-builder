@@ -18,6 +18,7 @@ import {
   WEAPON_HINTS,
 } from "./constants.js";
 import {
+  abbreviateWeapon,
   buildEquipment,
   convertWeapon,
   formatDamage,
@@ -34,6 +35,7 @@ import type {
   BattleArmorUnit,
   CardWeapon,
   CritSlot,
+  TechBase,
   Weapon,
 } from "./types.js";
 
@@ -60,7 +62,7 @@ function expand(name: string, copies: number): string[] {
  * squad `weapons` array is already expanded to squad totals, so a weapon's
  * per-trooper count is its squad count ÷ troopers.
  */
-function buildFirepower(weapons: CardWeapon[], troopers: number): BAFirepower[] {
+function buildFirepower(weapons: CardWeapon[], troopers: number, techBase: TechBase): BAFirepower[] {
   const squadSize = Math.max(1, troopers);
   const groups = new Map<string, CardWeapon[]>();
   const order: string[] = [];
@@ -82,8 +84,9 @@ function buildFirepower(weapons: CardWeapon[], troopers: number): BAFirepower[] 
     const byTrooper = Array.from({ length: squadSize }, (_, i) =>
       formatDamage(scaleSquadDamage(rep, (i + 1) * perTrooper)),
     );
+    const abbrev = abbreviateWeapon(rep.name, techBase);
     return {
-      label: perTrooper > 1 ? `${perTrooper}x ${rep.name}` : rep.name,
+      label: perTrooper > 1 ? `${perTrooper}× ${abbrev}` : abbrev,
       perTrooper,
       unknown: rep.unknown,
       range: rep.range,
@@ -172,7 +175,7 @@ export function convertBattleArmor(unit: BattleArmorUnit): BattleArmorCard {
     armor,
     weapons,
     tics: groupIntoTics(weapons),
-    firepower: buildFirepower(weapons, unit.troopers),
+    firepower: buildFirepower(weapons, unit.troopers, unit.techBase),
     antiInfantryByTrooper: Array.from({ length: unit.troopers }, (_, i) => `${i + 1}d6`),
     equipment: buildEquipment(otherSlots),
     // PA(L) exoskeletons cannot make anti-'Mech attacks; everything else can.

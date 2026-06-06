@@ -22,6 +22,7 @@
     "extract-units": "node scripts/extract-units.mjs",
     "build:web": "node scripts/extract-units.mjs && vite build && node scripts/inline.mjs",
     "preview:web": "vite preview",
+    "preview:ba": "tsx scripts/ba-preview.ts",
     "typecheck:web": "tsc -p tsconfig.web.json"
   },
   "engines": {
