@@ -1,0 +1,83 @@
+/**
+ * extract-units.mjs
+ *
+ * Pre-build step: extracts every .mtf/.blk file from public/units.zip into
+ * public/units/ (served statically by Vite / gh-pages) and writes a compact
+ * JSON search index to src/generated/units-index.json (bundled by Vite).
+ *
+ * Run:  node scripts/extract-units.mjs
+ * Also called automatically as part of `build:web`.
+ *
+ * Output:
+ *   public/units/<original path from zip>   — individual unit files
+ *   src/generated/units-index.json          — [{name, path, category, era}]
+ *
+ * Both output locations are gitignored; they are regenerated each build.
+ */
+
+import { execSync } from "node:child_process";
+import { existsSync, mkdirSync, readdirSync, statSync, writeFileSync, rmSync } from "node:fs";
+import { join, dirname, basename, extname, relative } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
+const ZIP = join(ROOT, "public", "units.zip");
+const OUT_DIR = join(ROOT, "public", "units");
+const INDEX_DIR = join(ROOT, "src", "generated");
+const INDEX_FILE = join(INDEX_DIR, "units-index.json");
+
+if (!existsSync(ZIP)) {
+  console.error(`units.zip not found at ${ZIP}`);
+  process.exit(1);
+}
+
+// Clean and re-extract
+if (existsSync(OUT_DIR)) {
+  console.log("Cleaning previous extraction…");
+  rmSync(OUT_DIR, { recursive: true, force: true });
+}
+mkdirSync(OUT_DIR, { recursive: true });
+mkdirSync(INDEX_DIR, { recursive: true });
+
+console.log("Extracting units.zip…");
+// -q quiet, -n never overwrite (shouldn't matter after clean), extract into OUT_DIR
+execSync(`unzip -q -n "${ZIP}" "*.mtf" "*.blk" -d "${OUT_DIR}"`, { stdio: "inherit" });
+
+// The zip has a top-level "Override Data/" folder; canonicalize so our URLs
+// are rooted at /units/ without the "Override Data/" prefix.
+const OVERRIDE_DATA = join(OUT_DIR, "Override Data");
+if (existsSync(OVERRIDE_DATA)) {
+  // Move contents up one level then remove the empty wrapper dir.
+  execSync(`mv "${OVERRIDE_DATA}"/* "${OUT_DIR}/" 2>/dev/null || true`);
+  rmSync(OVERRIDE_DATA, { recursive: true, force: true });
+}
+
+// Walk the extracted tree and build the search index.
+/** @type {Array<{name:string,path:string,category:string,era:string}>} */
+const index = [];
+
+function walk(dir) {
+  for (const entry of readdirSync(dir)) {
+    const full = join(dir, entry);
+    if (statSync(full).isDirectory()) {
+      walk(full);
+    } else {
+      const ext = extname(entry).toLowerCase();
+      if (ext !== ".mtf" && ext !== ".blk") continue;
+      const rel = relative(OUT_DIR, full); // e.g. "Mechs/3025/Atlas AS7-D.mtf"
+      const parts = rel.split(/[\\/]/);
+      const category = parts[0] ?? "Other";
+      const era = parts.length >= 3 ? parts[1] : "";
+      const name = basename(entry, extname(entry));
+      index.push({ name, path: rel, category, era });
+    }
+  }
+}
+
+walk(OUT_DIR);
+
+// Sort alphabetically by name for a predictable initial ordering.
+index.sort((a, b) => a.name.localeCompare(b.name));
+
+writeFileSync(INDEX_FILE, JSON.stringify(index));
+console.log(`Index written: ${index.length} units → ${INDEX_FILE}`);

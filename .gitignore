@@ -7,3 +7,7 @@ dist-web/
 # Generated output
 out/
 *.override.json
+
+# Unit browser (generated at build time from public/units.zip)
+public/units/
+src/generated/
