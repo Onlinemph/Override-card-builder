@@ -456,6 +456,7 @@ export function convertWeapon(w: Weapon, techBase: TechBase, mass: number): Card
       range,
       rangeText: formatRangeBrackets(range),
       twHeat: 0,
+      effectiveTechBase: techBase,
       unknown: false,
     };
   }
@@ -490,6 +491,7 @@ export function convertWeapon(w: Weapon, techBase: TechBase, mass: number): Card
     range,
     rangeText: range ? formatRangeBrackets(range) : null,
     twHeat: lookupWeaponHeat(w.name, techBase),
+    effectiveTechBase: techBase,
     unknown,
   };
 }
@@ -535,6 +537,32 @@ function isGroupable(w: CardWeapon): boolean {
 }
 
 /**
+ * Apply the "c" prefix to a Clan weapon's display name, matching standard
+ * Override card notation (e.g. "cLRM 15", "cER Medium Laser"). Skips weapons
+ * that already start with a "c" prefix (avoids double-prefixing on units that
+ * have the prefix baked in to their MTF name).
+ */
+function clanLabel(name: string, techBase: TechBase): string {
+  if (techBase !== "Clan") return name;
+  // Strip MegaMek tech prefixes ("CL", "IS", "Clan ") so "CLERLargeLaser" -> "cER Large Laser"
+  const stripped = name
+    .replace(/^CL(?=[A-Z])/, "")
+    .replace(/^IS(?=[A-Z])/, "")
+    .replace(/^(?:Clan|Inner Sphere)\s+/i, "")
+    // Re-split camelCase runs left after prefix strip ("ERLargeLaser" -> "ER Large Laser")
+    .replace(/([A-Z])([A-Z][a-z])/g, "$1 $2")
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/([A-Za-z])(\d)/g, "$1 $2")
+    .replace(/(\d)([A-Za-z])/g, "$1 $2")
+    .replace(/\s+/g, " ")
+    .trim();
+  // If the result already starts with "c" (case-insensitive) followed by a non-space
+  // (e.g. the weapon is literally named "cSomething"), don't double-prefix.
+  if (/^c\S/i.test(stripped)) return stripped;
+  return `c${stripped}`;
+}
+
+/**
  * Build a TIC from a set of weapons (the unit of manual editing). A single
  * weapon keeps its own profile. For a group, TW is summed and a combined
  * profile derived: missile if any member rolls M dice, else cluster if any
@@ -549,7 +577,7 @@ export function buildTic(members: CardWeapon[]): Tic {
   if (members.length === 1) {
     return {
       weapons: members,
-      label: first.name,
+      label: clanLabel(first.name, first.effectiveTechBase),
       location: first.location,
       rearMounted: first.rearMounted,
       count: 1,
@@ -570,11 +598,14 @@ export function buildTic(members: CardWeapon[]): Tic {
   const profile = computeDamageProfile(summedTw, kind, rangeVarying, allRocket);
 
   const allSameName = keys.every((k) => k === keys[0]);
+  const allClan = members.every((m) => m.effectiveTechBase === "Clan");
   const sameRange = members.every((m) => m.rangeText === first.rangeText);
   const sumTwHeat = members.reduce((sum, m) => sum + m.twHeat, 0);
   return {
     weapons: members,
-    label: allSameName ? `${members.length}x ${first.name}` : members.map((m) => m.name).join(" + "),
+    label: allSameName
+      ? `${members.length}x ${clanLabel(first.name, allClan ? "Clan" : "IS")}`
+      : members.map((m) => clanLabel(m.name, m.effectiveTechBase)).join(" + "),
     location: first.location,
     rearMounted: first.rearMounted,
     count: members.length,

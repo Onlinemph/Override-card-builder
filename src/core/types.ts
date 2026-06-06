@@ -224,6 +224,8 @@ export interface CardWeapon {
   rangeText: string | null;
   /** Total Warfare heat generated per shot (0 if heat-free or unknown). */
   twHeat: number;
+  /** Resolved tech base for this weapon (may differ from unit tech base on mixed-tech 'Mechs). */
+  effectiveTechBase: TechBase;
   /** True when the weapon name was not found in the TW damage table. */
   unknown: boolean;
 }
