@@ -97,6 +97,28 @@ describe("convertBattleArmor", () => {
     expect(laserTics.map((t) => t.count).sort()).toEqual([2, 3]);
   });
 
+  it("builds a per-trooper firepower table (damage summed by surviving suits, not TICs)", () => {
+    // One row per distinct weapon; byTrooper[i] is (i+1) suits firing.
+    expect(card.firepower).toHaveLength(2);
+
+    const srm = card.firepower.find((w) => /srm/i.test(w.label))!;
+    expect(srm.perTrooper).toBe(1);
+    // Each trooper fires its own SRM 2, so base + M dice scale per suit while the
+    // max stays ceil(totalTW / 3). Matches the printed Override BA card.
+    expect(srm.byTrooper).toEqual([
+      "1+M1 (2)", // 1 suit
+      "2+M2 (3)", // 2 suits
+      "3+M3 (4)", // 3 suits
+      "4+M4 (6)", // 4 suits
+      "5+M5 (7)", // full squad
+    ]);
+
+    // ER Small Laser is direct fire: flat ceil(5 * n / 3) per surviving count.
+    const laser = card.firepower.find((w) => /laser/i.test(w.label))!;
+    expect(laser.perTrooper).toBe(1);
+    expect(laser.byTrooper).toEqual(["2", "4", "5", "7", "9"]);
+  });
+
   it("surfaces ammo as equipment, counted per squad copy", () => {
     expect(card.equipment).toHaveLength(1);
     expect(card.equipment[0]).toMatchObject({ category: "ammo", count: 5 });

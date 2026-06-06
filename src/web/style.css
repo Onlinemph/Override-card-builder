@@ -286,6 +286,76 @@ footer {
   margin: 0.4rem 0 0;
 }
 
+/* ---- Battle Armor firepower table ---------------------------------------- */
+.ba-firepower {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.5rem 0 0.25rem;
+  font-size: 0.85rem;
+}
+.ba-firepower th,
+.ba-firepower td {
+  border: 1px solid var(--line);
+  padding: 0.3rem 0.45rem;
+  text-align: center;
+  vertical-align: middle;
+}
+.ba-firepower thead th {
+  color: var(--accent);
+  font-weight: 600;
+  background: var(--panel-2);
+}
+.ba-firepower .ba-corner {
+  color: var(--muted);
+  font-weight: 500;
+  text-align: left;
+}
+.ba-firepower .ba-range {
+  font-size: 0.72rem;
+  font-weight: 400;
+  margin-top: 0.15rem;
+  font-variant-numeric: tabular-nums;
+}
+.ba-firepower .ba-count {
+  text-align: left;
+  white-space: nowrap;
+}
+.ba-firepower .ba-count .ba-n {
+  font-weight: 700;
+  margin-right: 0.35rem;
+}
+.ba-firepower .ba-count .pips {
+  display: inline-flex;
+  margin: 0;
+  vertical-align: middle;
+}
+.ba-firepower td.num {
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+.ba-firepower tbody tr:nth-child(even) td,
+.ba-firepower tbody tr:nth-child(even) .ba-count {
+  background: rgba(255, 255, 255, 0.02);
+}
+.ba-legend {
+  font-size: 0.78rem;
+  margin: 0.35rem 0 0;
+  display: flex;
+  gap: 0.3rem;
+  align-items: center;
+}
+.ba-legend .pip { vertical-align: middle; }
+
+/* Battle Armor armor pips read as circles, echoing the printed record card. */
+.ba-firepower .pip.armor {
+  border-radius: 50%;
+  background: transparent;
+  border: 1.5px solid var(--accent);
+  width: 8px;
+  height: 8px;
+}
+
 /* ---- Equipment list ------------------------------------------------------ */
 .equipment {
   list-style: none;

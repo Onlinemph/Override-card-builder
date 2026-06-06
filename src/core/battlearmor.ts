@@ -20,12 +20,16 @@ import {
 import {
   buildEquipment,
   convertWeapon,
+  formatDamage,
   groupIntoTics,
   lookupTmm,
   lookupWeaponDamage,
+  normalizeWeaponName,
   roundNearest,
+  scaleSquadDamage,
 } from "./convert.js";
 import type {
+  BAFirepower,
   BattleArmorCard,
   BattleArmorUnit,
   CardWeapon,
@@ -48,12 +52,55 @@ function expand(name: string, copies: number): string[] {
 }
 
 /**
+ * Build the per-trooper firepower table: each distinct weapon, with its damage
+ * scaled by surviving trooper count.
+ *
+ * BA does not use TICs. Every trooper fires their own copy, so for n survivors a
+ * weapon's damage is that of (n × perTrooper) copies (see scaleSquadDamage). The
+ * squad `weapons` array is already expanded to squad totals, so a weapon's
+ * per-trooper count is its squad count ÷ troopers.
+ */
+function buildFirepower(weapons: CardWeapon[], troopers: number): BAFirepower[] {
+  const squadSize = Math.max(1, troopers);
+  const groups = new Map<string, CardWeapon[]>();
+  const order: string[] = [];
+  for (const w of weapons) {
+    const key = normalizeWeaponName(w.name);
+    const existing = groups.get(key);
+    if (existing) {
+      existing.push(w);
+    } else {
+      groups.set(key, [w]);
+      order.push(key);
+    }
+  }
+
+  return order.map((key) => {
+    const members = groups.get(key)!;
+    const rep = members[0]!;
+    const perTrooper = Math.max(1, Math.round(members.length / squadSize));
+    const byTrooper = Array.from({ length: squadSize }, (_, i) =>
+      formatDamage(scaleSquadDamage(rep, (i + 1) * perTrooper)),
+    );
+    return {
+      label: perTrooper > 1 ? `${perTrooper}x ${rep.name}` : rep.name,
+      perTrooper,
+      unknown: rep.unknown,
+      range: rep.range,
+      rangeText: rep.rangeText,
+      byTrooper,
+    };
+  });
+}
+
+/**
  * Convert a parsed BA squad into a Battle Armor Override card.
  *
  * Squad firepower: each mount is replicated across the squad (per-trooper gear
- * times trooper count), then the shared weapon engine groups identical weapons
- * into TICs under the page-41 caps — the same behaviour as several 'Mechs
- * fielding the same weapon. TODO(BA-rules): confirm squad TIC handling.
+ * times trooper count). The card's `firepower` table then shows each distinct
+ * weapon's damage by surviving trooper count — BA troopers each fire their own
+ * copy, so damage is summed per suit rather than grouped under the 'Mech TIC
+ * caps. `tics` is still computed (shared engine) but BA cards do not display it.
  */
 export function convertBattleArmor(unit: BattleArmorUnit): BattleArmorCard {
   const warnings: string[] = [];
@@ -125,6 +172,7 @@ export function convertBattleArmor(unit: BattleArmorUnit): BattleArmorCard {
     armor,
     weapons,
     tics: groupIntoTics(weapons),
+    firepower: buildFirepower(weapons, unit.troopers),
     equipment: buildEquipment(otherSlots),
     // PA(L) exoskeletons cannot make anti-'Mech attacks; everything else can.
     // TODO(BA-rules): refine (e.g. some configs/quads) once verified.

@@ -165,12 +165,14 @@ function printBASummary(card: BattleArmorCard): void {
       `   Anti-'Mech: ${card.antiMech ? "yes" : "no"}`,
   );
   lines.push(`  Armor/trooper ${card.armor} (raw ${card.armorPerTrooper})  [mirrored from 'Mech rules]`);
-  if (card.tics.length > 0) {
-    lines.push("  TICs (squad firepower):");
-    for (const t of card.tics) {
-      const flag = t.weapons.some((w) => w.unknown) ? "  [!] unknown weapon" : "";
-      const rng = t.rangeText ? ` [${t.rangeText}]` : "";
-      lines.push(`    - ${t.label}: dmg ${t.damageText}${rng}${flag}`);
+  if (card.firepower.length > 0) {
+    lines.push("  Firepower (squad damage by surviving troopers, full squad first):");
+    for (const w of card.firepower) {
+      const flag = w.unknown ? "  [!] unknown weapon" : "";
+      const rng = w.rangeText ? ` [${w.rangeText}]` : "";
+      // Descending: full squad -> lone survivor, matching the printed card.
+      const byCount = [...w.byTrooper].reverse().join(" | ");
+      lines.push(`    - ${w.label}${rng}: ${byCount}${flag}`);
     }
   }
   if (card.equipment.length > 0) {

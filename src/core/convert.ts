@@ -260,6 +260,33 @@ export function formatDamage(p: DamageProfile): string {
   return `${p.max}`;
 }
 
+/**
+ * Squad damage for `copies` identical weapons fired together, Battle-Armor style.
+ *
+ * Unlike a 'Mech TIC (which sums TW and divides once, capped per page 41), each
+ * BA trooper fires its own copy independently. So the guaranteed base and any
+ * M/C dice scale linearly with the copy count, while the printed max stays
+ * ceil(totalTW / 3). Direct-fire and variable weapons collapse to a flat squad
+ * value (base === max). Returns a flat zero profile for copies <= 0.
+ *
+ * Worked example (SRM 2, TW 4 each — single profile 1+M1 (2)):
+ *   1 copy → 1+M1 (2)   2 → 2+M2 (3)   4 → 4+M4 (6)   5 → 5+M5 (7)
+ */
+export function scaleSquadDamage(weapon: CardWeapon, copies: number): DamageProfile {
+  const m = Math.max(0, copies);
+  const totalTw = weapon.twDamage * m;
+  const max = convertWeaponDamage(totalTw);
+  const p = weapon.profile;
+  if (p.kind === "missile") {
+    return { kind: "missile", base: p.base * m, mDice: p.mDice * m, cDice: [], byRange: [], max };
+  }
+  if (p.kind === "cluster") {
+    return { kind: "cluster", base: p.base * m, mDice: 0, cDice: p.cDice.map((c) => c * m), byRange: [], max };
+  }
+  // direct, variable, or unknown -> flat squad damage.
+  return { kind: "direct", base: max, mDice: 0, cDice: [], byRange: [], max };
+}
+
 // ---------------------------------------------------------------------------
 // Range brackets (page 43, "Converting Weapon Ranges"). Each bracket reads a
 // TW range value and returns a base modifier, or null when the bracket does
