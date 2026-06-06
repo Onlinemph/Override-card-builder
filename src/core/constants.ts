@@ -531,9 +531,21 @@ export const WEAPON_RANGES_CLAN: Readonly<Record<string, WeaponRange>> = {
   "er large laser": { min: 0, medium: 15, long: 25 }, // +0/+0/+0/+2/+2
   // Clan pulse lasers reach further than IS; -2 pulse quality still applies.
   // VERIFIED vs DFA card cMPLas: -2/-2/+0/–/–.
-  "medium pulse laser": { min: 0, medium: 8, long: 12, toHitMod: -2 },
+  "small pulse laser": { min: 0, medium: 4, long: 6, toHitMod: -2 }, // Clan: sh 2 / med 4 / lg 6 -> -2/-2/+4/–/–
+  "medium pulse laser": { min: 0, medium: 8, long: 12, toHitMod: -2 }, // VERIFIED: -2/-2/+0/–/–
+  "large pulse laser": { min: 0, medium: 10, long: 15, toHitMod: -2 }, // Clan: sh 3 / med 10 / lg 15 -> -2/-2/+2/+4/–
   // Clan Rotary AC/5 reaches further than IS. VERIFIED vs DFA card cRAC/5: +0/+0/+0/+2/+4.
   "rotary ac/5": { min: 0, medium: 16, long: 24 },
+  // Clan LRMs have no minimum range (IS min=6). All rack sizes share the same profile.
+  // Clan LRM: min=0, med=14, long=21 -> +0/+0/+0/+2/+4 (vs IS +4/+2/+0/+2/+4).
+  "lrm 1": { min: 0, medium: 14, long: 21 },
+  "lrm 2": { min: 0, medium: 14, long: 21 },
+  "lrm 3": { min: 0, medium: 14, long: 21 },
+  "lrm 4": { min: 0, medium: 14, long: 21 },
+  "lrm 5": { min: 0, medium: 14, long: 21 },
+  "lrm 10": { min: 0, medium: 14, long: 21 },
+  "lrm 15": { min: 0, medium: 14, long: 21 },
+  "lrm 20": { min: 0, medium: 14, long: 21 },
 } as const;
 
 /**
