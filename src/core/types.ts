@@ -222,6 +222,8 @@ export interface CardWeapon {
   range: RangeBrackets | null;
   /** Printed range row "PB S M L X" (e.g. "+4 +2 +0 +2 +4"), or null when range data is missing. */
   rangeText: string | null;
+  /** Total Warfare heat generated per shot (0 if heat-free or unknown). */
+  twHeat: number;
   /** True when the weapon name was not found in the TW damage table. */
   unknown: boolean;
 }
@@ -242,6 +244,8 @@ export interface Tic {
   rearMounted: boolean;
   /** Number of weapons combined. */
   count: number;
+  /** Override-scale heat: round(sum of member TW heats / 5), min 0. */
+  heat: number;
   /** Combined damage profile (summed TW). */
   profile: DamageProfile;
   /** Printed combined damage string. */

@@ -574,6 +574,147 @@ export const WEAPON_DAMAGE_BY_RANGE: Readonly<Record<string, readonly [number, n
 } as const;
 
 // ---------------------------------------------------------------------------
+// TW weapon HEAT table. Keyed on the same NORMALIZED weapon name as
+// WEAPON_DAMAGE. Values are Total Warfare heat per shot; the Override card
+// prints floor(TW_heat / 5) rounded nearest per weapon / TIC.
+// WEAPON_HEAT_CLAN holds Clan overrides where the heat value differs from IS.
+// ---------------------------------------------------------------------------
+
+export const WEAPON_HEAT: Readonly<Record<string, number>> = {
+  // --- Energy: standard lasers ---
+  "small laser": 1,
+  "medium laser": 3,
+  "large laser": 8,
+
+  // --- Energy: IS ER lasers ---
+  "er small laser": 2,
+  "er medium laser": 5,
+  "er large laser": 12,
+
+  // --- Energy: IS pulse lasers ---
+  "small pulse laser": 2,
+  "medium pulse laser": 4,
+  "large pulse laser": 10,
+
+  // --- Energy: PPCs ---
+  ppc: 10,
+  "er ppc": 15,
+  "light ppc": 5,
+  "heavy ppc": 15,
+  "snub-nose ppc": 10,
+
+  // --- Energy: flamers ---
+  flamer: 3,
+  "er flamer": 4,
+  "vehicle flamer": 3,
+
+  // --- Ballistic: autocannon ---
+  "ac/2": 1,
+  "ac/5": 1,
+  "ac/10": 3,
+  "ac/20": 7,
+
+  // --- Ballistic: LB-X ---
+  "lb 2-x ac": 1,
+  "lb 5-x ac": 1,
+  "lb 10-x ac": 2,
+  "lb 20-x ac": 6,
+
+  // --- Ballistic: Ultra AC ---
+  "ultra ac/2": 1,
+  "ultra ac/5": 1,
+  "ultra ac/10": 4,
+  "ultra ac/20": 7,
+
+  // --- Ballistic: Rotary AC ---
+  "rotary ac/2": 3,
+  "rotary ac/5": 3,
+
+  // --- Ballistic: HAG ---
+  "hag/20": 6,
+  "hag/30": 6,
+  "hag/40": 6,
+
+  // --- Ballistic: Light AC ---
+  "light ac/2": 1,
+  "light ac/5": 1,
+
+  // --- Ballistic: machine guns ---
+  "machine gun": 0,
+  "light machine gun": 0,
+  "heavy machine gun": 0,
+
+  // --- Ballistic: Gauss ---
+  "gauss rifle": 1,
+  "light gauss rifle": 1,
+  "heavy gauss rifle": 2,
+  "magshot gauss rifle": 2,
+  magshot: 2,
+  "ap gauss rifle": 1,
+
+  // --- Ballistic: Plasma ---
+  "plasma rifle": 10,
+
+  // --- Missiles: SRM ---
+  "srm 1": 1,
+  "srm 2": 2,
+  "srm 3": 2,
+  "srm 4": 3,
+  "srm 5": 3,
+  "srm 6": 4,
+
+  // --- Missiles: Streak SRM ---
+  "streak srm 2": 2,
+  "streak srm 4": 3,
+  "streak srm 6": 4,
+
+  // --- Missiles: Advanced SRM (BA; same heat as SRM) ---
+  "advanced srm 1": 1,
+  "advanced srm 2": 2,
+  "advanced srm 3": 2,
+  "advanced srm 4": 3,
+  "advanced srm 5": 3,
+  "advanced srm 6": 4,
+
+  // --- Missiles: LRM ---
+  "lrm 1": 1,
+  "lrm 2": 1,
+  "lrm 3": 2,
+  "lrm 4": 2,
+  "lrm 5": 2,
+  "lrm 10": 4,
+  "lrm 15": 5,
+  "lrm 20": 6,
+
+  // --- Missiles: MRM ---
+  "mrm 10": 4,
+  "mrm 20": 6,
+  "mrm 30": 10,
+  "mrm 40": 12,
+
+  // --- Missiles: Rocket Launchers (one-shot) ---
+  "rocket launcher 10": 3,
+  "rocket launcher 15": 4,
+  "rocket launcher 20": 5,
+
+  // --- Energy: BA/support-scale ---
+  "heavy small laser": 3,
+  "heavy medium laser": 6,
+  "er micro laser": 1,
+  "micro pulse laser": 1,
+  "support ppc": 3,
+} as const;
+
+/** Clan OVERRIDES for weapon heat (where Clan heat differs from IS). */
+export const WEAPON_HEAT_CLAN: Readonly<Record<string, number>> = {
+  "er small laser": 2,
+  "er medium laser": 5,
+  "er large laser": 12,
+  "er ppc": 13,
+  "medium pulse laser": 4,
+} as const;
+
+// ---------------------------------------------------------------------------
 // MELEE. Punch/Kick are auto-generated for every BattleMech from tonnage;
 // Override damage = ceil(classic TW / 3). Classic punch TW = ceil(mass/10),
 // kick TW = ceil(mass/5). VERIFIED vs DFA card: 100t -> Punch 4 / Kick 7.

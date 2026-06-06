@@ -485,6 +485,12 @@ footer {
   white-space: nowrap;
 }
 
+.wt-ht {
+  font-variant-numeric: tabular-nums;
+  color: var(--error);
+  font-weight: 600;
+}
+
 .wt-loc {
   color: var(--muted);
   font-size: 0.8rem;

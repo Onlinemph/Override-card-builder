@@ -413,9 +413,11 @@ function weaponsTable(card: OverrideCard): string {
     const unknown = tic.weapons.some((w) => w.unknown);
     const flag = unknown ? ' <span class="warn-flag">[!]</span>' : "";
     const locTxt = tic.rearMounted ? `${esc(tic.location)} (R)` : esc(tic.location);
+    const heatTxt = tic.heat > 0 ? `${tic.heat}` : `<span class="muted">–</span>`;
     return `<tr>
       <td class="wt-name">${esc(tic.label)}${flag}</td>
       <td class="wt-dmg">${esc(tic.damageText)}</td>
+      <td class="wt-ht">${heatTxt}</td>
       <td class="wt-loc">${locTxt}</td>
       ${bracketCells(tic.range)}
     </tr>`;
@@ -424,6 +426,7 @@ function weaponsTable(card: OverrideCard): string {
     ? `<tr class="wt-melee">
         <td class="wt-name">Punch / Kick</td>
         <td class="wt-dmg">${esc(melee.punch)} / ${esc(melee.kick)}</td>
+        <td class="wt-ht"><span class="muted">–</span></td>
         <td class="wt-loc">–</td>
         <td class="num">+0</td>
         <td class="num muted" colspan="4">–</td>
@@ -433,6 +436,7 @@ function weaponsTable(card: OverrideCard): string {
     <thead><tr>
       <th>WEAPONS</th>
       <th>Dmg</th>
+      <th>Ht</th>
       <th>Loc</th>
       <th>PB</th>
       <th>S</th>

@@ -45,6 +45,8 @@ import {
   WEAPON_DAMAGE,
   WEAPON_DAMAGE_CLAN,
   WEAPON_DAMAGE_DIVISOR,
+  WEAPON_HEAT,
+  WEAPON_HEAT_CLAN,
 } from "./constants.js";
 import type {
   CardEquipment,
@@ -149,6 +151,18 @@ export function lookupWeaponDamage(
   const tw = techBase === "Clan" ? (WEAPON_DAMAGE_CLAN[key] ?? WEAPON_DAMAGE[key]) : WEAPON_DAMAGE[key];
   if (tw === undefined) return { twDamage: 0, unknown: true };
   return { twDamage: tw, unknown: false };
+}
+
+/** Look up TW heat for a weapon name (0 when not in the table). */
+export function lookupWeaponHeat(name: string, techBase: TechBase = "IS"): number {
+  const key = normalizeWeaponName(name);
+  const heat = techBase === "Clan" ? (WEAPON_HEAT_CLAN[key] ?? WEAPON_HEAT[key]) : WEAPON_HEAT[key];
+  return heat ?? 0;
+}
+
+/** Override-scale heat for a TIC: round(sumTwHeat / 5), min 0. */
+export function convertTicHeat(sumTwHeat: number): number {
+  return roundNearest(sumTwHeat / HEAT_DISSIPATION_DIVISOR);
 }
 
 // ---------------------------------------------------------------------------
@@ -423,6 +437,7 @@ export function convertWeapon(w: Weapon, techBase: TechBase, mass: number): Card
       damageText: formatDamage(profile),
       range,
       rangeText: formatRangeBrackets(range),
+      twHeat: 0,
       unknown: false,
     };
   }
@@ -456,6 +471,7 @@ export function convertWeapon(w: Weapon, techBase: TechBase, mass: number): Card
     damageText: formatDamage(profile),
     range,
     rangeText: range ? formatRangeBrackets(range) : null,
+    twHeat: lookupWeaponHeat(w.name, techBase),
     unknown,
   };
 }
@@ -519,6 +535,7 @@ export function buildTic(members: CardWeapon[]): Tic {
       location: first.location,
       rearMounted: first.rearMounted,
       count: 1,
+      heat: convertTicHeat(first.twHeat),
       profile: first.profile,
       damageText: first.damageText,
       range: first.range,
@@ -536,12 +553,14 @@ export function buildTic(members: CardWeapon[]): Tic {
 
   const allSameName = keys.every((k) => k === keys[0]);
   const sameRange = members.every((m) => m.rangeText === first.rangeText);
+  const sumTwHeat = members.reduce((sum, m) => sum + m.twHeat, 0);
   return {
     weapons: members,
     label: allSameName ? `${members.length}x ${first.name}` : members.map((m) => m.name).join(" + "),
     location: first.location,
     rearMounted: first.rearMounted,
     count: members.length,
+    heat: convertTicHeat(sumTwHeat),
     profile,
     damageText: formatDamage(profile),
     range: sameRange ? first.range : null,
