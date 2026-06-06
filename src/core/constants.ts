@@ -915,9 +915,6 @@ export const TECH_BASE_MAP: Readonly<Record<string, TechBase>> = {
   "inner sphere": "IS",
   is: "IS",
   clan: "Clan",
-  // Mixed-tech units (e.g. "Mixed (IS Chassis)") use IS as the chassis base;
-  // individual weapon prefixes (IS.../CL...) override per-weapon lookups.
-  mixed: "IS",
 } as const;
 
 /**

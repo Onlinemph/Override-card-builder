@@ -173,8 +173,18 @@ function parseTechBase(lines: RawLine[], file: string): TechBase {
   if (raw === undefined) {
     throw new ParseError(`missing tech base`, file, "TechBase");
   }
-  // Match on a known prefix (handles "Mixed (IS Chassis)" etc. loosely).
   const lower = raw.toLowerCase();
+
+  // Mixed-tech mechs: derive the chassis base from the parenthetical so that
+  // unprefixed weapons default to the correct tech base.
+  //   "Mixed (Clan Chassis)"         -> Clan
+  //   "Mixed (IS Chassis)"           -> IS
+  //   "Mixed (Inner Sphere Chassis)" -> IS
+  //   "Mixed"                        -> IS (safe fallback)
+  if (lower.startsWith("mixed")) {
+    return /clan/i.test(raw) ? "Clan" : "IS";
+  }
+
   for (const [needle, value] of Object.entries(TECH_BASE_MAP)) {
     if (lower.startsWith(needle)) return value;
   }
