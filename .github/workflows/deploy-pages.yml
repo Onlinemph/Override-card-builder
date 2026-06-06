@@ -1,25 +1,22 @@
 name: Deploy web UI to GitHub Pages
 
-# Builds the Vite web UI and publishes it to GitHub Pages.
-# REQUIRED ONE-TIME SETUP: in the repo, go to Settings -> Pages and set
-# "Build and deployment" -> Source to "GitHub Actions".
+# Builds the Vite web UI and pushes it to the gh-pages branch.
+# ONE-TIME SETUP: Settings -> Pages -> Source: "Deploy from a branch"
+#   Branch: gh-pages  /  Folder: / (root)
 on:
   push:
     branches: [main, "claude/**"]
   workflow_dispatch:
 
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+  contents: write
 
-# Allow one concurrent deployment; newer runs supersede in-progress ones.
 concurrency:
   group: pages
   cancel-in-progress: true
 
 jobs:
-  build:
+  build-and-deploy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -29,17 +26,9 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build:web
-      - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
+      - name: Deploy to gh-pages branch
+        uses: JamesIves/github-pages-deploy-action@v4
         with:
-          path: dist-web
-
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - id: deployment
-        uses: actions/deploy-pages@v4
+          folder: dist-web
+          branch: gh-pages
+          clean: true
