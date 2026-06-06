@@ -166,6 +166,42 @@ function stat(label: string, value: string | number): string {
   return `<div class="stat"><span class="label">${esc(label)}</span><span class="value">${esc(value)}</span></div>`;
 }
 
+/** A row of damage pips (one per armor/structure point). */
+function pips(n: number, cls: string): string {
+  return `<div class="pips">${`<i class="pip ${cls}"></i>`.repeat(Math.max(0, n))}</div>`;
+}
+
+/** One location box in the paper doll: armor (+rear) pips over structure pips. */
+function dollLoc(cls: string, label: string, armor: number, structure: number, rear?: number): string {
+  const rearTxt = rear !== undefined ? ` <span class="muted">/ ${esc(rear)}r</span>` : "";
+  const rearPips = rear !== undefined ? pips(rear, "rear") : "";
+  return `<div class="loc ${cls}">
+    <div class="loc-name">${esc(label)}</div>
+    <div class="loc-val">${esc(armor)}${rearTxt}</div>
+    ${pips(armor, "armor")}${rearPips}
+    <div class="loc-struct">IS ${esc(structure)}</div>${pips(structure, "struct")}
+  </div>`;
+}
+
+/**
+ * Paper-doll armor/structure diagram — a schematic humanoid laid out with CSS
+ * grid (mech's right on the viewer's left, as on a record sheet). Armor pips
+ * are filled, rear pips tinted, structure pips outlined.
+ */
+function paperDoll(card: OverrideCard): string {
+  const a = card.armor;
+  const s = card.structure;
+  return `<div class="doll">
+    ${dollLoc("hd", "HD", a.head, s.head)}
+    ${dollLoc("ct", "Torso", a.torso, s.torso, a.rear)}
+    ${dollLoc("ra", "RA", a.rightArm, s.rightArm)}
+    ${dollLoc("la", "LA", a.leftArm, s.leftArm)}
+    ${dollLoc("rl", "RL", a.rightLeg, s.rightLeg)}
+    ${dollLoc("ll", "LL", a.leftLeg, s.leftLeg)}
+  </div>
+  <p class="doll-legend muted"><i class="pip armor"></i> armor &nbsp; <i class="pip rear"></i> rear &nbsp; <i class="pip struct"></i> structure</p>`;
+}
+
 /** Static (non-TIC) card HTML, with a placeholder div the TIC editor mounts into. */
 function cardShell(card: OverrideCard, idx: number): string {
   const warnings = card.warnings.length
@@ -179,21 +215,8 @@ function cardShell(card: OverrideCard, idx: number): string {
       ${stat("TMM (sprint)", card.tmmSprint)}
       ${stat("TMM (jump)", card.tmmJump)}
     </div>
-    <h3>Armor</h3>
-    <div class="stats">
-      ${stat("Torso", card.armor.torso)}
-      ${stat("Rear", card.armor.rear)}
-      ${stat("Head", card.armor.head)}
-      ${stat("Arms (L/R)", `${card.armor.leftArm}/${card.armor.rightArm}`)}
-      ${stat("Legs (L/R)", `${card.armor.leftLeg}/${card.armor.rightLeg}`)}
-    </div>
-    <h3>Structure</h3>
-    <div class="stats">
-      ${stat("Torso", card.structure.torso)}
-      ${stat("Head", card.structure.head)}
-      ${stat("Arms (L/R)", `${card.structure.leftArm}/${card.structure.rightArm}`)}
-      ${stat("Legs (L/R)", `${card.structure.leftLeg}/${card.structure.rightLeg}`)}
-    </div>
+    <h3>Armor &amp; Structure</h3>
+    ${paperDoll(card)}
     <h3>Heat &amp; TICs</h3>
     <div class="stats">${stat("Heat dissipation", card.heatDissipation)}</div>
     <div class="tic-editor" data-card="${idx}"></div>

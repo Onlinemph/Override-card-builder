@@ -313,3 +313,76 @@ footer {
   color: var(--muted);
   font-variant: small-caps;
 }
+
+/* ---- Paper doll (armor/structure diagram) -------------------------------- */
+.doll {
+  display: grid;
+  grid-template-columns: 1fr 1.5fr 1fr;
+  grid-template-areas:
+    ".  hd  ."
+    "ra ct la"
+    "rl ct ll";
+  gap: 0.4rem;
+  max-width: 440px;
+  margin: 0.5rem auto 0;
+}
+.loc {
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0.4rem 0.45rem;
+  text-align: center;
+}
+.loc.hd { grid-area: hd; }
+.loc.ct { grid-area: ct; }
+.loc.ra { grid-area: ra; }
+.loc.la { grid-area: la; }
+.loc.rl { grid-area: rl; }
+.loc.ll { grid-area: ll; }
+.loc-name {
+  font-weight: 700;
+  font-size: 0.72rem;
+  letter-spacing: 0.5px;
+  color: var(--muted);
+}
+.loc-val {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--accent);
+}
+.loc-struct {
+  font-size: 0.72rem;
+  color: var(--muted);
+  margin-top: 0.25rem;
+}
+.pips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  justify-content: center;
+  margin: 0.2rem 0 0;
+}
+.pip {
+  width: 7px;
+  height: 7px;
+  border-radius: 2px;
+  display: inline-block;
+}
+.pip.armor { background: var(--accent); }
+.pip.rear { background: #b9764a; }
+.pip.struct {
+  background: transparent;
+  border: 1px solid var(--muted);
+  width: 6px;
+  height: 6px;
+}
+.doll-legend {
+  text-align: center;
+  font-size: 0.78rem;
+  margin: 0.45rem 0 0;
+  display: flex;
+  gap: 0.3rem;
+  justify-content: center;
+  align-items: center;
+}
+.doll-legend .pip { vertical-align: middle; }
