@@ -15,11 +15,13 @@ import { buildTic, convertAny, isLegalTic, ParseError } from "../core/index.js";
 // ---------------------------------------------------------------------------
 interface UnitEntry { name: string; path: string; category: string; era: string; }
 
-// Dynamic import so the page loads even when the index hasn't been generated yet.
+// Fetched as a static asset (public/units-index.json) so it survives the
+// inline.mjs post-build step that deletes all bundled asset chunks.
 async function loadUnitsIndex(): Promise<UnitEntry[] | null> {
   try {
-    const mod = await import("../generated/units-index.json");
-    return mod.default as UnitEntry[];
+    const resp = await fetch("./units-index.json");
+    if (!resp.ok) return null;
+    return await resp.json() as UnitEntry[];
   } catch {
     return null;
   }

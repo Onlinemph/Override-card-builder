@@ -20,11 +20,13 @@ import { existsSync, mkdirSync, readdirSync, statSync, writeFileSync, rmSync } f
 import { join, dirname, basename, extname, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
+
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const ZIP = join(ROOT, "public", "units.zip");
 const OUT_DIR = join(ROOT, "public", "units");
-const INDEX_DIR = join(ROOT, "src", "generated");
-const INDEX_FILE = join(INDEX_DIR, "units-index.json");
+// Written to public/ so Vite copies it as a static asset (not bundled).
+// This avoids inline.mjs deleting the chunk when it strips the assets dir.
+const INDEX_FILE = join(ROOT, "public", "units-index.json");
 
 if (!existsSync(ZIP)) {
   console.error(`units.zip not found at ${ZIP}`);
@@ -37,7 +39,6 @@ if (existsSync(OUT_DIR)) {
   rmSync(OUT_DIR, { recursive: true, force: true });
 }
 mkdirSync(OUT_DIR, { recursive: true });
-mkdirSync(INDEX_DIR, { recursive: true });
 
 console.log("Extracting units.zip…");
 // -q quiet, -n never overwrite (shouldn't matter after clean), extract into OUT_DIR
