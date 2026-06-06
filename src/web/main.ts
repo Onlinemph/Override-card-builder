@@ -368,56 +368,123 @@ function pips(n: number, cls: string): string {
   return `<div class="pips">${`<i class="pip ${cls}"></i>`.repeat(Math.max(0, n))}</div>`;
 }
 
-/** One location box in the paper doll: armor (+rear) pips over structure pips. */
-function dollLoc(cls: string, label: string, armor: number, structure: number, rear?: number): string {
+/** One location box in the paper doll: label, armor value, hex pips, structure. */
+function dollLoc(label: string, armor: number, structure: number, rear?: number): string {
   const rearTxt = rear !== undefined ? ` <span class="muted">/ ${esc(rear)}r</span>` : "";
   const rearPips = rear !== undefined ? pips(rear, "rear") : "";
-  return `<div class="loc ${cls}">
-    <div class="loc-name">${esc(label)}</div>
-    <div class="loc-val">${esc(armor)}${rearTxt}</div>
+  return `<div class="doll-loc">
+    <div class="doll-loc-label">${esc(label)}</div>
+    <div class="doll-loc-armor">${esc(armor)}${rearTxt}</div>
     ${pips(armor, "armor")}${rearPips}
-    <div class="loc-struct">IS ${esc(structure)}</div>${pips(structure, "struct")}
+    <div class="doll-loc-struct">IS ${esc(structure)}</div>
   </div>`;
 }
 
 /**
- * Paper-doll armor/structure diagram — a schematic humanoid laid out with CSS
- * grid (mech's right on the viewer's left, as on a record sheet). Armor pips
- * are filled, rear pips tinted, structure pips outlined.
+ * Paper-doll armor/structure diagram — head top center, arms + torso middle,
+ * legs bottom. Armor pips are filled hexagons, rear pips tinted, structure
+ * pips outlined.
  */
 function paperDoll(card: OverrideCard): string {
   const a = card.armor;
   const s = card.structure;
   return `<div class="doll">
-    ${dollLoc("hd", "HD", a.head, s.head)}
-    ${dollLoc("ct", "Torso", a.torso, s.torso, a.rear)}
-    ${dollLoc("ra", "RA", a.rightArm, s.rightArm)}
-    ${dollLoc("la", "LA", a.leftArm, s.leftArm)}
-    ${dollLoc("rl", "RL", a.rightLeg, s.rightLeg)}
-    ${dollLoc("ll", "LL", a.leftLeg, s.leftLeg)}
+    <div class="doll-row doll-hd">
+      ${dollLoc("HD", a.head, s.head)}
+    </div>
+    <div class="doll-row doll-arms">
+      ${dollLoc("LA", a.leftArm, s.leftArm)}
+      ${dollLoc("Torso", a.torso, s.torso, a.rear)}
+      ${dollLoc("RA", a.rightArm, s.rightArm)}
+    </div>
+    <div class="doll-row doll-legs">
+      ${dollLoc("LL", a.leftLeg, s.leftLeg)}
+      <div class="doll-spacer"></div>
+      ${dollLoc("RL", a.rightLeg, s.rightLeg)}
+    </div>
   </div>
   <p class="doll-legend muted"><i class="pip armor"></i> armor &nbsp; <i class="pip rear"></i> rear &nbsp; <i class="pip struct"></i> structure</p>`;
 }
 
-/** Static (non-TIC) card HTML, with a placeholder div the TIC editor mounts into. */
+/** Weapons table showing TICs as rows. */
+function weaponsTable(card: OverrideCard): string {
+  const melee = card.melee;
+  const rows = card.tics.map((tic) => {
+    const unknown = tic.weapons.some((w) => w.unknown);
+    const flag = unknown ? ' <span class="warn-flag">[!]</span>' : "";
+    const locTxt = tic.rearMounted ? `${esc(tic.location)} (R)` : esc(tic.location);
+    return `<tr>
+      <td class="wt-name">${esc(tic.label)}${flag}</td>
+      <td class="wt-dmg">${esc(tic.damageText)}</td>
+      <td class="wt-loc">${locTxt}</td>
+      ${bracketCells(tic.range)}
+    </tr>`;
+  }).join("");
+  const meleeRow = melee
+    ? `<tr class="wt-melee">
+        <td class="wt-name">Punch / Kick</td>
+        <td class="wt-dmg">${esc(melee.punch)} / ${esc(melee.kick)}</td>
+        <td class="wt-loc">–</td>
+        <td class="num">+0</td>
+        <td class="num muted" colspan="4">–</td>
+      </tr>`
+    : "";
+  return `<table class="weapons-tbl">
+    <thead><tr>
+      <th>WEAPONS</th>
+      <th>Dmg</th>
+      <th>Loc</th>
+      <th>PB</th>
+      <th>S</th>
+      <th>M</th>
+      <th>L</th>
+      <th>X</th>
+    </tr></thead>
+    <tbody>${rows}${meleeRow}</tbody>
+  </table>`;
+}
+
+/** Equipment as inline text: "Equipment: X (LOC), Y (LOC)". */
+function equipmentInline(card: OverrideCard): string {
+  if (card.equipment.length === 0) return "";
+  const items = card.equipment
+    .map((e) => `${esc(e.label)} (${esc(e.location)})`)
+    .join(", ");
+  return `<p class="equip-inline"><strong>Equipment:</strong> ${items}</p>`;
+}
+
+/** Static (non-TIC) card HTML — two-column BattleTech record card layout. */
 function cardShell(card: OverrideCard, idx: number): string {
   const warnings = card.warnings.length
     ? `<ul class="warnings">${card.warnings.map((w) => `<li>${esc(w)}</li>`).join("")}</ul>`
     : "";
-  return `<article class="card">
-    <h2>${esc(card.name)} <small>${esc(card.mass)}t ${esc(card.techBase)}</small></h2>
-    <div class="stats">
-      ${stat("Move", card.move)}
-      ${stat("TMM", card.tmm)}
-      ${stat("TMM (sprint)", card.tmmSprint)}
-      ${stat("TMM (jump)", card.tmmJump)}
+  const tmmDisplay = card.jump > 0 ? `${esc(card.tmm)} / ${esc(card.tmmJump)}` : `${esc(card.tmm)}`;
+  return `<article class="card mech-card">
+    <div class="mech-header">
+      <h2 class="mech-name">${esc(card.name.toUpperCase())}</h2>
+      <div class="mech-sub">BattleMech · ${esc(card.mass)}t · ${esc(card.techBase)}</div>
     </div>
-    <h3>Armor &amp; Structure</h3>
-    ${paperDoll(card)}
-    <h3>Heat &amp; TICs</h3>
-    <div class="stats">${stat("Heat dissipation", card.heatDissipation)}</div>
-    <div class="tic-editor" data-card="${idx}"></div>
-    ${equipmentSection(card)}
+    <div class="mech-columns">
+      <div class="mech-left">
+        <div class="unit-data-row">
+          <span>Move <strong>${esc(card.move)}</strong></span>
+          <span>TMM <strong>${tmmDisplay}</strong></span>
+          <span>Sinks <strong>${esc(card.heatDissipation)}</strong></span>
+        </div>
+        ${weaponsTable(card)}
+        ${equipmentInline(card)}
+      </div>
+      <div class="mech-right">
+        ${paperDoll(card)}
+      </div>
+    </div>
+    <div class="tic-section">
+      <button class="tic-toggle" type="button">▼ Show TIC groupings</button>
+      <div class="tic-body" hidden>
+        <div class="tic-editor" data-card="${idx}" data-mounted="false"></div>
+        <p class="tic-note muted">Move a weapon to another TIC in the same location. Illegal groups are rejected.</p>
+      </div>
+    </div>
     ${warnings}
   </article>`;
 }
@@ -532,20 +599,17 @@ function cardHtml(result: AnyCard, idx: number): string {
     : cardShell(result.card, idx);
 }
 
-/** Render results and mount an interactive TIC editor into each successful card. */
+/** Render results. TIC editors are mounted lazily on first expand. */
 function showResults(results: ConvertResult[]): void {
   if (results.length === 0) {
     output.innerHTML = `<p class="muted">Nothing to convert.</p>`;
     return;
   }
+  // Store results so the delegated TIC toggle can retrieve them.
+  (output as HTMLElement & { _results?: ConvertResult[] })._results = results;
   output.innerHTML = results
     .map((r, i) => (r.ok ? cardHtml(r.result, i) : r.html))
     .join("");
-  results.forEach((r, i) => {
-    if (!r.ok) return;
-    const host = output.querySelector<HTMLElement>(`.tic-editor[data-card="${i}"]`);
-    if (host) new TicEditor(host, r.result.card);
-  });
 }
 
 $("convert").addEventListener("click", () => {
@@ -591,6 +655,36 @@ fileInput.addEventListener("change", async () => {
     output.innerHTML = errorCard("upload", err instanceof Error ? err.message : String(err));
   } finally {
     fileInput.value = ""; // reset so re-selecting the same file fires "change"
+  }
+});
+
+// Delegated TIC toggle — lazy-mount TicEditor on first expand.
+output.addEventListener("click", (e) => {
+  const btn = (e.target as Element).closest<HTMLButtonElement>("button.tic-toggle");
+  if (!btn) return;
+  const body = btn.nextElementSibling as HTMLElement | null;
+  if (!body) return;
+  const hidden = body.hasAttribute("hidden");
+  if (hidden) {
+    body.removeAttribute("hidden");
+    btn.textContent = "▲ Hide TIC groupings";
+    const editor = body.querySelector<HTMLElement>('.tic-editor[data-mounted="false"]');
+    if (editor) {
+      const cardIdx = Number(editor.dataset.card);
+      // Find the corresponding result — we stored results array in closure via showResults.
+      // We store results on the output element to allow retrieval.
+      const stored = (output as HTMLElement & { _results?: ConvertResult[] })._results;
+      if (stored) {
+        const r = stored[cardIdx];
+        if (r?.ok) {
+          new TicEditor(editor, r.result.card);
+          editor.dataset.mounted = "true";
+        }
+      }
+    }
+  } else {
+    body.setAttribute("hidden", "");
+    btn.textContent = "▼ Show TIC groupings";
   }
 });
 

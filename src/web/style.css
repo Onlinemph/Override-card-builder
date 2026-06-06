@@ -390,47 +390,219 @@ footer {
   font-variant: small-caps;
 }
 
-/* ---- Paper doll (armor/structure diagram) -------------------------------- */
-.doll {
-  display: grid;
-  grid-template-columns: 1fr 1.5fr 1fr;
-  grid-template-areas:
-    ".  hd  ."
-    "ra ct la"
-    "rl ct ll";
-  gap: 0.4rem;
-  max-width: 440px;
-  margin: 0.5rem auto 0;
+/* ---- Mech card — two-column BattleTech record card layout ---------------- */
+.mech-card {
+  grid-column: 1 / -1;
 }
-.loc {
+
+.mech-header {
   background: var(--panel-2);
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 0.4rem 0.45rem;
-  text-align: center;
+  border-bottom: 2px solid var(--accent);
+  padding: 0.6rem 1rem 0.5rem;
+  margin: -1rem -1.1rem 0.9rem;
+  border-radius: 9px 9px 0 0;
 }
-.loc.hd { grid-area: hd; }
-.loc.ct { grid-area: ct; }
-.loc.ra { grid-area: ra; }
-.loc.la { grid-area: la; }
-.loc.rl { grid-area: rl; }
-.loc.ll { grid-area: ll; }
-.loc-name {
-  font-weight: 700;
-  font-size: 0.72rem;
-  letter-spacing: 0.5px;
+
+.mech-name {
+  margin: 0;
+  font-size: 1.55rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  line-height: 1.1;
+}
+
+.mech-sub {
   color: var(--muted);
+  font-size: 0.82rem;
+  margin-top: 0.1rem;
 }
-.loc-val {
-  font-size: 1.1rem;
-  font-weight: 700;
+
+.mech-columns {
+  display: flex;
+  gap: 1.25rem;
+  align-items: flex-start;
+}
+
+.mech-left { flex: 55 55 0; min-width: 0; }
+.mech-right { flex: 40 40 0; min-width: 200px; }
+
+.unit-data-row {
+  display: flex;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+  font-size: 0.9rem;
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.unit-data-row strong {
   color: var(--accent);
 }
-.loc-struct {
-  font-size: 0.72rem;
-  color: var(--muted);
-  margin-top: 0.25rem;
+
+/* Weapons table */
+.weapons-tbl {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  margin-bottom: 0.75rem;
 }
+
+.weapons-tbl th {
+  background: var(--panel-2);
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 0.3rem 0.4rem;
+  border-bottom: 2px solid var(--line);
+  text-align: center;
+}
+
+.weapons-tbl th:first-child {
+  text-align: left;
+  color: var(--accent);
+  font-size: 0.78rem;
+}
+
+.weapons-tbl td {
+  padding: 0.3rem 0.4rem;
+  border-bottom: 1px solid var(--line);
+  text-align: center;
+  vertical-align: middle;
+}
+
+.wt-name {
+  text-align: left !important;
+  font-size: 0.9rem;
+}
+
+.wt-dmg {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.wt-loc {
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-variant: small-caps;
+}
+
+.weapons-tbl tbody tr:nth-child(even) td {
+  background: rgba(255,255,255,0.025);
+}
+
+.wt-melee td {
+  color: var(--muted);
+  border-top: 1px dashed var(--line);
+  font-style: italic;
+}
+
+.wt-melee .wt-name,
+.wt-melee .wt-dmg {
+  color: var(--ink);
+  font-style: normal;
+}
+
+/* Equipment inline text */
+.equip-inline {
+  font-size: 0.85rem;
+  margin: 0.3rem 0 0;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.equip-inline strong {
+  color: var(--ink);
+}
+
+/* TIC section */
+.tic-section {
+  margin-top: 1rem;
+  border-top: 1px solid var(--line);
+  padding-top: 0.6rem;
+}
+
+.tic-toggle {
+  font-size: 0.82rem;
+  padding: 0.3rem 0.7rem;
+  width: 100%;
+  text-align: left;
+}
+
+/* ---- Paper doll (armor/structure diagram) -------------------------------- */
+.doll {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.doll-row {
+  display: flex;
+  justify-content: center;
+  gap: 0.35rem;
+}
+
+.doll-hd { justify-content: center; }
+
+.doll-spacer {
+  flex: 1;
+}
+
+.doll-loc {
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 0.35rem 0.45rem;
+  text-align: center;
+  flex: 1;
+  min-width: 0;
+}
+
+.doll-hd .doll-loc {
+  max-width: 120px;
+}
+
+.doll-loc-label {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.doll-loc-armor {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--accent);
+  line-height: 1.1;
+}
+
+.doll-loc-struct {
+  font-size: 0.68rem;
+  color: var(--muted);
+  margin-top: 0.15rem;
+}
+
+/* Hex pips */
+.pip {
+  width: 9px;
+  height: 9px;
+  display: inline-block;
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+}
+
+.pip.armor { background: var(--accent); }
+.pip.rear  { background: #b97040; }
+.pip.struct {
+  background: var(--muted);
+  clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+  opacity: 0.45;
+}
+
 .pips {
   display: flex;
   flex-wrap: wrap;
@@ -438,20 +610,7 @@ footer {
   justify-content: center;
   margin: 0.2rem 0 0;
 }
-.pip {
-  width: 7px;
-  height: 7px;
-  border-radius: 2px;
-  display: inline-block;
-}
-.pip.armor { background: var(--accent); }
-.pip.rear { background: #b9764a; }
-.pip.struct {
-  background: transparent;
-  border: 1px solid var(--muted);
-  width: 6px;
-  height: 6px;
-}
+
 .doll-legend {
   text-align: center;
   font-size: 0.78rem;
