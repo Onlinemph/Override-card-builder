@@ -19,7 +19,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "dev:web": "vite",
-    "build:web": "vite build",
+    "build:web": "vite build && node scripts/inline.mjs",
     "preview:web": "vite preview",
     "typecheck:web": "tsc -p tsconfig.web.json"
   },
