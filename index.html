@@ -3,29 +3,31 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>mtf2override — MTF to BattleTech: Override card</title>
+    <title>mtf2override — MTF / BLK to BattleTech: Override card</title>
   </head>
   <body>
     <main id="app">
       <header>
         <h1>mtf2override</h1>
         <p class="tagline">
-          Convert a MegaMek <code>.mtf</code> BattleMech into BattleTech:
-          Override record-card stats. Everything runs in your browser.
+          Convert a MegaMek <code>.mtf</code> BattleMech or <code>.blk</code>
+          Battle Armor squad into BattleTech: Override record-card stats.
+          Everything runs in your browser.
         </p>
       </header>
 
       <section class="input">
         <div class="toolbar">
-          <button id="upload" type="button">Upload .mtf file(s)</button>
-          <input id="file" type="file" accept=".mtf,text/plain" multiple hidden />
-          <button id="example" type="button">Load example (Locust)</button>
+          <button id="upload" type="button">Upload .mtf / .blk file(s)</button>
+          <input id="file" type="file" accept=".mtf,.blk,text/plain" multiple hidden />
+          <button id="example" type="button">Example: Locust (’Mech)</button>
+          <button id="example-ba" type="button">Example: Elemental (BA)</button>
           <button id="clear" type="button">Clear</button>
         </div>
         <textarea
           id="mtf"
           spellcheck="false"
-          placeholder="Paste .mtf text here, or upload a file above…"
+          placeholder="Paste .mtf or .blk text here, or upload a file above…"
         ></textarea>
         <button id="convert" type="button" class="primary">Convert</button>
       </section>

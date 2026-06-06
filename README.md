@@ -1,7 +1,15 @@
 # mtf2override
 
-Convert MegaMek `.mtf` BattleMech files into **BattleTech: Override** record-card
-stats. TypeScript, ESM, Node runtime (`tsx` for dev, `vitest` for tests).
+Convert MegaMek `.mtf` BattleMech and `.blk` Battle Armor files into
+**BattleTech: Override** record-card stats. TypeScript, ESM, Node runtime
+(`tsx` for dev, `vitest` for tests).
+
+> **Unit types:** BattleMechs (`.mtf`) are fully supported. Battle Armor
+> (`.blk`) is supported with its weapon/TIC math reusing the 'Mech engine; its
+> armor and TMM currently **mirror the 'Mech rules** as a best-effort starting
+> point (marked `TODO(BA-rules)` in `battlearmor.ts`) — validate against the DFA
+> generator. Other BLK types (vehicles, aerospace, infantry) are not yet wired
+> in; the BLK parser rejects them with a clear "unsupported unit type" error.
 
 ## Architecture
 
@@ -9,14 +17,17 @@ Three cleanly separated layers — the separation is the point:
 
 ```
 src/core/      Pure functions. ZERO Node/browser/filesystem dependencies.
-  types.ts       The Unit + OverrideCard domain types (the layer contract).
-  parser.ts      mtf text -> typed Unit.
-  convert.ts     Unit -> OverrideCard (the conversion math).
-  constants.ts   Every magic number, each citing the rule it implements.
-  index.ts       Barrel export (safe to import in Node OR a browser bundle).
+  types.ts        The Unit/OverrideCard + BattleArmorUnit/Card domain types.
+  parser.ts       mtf text -> typed Unit (BattleMech).
+  blk.ts          blk text -> typed BattleArmorUnit.
+  convert.ts      Unit -> OverrideCard (the 'Mech conversion math).
+  battlearmor.ts  BattleArmorUnit -> BattleArmorCard (reuses the weapon engine).
+  dispatch.ts     detectFormat() + convertAny(): route MTF/BLK to the right path.
+  constants.ts    Every magic number, each citing the rule it implements.
+  index.ts        Barrel export (safe to import in Node OR a browser bundle).
 
 src/cli/       Node CLI wrapper. The ONLY layer that touches the filesystem.
-tests/         Vitest unit tests + .mtf fixtures.
+tests/         Vitest unit tests + .mtf/.blk fixtures.
 ```
 
 `core` must run unchanged in both Node and a browser (a web UI is a likely
@@ -43,7 +54,8 @@ npx tsx src/cli/index.ts <file-or-dir> [more ...] [options]
 node dist/cli/index.js <file-or-dir> [more ...] [options]
 ```
 
-Accepts one or more `.mtf` files **or** directories (scanned for `*.mtf`).
+Accepts one or more `.mtf`/`.blk` files **or** directories (scanned for them).
+The format is auto-detected per file via `convertAny()`.
 
 | Option | Effect |
 |---|---|
@@ -58,8 +70,9 @@ readable summary to stdout. `--csv` adds one flat CSV row per unit.
 ## Web UI (GitHub Pages)
 
 A browser UI lives in `src/web/` (plus `index.html`). It imports the **same pure
-core** as the CLI — paste or upload a `.mtf` and it renders the Override card
-entirely client-side. No server, no Node.
+core** as the CLI — paste or upload a `.mtf` or `.blk` and it renders the
+Override card entirely client-side. No server, no Node. Two example buttons load
+a 'Mech (Locust) and a Battle Armor squad (Elemental).
 
 ```bash
 npm run dev:web       # Vite dev server with live reload
@@ -69,13 +82,13 @@ npm run preview:web   # serve the production build locally
 
 ### Deploying to GitHub Pages
 
-`.github/workflows/deploy-pages.yml` builds `dist-web/` and publishes it on every
-push to `main` (and `claude/**` branches, for previewing). **One-time setup you
-must do in the repo:** Settings → Pages → *Build and deployment* → **Source:
-GitHub Actions**. After that, the site publishes automatically; the deploy job
-prints the URL (typically `https://<user>.github.io/<repo>/`). The Vite `base`
-is `"./"`, so the build works under the Pages project subpath without
-hard-coding the repo name.
+`.github/workflows/deploy-pages.yml` builds `dist-web/` and pushes it to a
+`gh-pages` branch on every push to `main` (and `claude/**` branches, for
+previewing). **One-time setup you must do in the repo:** Settings → Pages →
+*Build and deployment* → **Source: Deploy from a branch**, then **Branch:
+`gh-pages` / `(root)`**. After that, the site publishes automatically (typically
+`https://<user>.github.io/<repo>/`). The Vite `base` is `"./"`, so the build
+works under the Pages project subpath without hard-coding the repo name.
 
 ## Conversion rules (implemented in `convert.ts` / `constants.ts`)
 

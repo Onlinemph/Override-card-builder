@@ -6,8 +6,15 @@
 
 import "./style.css";
 
-import { buildTic, convertUnit, isLegalTic, parseMtf, ParseError } from "../core/index.js";
-import type { CardWeapon, OverrideCard } from "../core/index.js";
+import { buildTic, convertAny, isLegalTic, ParseError } from "../core/index.js";
+import type {
+  AnyCard,
+  BattleArmorCard,
+  CardWeapon,
+  MeleeProfile,
+  OverrideCard,
+  Tic,
+} from "../core/index.js";
 
 // Injected by Vite (see vite.config.ts).
 declare const __BUILD_TIME__: string;
@@ -43,6 +50,59 @@ Machine Gun, Left Arm
 Machine Gun, Right Arm
 `;
 
+// A BLK Battle Armor squad, to demo the .blk path in the browser.
+const EXAMPLE_ELEMENTAL = `<UnitType>
+BattleArmor
+</UnitType>
+
+<Name>
+Elemental
+</Name>
+
+<Model>
+[Laser]
+</Model>
+
+<type>
+Clan Level 2
+</type>
+
+<motion_type>
+Jump
+</motion_type>
+
+<cruiseMP>
+1
+</cruiseMP>
+
+<jumpingMP>
+3
+</jumpingMP>
+
+<Trooper Count>
+5
+</Trooper Count>
+
+<weightclass>
+3
+</weightclass>
+
+<chassis>
+biped
+</chassis>
+
+<armor>
+10
+</armor>
+
+<Squad Equipment>
+CLERSmallLaser:RA
+CLSRM2 (OS):LA
+CLSRM2 (OS) Ammo:Body
+Battle Claw:LA
+</Squad Equipment>
+`;
+
 const $ = <T extends HTMLElement>(id: string): T => {
   const el = document.getElementById(id);
   if (!el) throw new Error(`missing element #${id}`);
@@ -70,6 +130,17 @@ function bracketCells(range: CardWeapon["range"]): string {
 }
 
 /**
+ * The slice of a card the TIC editor needs: the converted weapons, their
+ * initial TIC grouping, and (for 'Mechs) the auto melee row. Both `OverrideCard`
+ * and `BattleArmorCard` satisfy this, so the editor is shared by both.
+ */
+interface TicSource {
+  weapons: CardWeapon[];
+  tics: Tic[];
+  melee?: MeleeProfile;
+}
+
+/**
  * Interactive TIC grouping editor. Holds editable groups of weapon indices and
  * lets the user move a weapon to another TIC in the same location, or split it
  * into its own. Illegal moves (over the page-41 caps) are rejected.
@@ -78,7 +149,7 @@ class TicEditor {
   private groups: number[][];
   constructor(
     private readonly host: HTMLElement,
-    private readonly card: OverrideCard,
+    private readonly card: TicSource,
   ) {
     // Seed editable state from the auto-grouped TICs, as indices into card.weapons.
     const indexOf = new Map(card.weapons.map((w, i) => [w, i] as const));
@@ -155,9 +226,12 @@ class TicEditor {
       })
       .join("");
     const melee = this.card.melee;
+    const meleeRow = melee
+      ? `<div class="melee-row"><strong>Punch / Kick</strong> <span class="tic-dmg">${esc(melee.punch)} / ${esc(melee.kick)}</span></div>`
+      : "";
     this.host.innerHTML = `
       <div class="tics">${ticHtml}</div>
-      <div class="melee-row"><strong>Punch / Kick</strong> <span class="tic-dmg">${esc(melee.punch)} / ${esc(melee.kick)}</span></div>
+      ${meleeRow}
       <p class="tic-note muted">Move a weapon to another TIC in the same location, or split it into its own. Illegal groups are rejected.</p>`;
   }
 }
@@ -225,17 +299,48 @@ function cardShell(card: OverrideCard, idx: number): string {
   </article>`;
 }
 
-function equipmentSection(card: OverrideCard): string {
+/**
+ * Equipment list. `showLoc` prints each item's location (meaningful for 'Mechs;
+ * suppressed for Battle Armor, whose gear is squad-wide and uses a synthetic
+ * location internally).
+ */
+function equipmentSection(card: { equipment: OverrideCard["equipment"] }, showLoc = true): string {
   if (card.equipment.length === 0) return "";
   const items = card.equipment
     .map((e) => {
       const qty = e.count > 1 ? ` <span class="muted">×${e.count}</span>` : "";
       const cls = e.category === "ammo" ? "equip ammo" : "equip";
-      return `<li class="${cls}"><span class="equip-name">${esc(e.label)}</span>
-        <span class="equip-loc">${esc(e.location)}</span>${qty}</li>`;
+      const loc = showLoc ? `<span class="equip-loc">${esc(e.location)}</span>` : "";
+      return `<li class="${cls}"><span class="equip-name">${esc(e.label)}</span>${loc}${qty}</li>`;
     })
     .join("");
   return `<h3>Equipment</h3><ul class="equipment">${items}</ul>`;
+}
+
+/** Static Battle Armor card HTML, with a placeholder for the TIC editor. */
+function baCardShell(card: BattleArmorCard, idx: number): string {
+  const warnings = card.warnings.length
+    ? `<ul class="warnings">${card.warnings.map((w) => `<li>${esc(w)}</li>`).join("")}</ul>`
+    : "";
+  return `<article class="card">
+    <h2>${esc(card.name)} <small>Battle Armor · ${esc(card.weightClass)} · ${esc(card.techBase)}</small></h2>
+    <div class="stats">
+      ${stat("Troopers", card.troopers)}
+      ${stat("Move", card.move)}
+      ${stat("TMM", card.tmm)}
+      ${stat("TMM (jump)", card.tmmJump)}
+    </div>
+    <h3>Armor</h3>
+    <div class="stats">
+      ${stat("Armor / trooper", card.armor)}
+      ${stat("Anti-’Mech", card.antiMech ? "Yes" : "No")}
+    </div>
+    <p class="muted">Armor &amp; TMM mirror the ’Mech rules (best-effort) — validate against the DFA generator.</p>
+    <h3>TICs <small class="muted">(squad firepower)</small></h3>
+    <div class="tic-editor" data-card="${idx}"></div>
+    ${equipmentSection(card, false)}
+    ${warnings}
+  </article>`;
 }
 
 function errorCard(file: string, message: string): string {
@@ -245,17 +350,24 @@ function errorCard(file: string, message: string): string {
   </article>`;
 }
 
-type ConvertResult = { ok: true; card: OverrideCard } | { ok: false; html: string };
+type ConvertResult = { ok: true; result: AnyCard } | { ok: false; html: string };
 
-/** Parse + convert one MTF source. */
+/** Parse + convert one source, auto-detecting MTF ('Mech) vs BLK (Battle Armor). */
 function convertOne(text: string, file: string): ConvertResult {
   try {
-    return { ok: true, card: convertUnit(parseMtf(text, file)) };
+    return { ok: true, result: convertAny(text, file) };
   } catch (err) {
     const message =
       err instanceof ParseError ? err.message : err instanceof Error ? err.message : String(err);
     return { ok: false, html: errorCard(file, message) };
   }
+}
+
+/** HTML for a successfully converted card, dispatched on unit kind. */
+function cardHtml(result: AnyCard, idx: number): string {
+  return result.kind === "battlearmor"
+    ? baCardShell(result.card, idx)
+    : cardShell(result.card, idx);
 }
 
 /** Render results and mount an interactive TIC editor into each successful card. */
@@ -265,27 +377,32 @@ function showResults(results: ConvertResult[]): void {
     return;
   }
   output.innerHTML = results
-    .map((r, i) => (r.ok ? cardShell(r.card, i) : r.html))
+    .map((r, i) => (r.ok ? cardHtml(r.result, i) : r.html))
     .join("");
   results.forEach((r, i) => {
     if (!r.ok) return;
     const host = output.querySelector<HTMLElement>(`.tic-editor[data-card="${i}"]`);
-    if (host) new TicEditor(host, r.card);
+    if (host) new TicEditor(host, r.result.card);
   });
 }
 
 $("convert").addEventListener("click", () => {
   const text = textarea.value.trim();
   if (!text) {
-    output.innerHTML = `<p class="muted">Paste or upload an .mtf first.</p>`;
+    output.innerHTML = `<p class="muted">Paste or upload an .mtf or .blk first.</p>`;
     return;
   }
-  showResults([convertOne(text, "pasted.mtf")]);
+  showResults([convertOne(text, "pasted")]);
 });
 
 $("example").addEventListener("click", () => {
   textarea.value = EXAMPLE_LOCUST;
   showResults([convertOne(EXAMPLE_LOCUST, "Locust LCT-1V.mtf")]);
+});
+
+$("example-ba").addEventListener("click", () => {
+  textarea.value = EXAMPLE_ELEMENTAL;
+  showResults([convertOne(EXAMPLE_ELEMENTAL, "Elemental [Laser].blk")]);
 });
 
 $("clear").addEventListener("click", () => {

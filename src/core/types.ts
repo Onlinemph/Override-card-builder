@@ -302,6 +302,103 @@ export interface CardStructure {
   rightLeg: number;
 }
 
+// ---------------------------------------------------------------------------
+// Battle Armor (BLK). A separate physical model and card — BA squads share
+// almost nothing with 'Mechs (no per-limb armor/structure, no heat sinks, no
+// punch/kick), but the weapon -> damage/range/TIC engine and the equipment
+// surfacing are reused unchanged.
+// ---------------------------------------------------------------------------
+
+/** Discriminates the two unit families the tool can currently produce. */
+export type UnitKind = "mech" | "battlearmor";
+
+/** Battle-armor weight class, from the BLK `<weightclass>` index (0..4). */
+export type BAWeightClass = "PA(L)" | "Light" | "Medium" | "Heavy" | "Assault";
+
+/**
+ * One weapon/equipment entry parsed from a BLK equipment block. The trailing
+ * `:LOC` mount tag (manipulator/body) is split off into `mount`. `copies` is
+ * how many of this item the whole SQUAD fields: an item listed in a squad-wide
+ * block is carried by every trooper (copies = trooper count), while an item in
+ * a per-trooper block is a single mount (copies = 1).
+ */
+export interface BlkMount {
+  /** Item name exactly as written, tech prefix preserved, `:LOC` stripped. */
+  name: string;
+  /** Mount/manipulator code after the colon (e.g. "LA", "Body"), or "". */
+  mount: string;
+  /** How many the squad fields in total. */
+  copies: number;
+}
+
+/**
+ * A fully-parsed Battle Armor squad from a BLK file. Physical facts only — no
+ * derived game stats (mirrors how `Unit` relates to `OverrideCard`).
+ */
+export interface BattleArmorUnit {
+  kind: "battlearmor";
+  chassis: string;
+  model: string;
+  techBase: TechBase;
+  /** Squad size (number of suits/troopers). */
+  troopers: number;
+  weightClass: BAWeightClass;
+  /** Ground MP (BLK `cruiseMP`/`walkMP`). */
+  walkMP: number;
+  /** Jump / VTOL / UMU MP — the secondary movement mode, 0 if none. */
+  jumpMP: number;
+  /** Raw `motion_type` label (e.g. "Jump", "Leg", "VTOL"). */
+  motionType: string;
+  /** Armor points per trooper (BLK `armor`). */
+  armorPerTrooper: number;
+  /** Chassis type: "biped" | "quad". */
+  chassisType: string;
+  /** Weapon + equipment mounts, squad totals folded into `copies`. */
+  mounts: BlkMount[];
+  sourceFile?: string;
+}
+
+/**
+ * Converted Override record-card statistics for a Battle Armor squad.
+ *
+ * The armor/movement/TMM math MIRRORS the 'Mech rules (same divisors and TMM
+ * table) as a best-effort starting point — every such field is marked with a
+ * TODO and should be validated against the DFA generator's BA output.
+ */
+export interface BattleArmorCard {
+  kind: "battlearmor";
+  /** "Chassis Model". */
+  name: string;
+  chassis: string;
+  model: string;
+  techBase: TechBase;
+  troopers: number;
+  weightClass: BAWeightClass;
+  /** Printed move string, e.g. "1/3 (J)" (ground/jump). */
+  move: string;
+  walkMP: number;
+  jumpMP: number;
+  motionType: string;
+  /** Base TMM (mirrored from the 'Mech run-MP table — best-effort). */
+  tmm: number;
+  /** Base TMM + jump bonus (meaningful only when jumpMP > 0). */
+  tmmJump: number;
+  /** Raw armor points per trooper, straight from the BLK. */
+  armorPerTrooper: number;
+  /** Override armor per trooper (best-effort: mirrors 'Mech arm/leg = TW/3). */
+  armor: number;
+  /** Squad weapons (per-trooper loadout replicated across the squad). */
+  weapons: CardWeapon[];
+  /** Weapons auto-grouped into TICs (what the squad fires). */
+  tics: Tic[];
+  /** Notable equipment with mounts (ammo, electronics). */
+  equipment: CardEquipment[];
+  /** Whether the squad can make anti-'Mech attacks (best-effort). */
+  antiMech: boolean;
+  warnings: string[];
+  sourceFile?: string;
+}
+
 /** Converted Override record-card statistics for one unit. */
 export interface OverrideCard {
   /** "Chassis Model". */

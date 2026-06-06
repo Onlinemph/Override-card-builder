@@ -110,9 +110,13 @@ export function lookupTmm(runMP: number): number {
  */
 export function normalizeWeaponName(raw: string): string {
   let s = raw.trim();
+  s = s.replace(/\s*\([^)]*\)/g, ""); // drop qualifiers like "(OS)", "(I-OS)", "(Clan)"
   s = s.replace(/^\d+\s+/, ""); // drop leading count
   s = s.replace(/^(IS|CL)(?=[A-Z])/, ""); // drop attached tech prefix
-  // Split camelCase and letter/digit boundaries: "MediumLaser" -> "Medium Laser".
+  // Split an acronym run from a following Capitalized word ("ERSmall" -> "ER
+  // Small"), then camelCase and letter/digit boundaries ("MediumLaser" ->
+  // "Medium Laser"). The first handles BLK's glued names (e.g. "CLERSmallLaser").
+  s = s.replace(/([A-Z])([A-Z][a-z])/g, "$1 $2");
   s = s.replace(/([a-z])([A-Z])/g, "$1 $2").replace(/([A-Za-z])(\d)/g, "$1 $2");
   s = s.toLowerCase().replace(/\s+/g, " ").trim();
   s = s.replace(/^(is|cl|clan)\s+/, ""); // drop spaced tech prefix
@@ -357,7 +361,13 @@ function meleeRange(tnMod: number): RangeBrackets {
   return { pb: tnMod, s: null, m: null, l: null, x: null };
 }
 
-function convertWeapon(w: Weapon, techBase: TechBase, mass: number): CardWeapon {
+/**
+ * Convert one parsed `Weapon` into a `CardWeapon` (damage profile + range
+ * brackets). Exported so non-'Mech converters (e.g. Battle Armor) can reuse the
+ * identical weapon engine. `mass` is only consulted for tonnage-scaled physical
+ * melee weapons; pass 0 when it does not apply.
+ */
+export function convertWeapon(w: Weapon, techBase: TechBase, mass: number): CardWeapon {
   const key = normalizeWeaponName(w.name);
 
   // Physical melee weapons (Hatchet/Sword/Mace/Claws): damage from tonnage, not

@@ -2,8 +2,9 @@
 /**
  * mtf2override CLI — the Node I/O wrapper around the pure core.
  *
- * This is the ONLY layer allowed to touch the filesystem. It reads .mtf files,
- * calls core (parse -> convert), and writes JSON / CSV / a stdout summary.
+ * This is the ONLY layer allowed to touch the filesystem. It reads .mtf
+ * (BattleMech) and .blk (Battle Armor) files, calls core (parse -> convert),
+ * and writes JSON / CSV / a stdout summary.
  *
  * Usage:
  *   mtf2override <file-or-dir> [<file-or-dir> ...] [options]
@@ -14,15 +15,18 @@
  *   --no-json     Skip per-unit JSON output (summary/CSV only).
  *   -h, --help    Show this help.
  *
- * Inputs may be individual .mtf files or directories (scanned non-recursively
- * for *.mtf). Exits non-zero if any file fails to parse/convert.
+ * Inputs may be individual .mtf/.blk files or directories (scanned
+ * non-recursively for them). Exits non-zero if any file fails to parse/convert.
  */
 
 import { readdirSync, readFileSync, statSync, writeFileSync, mkdirSync } from "node:fs";
 import { basename, extname, join, resolve } from "node:path";
 
-import { convertUnit, parseMtf, ParseError } from "../core/index.js";
-import type { OverrideCard } from "../core/index.js";
+import { convertAny, ParseError } from "../core/index.js";
+import type { BattleArmorCard, OverrideCard } from "../core/index.js";
+
+/** Input file extensions the tool understands. */
+const SUPPORTED_EXTS = new Set([".mtf", ".blk"]);
 
 interface CliOptions {
   inputs: string[];
@@ -34,7 +38,8 @@ interface CliOptions {
 function printHelp(): void {
   process.stdout.write(
     [
-      "mtf2override — convert MegaMek .mtf files to BattleTech: Override stats",
+      "mtf2override — convert MegaMek .mtf / .blk files to BattleTech: Override stats",
+      "  (.mtf = BattleMechs; .blk = Battle Armor, with more unit types to come)",
       "",
       "Usage:",
       "  mtf2override <file-or-dir> [more ...] [options]",
@@ -85,8 +90,8 @@ function parseArgs(argv: string[]): CliOptions {
   return opts;
 }
 
-/** Expand inputs (files or directories) into a flat list of .mtf file paths. */
-function collectMtfFiles(inputs: string[]): string[] {
+/** Expand inputs (files or directories) into a flat list of .mtf/.blk file paths. */
+function collectInputFiles(inputs: string[]): string[] {
   const files: string[] = [];
   for (const input of inputs) {
     const path = resolve(input);
@@ -99,19 +104,19 @@ function collectMtfFiles(inputs: string[]): string[] {
     }
     if (st.isDirectory()) {
       for (const entry of readdirSync(path)) {
-        if (extname(entry).toLowerCase() === ".mtf") files.push(join(path, entry));
+        if (SUPPORTED_EXTS.has(extname(entry).toLowerCase())) files.push(join(path, entry));
       }
-    } else if (extname(path).toLowerCase() === ".mtf") {
+    } else if (SUPPORTED_EXTS.has(extname(path).toLowerCase())) {
       files.push(path);
     } else {
-      process.stderr.write(`warning: skipping non-.mtf file: ${input}\n`);
+      process.stderr.write(`warning: skipping unsupported file (not .mtf/.blk): ${input}\n`);
     }
   }
   return files;
 }
 
 /** Filesystem-safe output name for a card's JSON file. */
-function jsonFileName(card: OverrideCard): string {
+function jsonFileName(card: { chassis: string; model: string }): string {
   const base = `${card.chassis}_${card.model}`.replace(/[^A-Za-z0-9._-]+/g, "_");
   return `${base}.override.json`;
 }
@@ -145,6 +150,34 @@ function printSummary(card: OverrideCard): void {
     for (const e of card.equipment) {
       const qty = e.count > 1 ? ` x${e.count}` : "";
       lines.push(`    - ${e.label} @ ${e.location}${qty}`);
+    }
+  }
+  for (const warn of card.warnings) lines.push(`  ! ${warn}`);
+  process.stdout.write(lines.join("\n") + "\n\n");
+}
+
+/** Print a Battle Armor card summary. Armor/TMM are mirrored from 'Mech rules. */
+function printBASummary(card: BattleArmorCard): void {
+  const lines: string[] = [];
+  lines.push(`${card.name}  (Battle Armor, ${card.weightClass}, ${card.techBase})`);
+  lines.push(
+    `  Troopers ${card.troopers}   Move ${card.move}   TMM ${card.tmm} (jump ${card.tmmJump})` +
+      `   Anti-'Mech: ${card.antiMech ? "yes" : "no"}`,
+  );
+  lines.push(`  Armor/trooper ${card.armor} (raw ${card.armorPerTrooper})  [mirrored from 'Mech rules]`);
+  if (card.tics.length > 0) {
+    lines.push("  TICs (squad firepower):");
+    for (const t of card.tics) {
+      const flag = t.weapons.some((w) => w.unknown) ? "  [!] unknown weapon" : "";
+      const rng = t.rangeText ? ` [${t.rangeText}]` : "";
+      lines.push(`    - ${t.label}: dmg ${t.damageText}${rng}${flag}`);
+    }
+  }
+  if (card.equipment.length > 0) {
+    lines.push("  Equipment:");
+    for (const e of card.equipment) {
+      const qty = e.count > 1 ? ` x${e.count}` : "";
+      lines.push(`    - ${e.label}${qty}`);
     }
   }
   for (const warn of card.warnings) lines.push(`  ! ${warn}`);
@@ -227,30 +260,35 @@ function main(): void {
     process.exit(opts.inputs.length === 0 ? 2 : 0);
   }
 
-  const files = collectMtfFiles(opts.inputs);
+  const files = collectInputFiles(opts.inputs);
   if (files.length === 0) {
-    process.stderr.write("error: no .mtf files found in the given inputs\n");
+    process.stderr.write("error: no .mtf/.blk files found in the given inputs\n");
     process.exit(2);
   }
 
   if (opts.json || opts.csv) mkdirSync(opts.outDir, { recursive: true });
 
-  const cards: OverrideCard[] = [];
+  const cards: OverrideCard[] = []; // 'Mech cards only (the CSV is 'Mech-shaped)
+  let converted = 0;
   let failures = 0;
 
   for (const file of files) {
     try {
       const text = readFileSync(file, "utf8");
-      const unit = parseMtf(text, basename(file));
-      unit.sourceFile = file;
-      const card = convertUnit(unit);
-      cards.push(card);
+      const result = convertAny(text, basename(file));
+      result.card.sourceFile = file;
 
       if (opts.json) {
-        const outPath = join(opts.outDir, jsonFileName(card));
-        writeFileSync(outPath, JSON.stringify(card, null, 2) + "\n", "utf8");
+        const outPath = join(opts.outDir, jsonFileName(result.card));
+        writeFileSync(outPath, JSON.stringify(result.card, null, 2) + "\n", "utf8");
       }
-      printSummary(card);
+      converted++;
+      if (result.kind === "battlearmor") {
+        printBASummary(result.card);
+      } else {
+        cards.push(result.card);
+        printSummary(result.card);
+      }
     } catch (err) {
       failures++;
       if (err instanceof ParseError) {
@@ -269,7 +307,7 @@ function main(): void {
   }
 
   process.stdout.write(
-    `Done: ${cards.length} converted, ${failures} failed${opts.json ? `, JSON in ${opts.outDir}` : ""}.\n`,
+    `Done: ${converted} converted, ${failures} failed${opts.json ? `, JSON in ${opts.outDir}` : ""}.\n`,
   );
   if (failures > 0) process.exit(1);
 }

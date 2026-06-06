@@ -657,6 +657,55 @@ export const TORSO_STRUCTURE_BY_TONNAGE: Readonly<Record<number, number>> = {
 export const RUN_MP_MULTIPLIER = 1.5;
 
 // ---------------------------------------------------------------------------
+// Battle Armor (BLK). Reference data for the BA parser/converter. BA armor and
+// movement currently MIRROR the 'Mech rules (ARM_LEG_ARMOR_DIVISOR, TMM_BY_RUN)
+// as a best-effort starting point — see battlearmor.ts for the TODO markers.
+// ---------------------------------------------------------------------------
+
+/** BLK `<weightclass>` index (0..4) -> Battle Armor weight class label. */
+export const BA_WEIGHT_CLASSES: ReadonlyArray<import("./types.js").BAWeightClass> = [
+  "PA(L)",
+  "Light",
+  "Medium",
+  "Heavy",
+  "Assault",
+] as const;
+
+/**
+ * Substrings that mark a BLK equipment line as a WEAPON (so it is surfaced on
+ * the card even when it is not yet in the TW damage table — it then shows as an
+ * unknown weapon with a warning rather than being silently dropped as gear).
+ * Matched case-insensitively against the normalized item name. Lines that match
+ * none of these (manipulators, jump boosters, searchlights, myomer, etc.) are
+ * treated as equipment/ammo or ignored.
+ */
+export const WEAPON_HINTS: ReadonlyArray<string> = [
+  "laser",
+  "ppc",
+  "srm",
+  "lrm",
+  "mrm",
+  "gauss",
+  "flamer",
+  "mortar",
+  "cannon",
+  "rifle",
+  "machine gun",
+  "mg",
+  "launcher",
+  "plasma",
+  "hag",
+  "ac/",
+  "autocannon",
+  "narc",
+  "grenade",
+  "bolt",
+  "blazer",
+  "needler",
+  "magshot",
+] as const;
+
+// ---------------------------------------------------------------------------
 // MTF parsing maps. Normalize the many spellings of locations and tech base.
 // ---------------------------------------------------------------------------
 
