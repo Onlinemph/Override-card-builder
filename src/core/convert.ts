@@ -153,6 +153,21 @@ export function lookupWeaponDamage(
   return { twDamage: tw, unknown: false };
 }
 
+/**
+ * Infer the tech base for a single weapon from its name prefix, falling back
+ * to the unit-level tech base when no prefix is present. This lets mixed-tech
+ * mechs (TechBase: Mixed) use the correct damage/range/heat table per weapon:
+ *   "CLERLargeLaser"  -> Clan, regardless of unit tech base
+ *   "ISMediumLaser"   -> IS,   regardless of unit tech base
+ *   "Medium Laser"    -> unitTechBase (no prefix)
+ */
+export function weaponTechBase(rawName: string, unitTechBase: TechBase): TechBase {
+  const t = rawName.trim();
+  if (/^CL(?=[A-Z])/i.test(t) || /^(Clan)\s/i.test(t)) return "Clan";
+  if (/^IS(?=[A-Z])/i.test(t) || /^(Inner Sphere|IS)\s/i.test(t)) return "IS";
+  return unitTechBase;
+}
+
 /** Look up TW heat for a weapon name (0 when not in the table). */
 export function lookupWeaponHeat(name: string, techBase: TechBase = "IS"): number {
   const key = normalizeWeaponName(name);
@@ -418,6 +433,9 @@ function meleeRange(tnMod: number): RangeBrackets {
  * melee weapons; pass 0 when it does not apply.
  */
 export function convertWeapon(w: Weapon, techBase: TechBase, mass: number): CardWeapon {
+  // Per-weapon tech base: explicit IS/CL prefix beats the unit-level value.
+  // This makes mixed-tech mechs work correctly without any MTF changes.
+  techBase = weaponTechBase(w.name, techBase);
   const key = normalizeWeaponName(w.name);
 
   // Physical melee weapons (Hatchet/Sword/Mace/Claws): damage from tonnage, not
