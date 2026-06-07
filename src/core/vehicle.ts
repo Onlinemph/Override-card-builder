@@ -15,7 +15,7 @@ import {
   IMPORTANT_EQUIPMENT,
   MOTION_TYPE_LETTER,
   VEHICLE_ARMOR_DIVISOR,
-  VEHICLE_STRUCTURE_DIVISOR,
+  vehicleStructure,
   WEAPON_HINTS,
 } from "./constants.js";
 import {
@@ -159,9 +159,8 @@ export function convertVehicle(unit: VehicleUnit): VehicleCard {
     ...(unit.hasTurret ? { turret: convertArmor(a.turret ?? 0) } : {}),
   };
 
-  // Internal structure per facing (uniform): ~ (tonnage/10 raw IS) / 3.
-  // TODO(vehicle-rules): use the real combat-vehicle IS table once verified.
-  const structure = Math.max(1, roundNearest(unit.tonnage / VEHICLE_STRUCTURE_DIVISOR));
+  // Internal structure per facing (uniform), by tonnage bracket (verified vs DFA).
+  const structure = vehicleStructure(unit.tonnage);
 
   // TMM mirrors the 'Mech run table on flank MP; card prints `tmm / tmm+1`.
   const tmm = lookupTmm(unit.flankMP);

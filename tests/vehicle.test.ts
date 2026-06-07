@@ -51,9 +51,9 @@ describe("convertVehicle", () => {
   it("mirrors movement (with motion letter), TMM, and per-facing armor", () => {
     expect(c.move).toBe("4 / 6t"); // tracked
     expect(c.tmm).toBe(1); // flank 6 -> base TMM 1 (card prints 1 / 2)
-    // armor = TW / 5, round nearest (front 40 -> 8, rear 20 -> 4, turret 35 -> 7).
-    expect(c.armor).toEqual({ front: 8, right: 6, left: 6, rear: 4, turret: 7 });
-    expect(c.structure).toBe(2); // round(60 / 30), best-effort
+    // armor = TW / 4, round nearest (front 40 -> 10, rear 20 -> 5, turret 35 -> 9).
+    expect(c.armor).toEqual({ front: 10, right: 8, left: 8, rear: 5, turret: 9 });
+    expect(c.structure).toBe(2); // 60t -> 2 (45–70t bracket)
   });
 
   it("groups identical weapons WITHIN a facing only, tagged by facing code", () => {

@@ -115,18 +115,23 @@ export const ARM_LEG_ARMOR_DIVISOR = 3;
 export const NONMECH_ARMOR_DIVISOR = 4;
 
 /**
- * Combat-vehicle armor per facing: TW / 5, round nearest, min 1. Vehicles carry
- * far more armor than a 'Mech limb, so the Override card uses a larger divisor
- * than the /3 arm/leg rule. CONFIRM vs DFA: Manticore front 42 -> 8.
+ * Combat-vehicle armor per facing: TW / 4, round nearest, min 1. VERIFIED vs DFA
+ * Manticore: front 42 -> 11 (42/4 = 10.5 -> 11), turret 42 -> 11.
  */
-export const VEHICLE_ARMOR_DIVISOR = 5;
+export const VEHICLE_ARMOR_DIVISOR = 4;
 
 /**
- * Combat-vehicle internal structure per facing (uniform): ~ (tonnage/10 raw IS)
- * / 3, i.e. tonnage / 30, round nearest, min 1. CONFIRM vs DFA: Manticore 60t
- * -> 2 per facing.
+ * Combat-vehicle internal structure per facing, by tonnage bracket (uniform
+ * across facings). VERIFIED vs DFA: 60t -> 2.
+ *   5–40t  -> 1
+ *   45–70t -> 2
+ *   75t+   -> 3
  */
-export const VEHICLE_STRUCTURE_DIVISOR = 30;
+export function vehicleStructure(tonnage: number): number {
+  if (tonnage <= 40) return 1;
+  if (tonnage <= 70) return 2;
+  return 3;
+}
 
 /**
  * BLK `motion_type` -> the single-letter suffix the Override card appends to the
