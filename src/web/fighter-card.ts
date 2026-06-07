@@ -34,26 +34,34 @@ function hexPips(n: number, cls: string): string {
   return `<span class="hexrow">${`<i class="hex ${cls}"></i>`.repeat(n)}</span>`;
 }
 
-/** One facing box: label + hit numbers, armor hexes over structure hexes. */
-function facingBox(area: string, label: string, hits: string, armor: number, structure: number): string {
+/** One facing box: label + hit numbers, armor hexes (fighters track SI globally). */
+function facingBox(area: string, label: string, hits: string, armor: number): string {
   const hitTxt = hits ? ` <span class="loc-hits">(${esc(hits)})</span>` : "";
   return `<div class="vloc ${area}">
     <div class="vloc-name">${esc(label)}${hitTxt}</div>
-    <div class="vloc-pips">${hexPips(armor, "armor")}${hexPips(structure, "struct")}</div>
+    <div class="vloc-pips">${hexPips(armor, "armor")}</div>
   </div>`;
 }
 
-/** Facing armor diagram: Nose on top, wings flanking the center, Aft at bottom. */
+/**
+ * Facing armor diagram: Nose on top, wings flanking the center, Aft at bottom.
+ * Unlike 'Mechs/vehicles, a fighter has a SINGLE Structural Integrity track (not
+ * per-location), shown once below the armor facings.
+ */
 function armorDiagram(card: FighterCard): string {
   const a = card.armor;
-  const s = card.structure;
   return `<div class="fdoll">
-    ${facingBox("fnose", "Nose", "6,7,8", a.nose, s)}
-    ${facingBox("flwing", "Left Wing", "9,10,11", a.leftWing, s)}
-    ${facingBox("frwing", "Right Wing", "3,4,5", a.rightWing, s)}
-    ${facingBox("faft", "Aft", "2,12", a.aft, s)}
+    ${facingBox("fnose", "Nose", "6,7,8", a.nose)}
+    ${facingBox("flwing", "Left Wing", "9,10,11", a.leftWing)}
+    ${facingBox("frwing", "Right Wing", "3,4,5", a.rightWing)}
+    ${facingBox("faft", "Aft", "2,12", a.aft)}
   </div>
-  <p class="mdoll-legend"><i class="hex armor"></i> armor &nbsp; <i class="hex struct"></i> structure (SI)</p>`;
+  <div class="fsi">
+    <span class="fsi-label">Structural Integrity</span>
+    <span class="fsi-pips">${hexPips(card.structure, "struct")}</span>
+    <span class="fsi-val">${esc(card.structure)}</span>
+  </div>
+  <p class="mdoll-legend"><i class="hex armor"></i> armor &nbsp; <i class="hex struct"></i> SI (airframe-wide)</p>`;
 }
 
 /** The weapons table: one row per facing TIC. */

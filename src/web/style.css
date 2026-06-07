@@ -848,3 +848,17 @@ footer {
 .flwing { grid-area: lwing; }
 .frwing { grid-area: rwing; }
 .faft { grid-area: aft; }
+/* Single airframe-wide Structural Integrity track (not per-location). */
+.fsi {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  padding: 0.35rem 0.5rem;
+  background: #e3e3dd;
+  border: 1.5px solid #9a9a92;
+  border-radius: 8px;
+}
+.fsi-label { font-weight: 700; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.02em; color: #15171c; }
+.fsi-pips { display: flex; flex-wrap: wrap; gap: 2px; }
+.fsi-val { margin-left: auto; font-weight: 700; color: #15171c; }

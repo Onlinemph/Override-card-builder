@@ -646,9 +646,9 @@ export interface FighterCard {
   maxThrust: number;
   /** Base TMM (mirrored from the 'Mech run table on max thrust); card prints `tmm / tmm+1`. */
   tmm: number;
-  /** Per-facing Override armor (best-effort: TW / 4). */
+  /** Per-facing Override armor (TW / 4). */
   armor: FighterCardArmor;
-  /** Structural Integrity per facing (uniform, best-effort from tonnage). */
+  /** Single airframe-wide Structural Integrity (best-effort from tonnage). */
   structure: number;
   weapons: VehicleWeaponRow[];
   equipment: VehicleEquipment[];

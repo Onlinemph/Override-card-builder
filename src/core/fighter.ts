@@ -154,7 +154,7 @@ export function convertFighter(unit: FighterUnit): FighterCard {
     aft: convertArmor(a.aft),
   };
 
-  // Structural Integrity per facing (uniform), by tonnage bracket (best-effort).
+  // Structural Integrity: a single airframe-wide value, by tonnage bracket (best-effort).
   const structure = vehicleStructure(unit.tonnage);
 
   // TMM mirrors the 'Mech run table on max thrust; card prints `tmm / tmm+1`.
