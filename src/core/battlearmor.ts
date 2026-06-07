@@ -173,6 +173,9 @@ export function convertBattleArmor(unit: BattleArmorUnit): BattleArmorCard {
     tmmJump: tmm + TMM_JUMP_BONUS,
     armorPerTrooper: unit.armorPerTrooper,
     armor,
+    // Each suit can take one final hit once its armor is gone (the trooper's
+    // single structure point) — drawn as the red "health" hex on the card.
+    health: 1,
     weapons,
     tics: groupIntoTics(weapons),
     firepower: buildFirepower(weapons, unit.troopers, unit.techBase),

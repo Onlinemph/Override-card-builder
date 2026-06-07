@@ -687,19 +687,32 @@ footer {
 }
 .ba-n { font-weight: 800; font-size: 1.15rem; width: 1.1em; text-align: center; }
 .ba-fig { width: 22px; height: 29px; fill: #7a7f88; flex: 0 0 auto; }
+/* armor (dark) hexes then the red "health" hex — the suit's final hit. */
+.ba-armor-pips { display: inline-flex; align-items: center; gap: 3px; }
 .ba-armor-pips .pips { display: inline-flex; margin: 0; gap: 3px; flex-wrap: nowrap; }
-.ba-sheet .pip.armor {
+.ba-sheet .pip.armor,
+.ba-sheet .pip.health {
   width: 12px;
   height: 12px;
-  background: #15171c;
   border: none;
   border-radius: 0;
   clip-path: polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%);
 }
-.ba-sheet .ba-armor-pips .pip.armor:first-child { background: #c0392b; }
+.ba-sheet .pip.armor { background: #15171c; }
+.ba-sheet .pip.health { background: #c0392b; }
 .ba-sheet .ba-ai-head,
 .ba-sheet .ba-ai { border-left: 2px solid #15171c; }
-.ba-note { font-size: 0.78rem; color: #6b7079; padding: 0.4rem 1rem 0.7rem; margin: 0; }
+.ba-legend {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  color: #15171c;
+  padding: 0.5rem 1rem 0;
+  margin: 0;
+}
+.ba-hl-red { color: #c0392b; font-weight: 600; }
+.ba-note { font-size: 0.78rem; color: #6b7079; padding: 0.3rem 1rem 0.7rem; margin: 0; }
 .ba-sheet .warnings { padding: 0 1rem 0.8rem 2rem; }
 
 @media (max-width: 560px) {

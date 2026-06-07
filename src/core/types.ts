@@ -417,6 +417,12 @@ export interface BattleArmorCard {
   armorPerTrooper: number;
   /** Override armor per trooper (best-effort: mirrors 'Mech arm/leg = TW/3). */
   armor: number;
+  /**
+   * Per-trooper "health": the final hit a suit can take once its armor is gone
+   * (the trooper's single internal/structure point). Shown as a red hex after
+   * the armor hexes, so an Elemental reads 3 armor + 1 health = 4 total.
+   */
+  health: number;
   /** Squad weapons (per-trooper loadout replicated across the squad). */
   weapons: CardWeapon[];
   /** Weapons auto-grouped into TICs (kept for reference; BA cards show `firepower`). */

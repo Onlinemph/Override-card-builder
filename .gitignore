@@ -11,4 +11,5 @@ ba-card-preview.html
 
 # Unit browser (generated at build time from public/units.zip)
 public/units/
+public/units-index.json
 src/generated/

@@ -3,16 +3,19 @@
  *
  * Pre-build step: extracts every .mtf/.blk file from public/units.zip into
  * public/units/ (served statically by Vite / gh-pages) and writes a compact
- * JSON search index to src/generated/units-index.json (bundled by Vite).
+ * JSON search index to public/units-index.json (also served statically).
  *
  * Run:  node scripts/extract-units.mjs
  * Also called automatically as part of `build:web`.
  *
  * Output:
  *   public/units/<original path from zip>   — individual unit files
- *   src/generated/units-index.json          — [{name, path, category, era}]
+ *   public/units-index.json                 — [{name, path, category, era}]
  *
- * Both output locations are gitignored; they are regenerated each build.
+ * Both output locations are gitignored; they are regenerated each build. The
+ * index is a STATIC asset (not a bundled import) so it survives the single-file
+ * inlining step (scripts/inline.mjs deletes the hashed assets/ dir) and keeps a
+ * stable URL across deploys — the browser fetches it from ./units-index.json.
  */
 
 import { execSync } from "node:child_process";
@@ -23,8 +26,7 @@ import { fileURLToPath } from "node:url";
 const ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 const ZIP = join(ROOT, "public", "units.zip");
 const OUT_DIR = join(ROOT, "public", "units");
-const INDEX_DIR = join(ROOT, "src", "generated");
-const INDEX_FILE = join(INDEX_DIR, "units-index.json");
+const INDEX_FILE = join(ROOT, "public", "units-index.json");
 
 if (!existsSync(ZIP)) {
   console.error(`units.zip not found at ${ZIP}`);
@@ -37,7 +39,6 @@ if (existsSync(OUT_DIR)) {
   rmSync(OUT_DIR, { recursive: true, force: true });
 }
 mkdirSync(OUT_DIR, { recursive: true });
-mkdirSync(INDEX_DIR, { recursive: true });
 
 console.log("Extracting units.zip…");
 // -q quiet, -n never overwrite (shouldn't matter after clean), extract into OUT_DIR

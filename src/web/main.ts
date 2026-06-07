@@ -10,17 +10,20 @@ import { buildTic, convertAny, isLegalTic, ParseError } from "../core/index.js";
 import { renderBACard } from "./ba-card.js";
 
 // ---------------------------------------------------------------------------
-// Unit browser — powered by the pre-built index (src/generated/units-index.json)
-// Vite bundles the JSON at build time; the actual unit files are served from
-// /units/<path> (public/units/, extracted from units.zip by extract-units.mjs).
+// Unit browser — powered by the pre-built index served as a STATIC asset at
+// ./units-index.json (public/units-index.json, written by extract-units.mjs).
+// The unit files themselves are served from ./units/<path>. The index is
+// fetched (not bundled/imported) so it keeps a stable URL and survives the
+// single-file inlining step, which deletes the hashed assets/ directory.
 // ---------------------------------------------------------------------------
 interface UnitEntry { name: string; path: string; category: string; era: string; }
 
-// Dynamic import so the page loads even when the index hasn't been generated yet.
+// Fetch the static index; returns null (browser stays hidden) if not generated.
 async function loadUnitsIndex(): Promise<UnitEntry[] | null> {
   try {
-    const mod = await import("../generated/units-index.json");
-    return mod.default as UnitEntry[];
+    const resp = await fetch("./units-index.json");
+    if (!resp.ok) return null;
+    return (await resp.json()) as UnitEntry[];
   } catch {
     return null;
   }
