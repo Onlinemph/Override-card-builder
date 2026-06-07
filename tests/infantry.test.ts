@@ -77,18 +77,27 @@ describe("infantry platoon damage (clustering + per-trooper keys)", () => {
     expect(clusterDamageInto2s(7)).toEqual([2, 2, 2, 1]);
   });
 
-  it("canonicalizes infantry weapon names for the per-trooper table", () => {
+  it("canonicalizes infantry weapon names, keeping qualifiers distinct", () => {
     expect(infantryWeaponKey("Auto-Rifle")).toBe("auto rifle");
     expect(infantryWeaponKey("Auto Rifle")).toBe("auto rifle");
     expect(infantryWeaponKey("InfantryAssaultRifle")).toBe("assault rifle");
-    expect(infantryWeaponKey("SRM Launcher (Hvy, One-Shot)")).toBe("srm launcher");
-    expect(infantryWeaponKey("Machine Gun (Portable)")).toBe("machine gun");
+    expect(infantryWeaponKey("SRM Launcher (Hvy, One-Shot)")).toBe("srm launcher hvy one shot");
+    // Portable vs Support stay distinct (different per-trooper damage).
+    expect(infantryWeaponKey("Machine Gun (Portable)")).toBe("machine gun portable");
+    expect(infantryWeaponKey("Machine Gun (Support)")).toBe("machine gun support");
   });
 
-  it("leaves damage unscored while the primary weapon has no per-trooper value", () => {
-    // INFANTRY_WEAPON_DAMAGE is empty until real values are supplied, so the
-    // fixture's primary (Assault Rifle) is not yet scored.
+  it("scores platoon damage from the per-trooper table (primary x troopers / 3)", () => {
+    // Fixture: 28 troopers, primary InfantryAssaultRifle (0.52/trooper); secondary
+    // "SRM Launcher" has no per-trooper value, so only the primary counts.
+    // 28 x 0.52 = 14.56 -> /3 = 4.85 -> round up 5 -> [2,2,1].
     const c = convertInfantry(parseBlkInfantry(load("Test Infantry INF-1.blk"), "INF-1.blk"));
+    expect(c.damage).toEqual([2, 2, 1]);
+  });
+
+  it("leaves damage unscored when the primary weapon is unknown", () => {
+    const blk = load("Test Infantry INF-1.blk").replace("InfantryAssaultRifle", "Frobnicator 9000");
+    const c = convertInfantry(parseBlkInfantry(blk, "INF-1.blk"));
     expect(c.damage).toEqual([]);
   });
 });

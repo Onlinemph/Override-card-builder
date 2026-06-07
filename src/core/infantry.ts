@@ -63,16 +63,21 @@ export function cleanInfantryWeapon(raw: string): string {
 
 /**
  * Canonical key for an infantry small arm, for the per-trooper damage table:
- * drop parenthetical qualifiers ("(Inner Sphere)", "(Hvy, One-Shot)") and a
- * leading "Infantry" maker prefix, split camelCase, and lowercase.
+ * drop a leading "Infantry" maker prefix, split camelCase, and reduce every
+ * non-alphanumeric run (hyphens, parens, commas) to a single space. Parenthetical
+ * qualifiers are KEPT as words so variants stay distinct (Portable vs Support).
  *   "Auto-Rifle" / "Auto Rifle"     -> "auto rifle"
  *   "InfantryAssaultRifle"          -> "assault rifle"
- *   "SRM Launcher (Hvy, One-Shot)"  -> "srm launcher"
+ *   "Machine Gun (Portable)"        -> "machine gun portable"
+ *   "SRM Launcher (Hvy, One-Shot)"  -> "srm launcher hvy one shot"
  */
 export function infantryWeaponKey(raw: string): string {
-  let s = raw.trim().replace(/\([^)]*\)/g, " ").replace(/^infantry/i, "");
-  s = s.replace(/([a-z])([A-Z])/g, "$1 $2").replace(/([A-Za-z])(\d)/g, "$1 $2");
-  return s.toLowerCase().replace(/[^a-z0-9 ]+/g, " ").replace(/\s+/g, " ").trim();
+  let s = raw.trim().replace(/^infantry/i, "");
+  s = s
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/([A-Za-z])(\d)/g, "$1 $2")
+    .replace(/(\d)([A-Za-z])/g, "$1 $2");
+  return s.toLowerCase().replace(/[^a-z0-9]+/g, " ").replace(/\s+/g, " ").trim();
 }
 
 /**
@@ -99,11 +104,15 @@ export function clusterDamageInto2s(total: number): number[] {
 function platoonDamage(unit: InfantryUnit): number[] {
   const primary = INFANTRY_WEAPON_DAMAGE[infantryWeaponKey(unit.primaryWeapon)];
   if (primary === undefined) return [];
-  let totalTw = unit.troopers * primary;
+  // Each weapon's TW platoon damage = floor(carriers x per-trooper). Sum them,
+  // then divide by 3 (round up) for the Override scale.
+  let totalTw = Math.floor(unit.troopers * primary);
   const secondary = unit.secondaryWeapon
     ? INFANTRY_WEAPON_DAMAGE[infantryWeaponKey(unit.secondaryWeapon)]
     : undefined;
-  if (secondary !== undefined) totalTw += unit.secondaryPerSquad * unit.squadCount * secondary;
+  if (secondary !== undefined) {
+    totalTw += Math.floor(unit.secondaryPerSquad * unit.squadCount * secondary);
+  }
   return clusterDamageInto2s(roundUp(totalTw / WEAPON_DAMAGE_DIVISOR));
 }
 
