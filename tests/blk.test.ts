@@ -145,3 +145,45 @@ describe("convertAny dispatch", () => {
     expect(mech.card.name).toBe("Locust LCT-1V");
   });
 });
+
+describe("Battle Armor: anti-personnel weapons are ignored", () => {
+  const blk = `<UnitType>
+BattleArmor
+</UnitType>
+<Name>
+Test BA
+</Name>
+<type>
+Clan Level 2
+</type>
+<motion_type>
+Jump
+</motion_type>
+<Trooper Count>
+5
+</Trooper Count>
+<weightclass>
+3
+</weightclass>
+<armor>
+10
+</armor>
+<Squad Equipment>
+CLERSmallLaser:RA
+InfantryAssaultRifle:APM
+Infantry Auto Rifle:LA
+Laser Rifle (Mauser 960):APM
+</Squad Equipment>
+`;
+  const c = convertBattleArmor(parseBlkBattleArmor(blk, "test.blk"));
+
+  it("keeps the real weapon and drops the anti-personnel small arms", () => {
+    const labels = c.firepower.map((f) => f.label);
+    expect(labels.some((l) => /ER Small Laser|SLas/i.test(l))).toBe(true);
+    expect(labels.some((l) => /infantry|rifle|mauser/i.test(l))).toBe(false);
+  });
+
+  it("emits no unknown-weapon warning for the anti-personnel weapons", () => {
+    expect(c.warnings.join(" ")).not.toMatch(/[Ii]nfantry|[Mm]auser|[Rr]ifle/);
+  });
+});

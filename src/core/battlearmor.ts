@@ -48,6 +48,19 @@ function looksLikeWeapon(name: string): boolean {
   return WEAPON_HINTS.some((hint) => lower.includes(hint));
 }
 
+/**
+ * True for anti-personnel infantry small arms (infantry rifles, Mauser systems,
+ * or anything in the Anti-Personnel Mount). These do no meaningful damage to
+ * BattleTech targets — they're abstracted by the card's anti-infantry column —
+ * so the BA path ignores them entirely rather than listing them as weapons.
+ *
+ * @param name      the weapon name
+ * @param mountTag  the BLK `:LOC` mount tag ("RA", "APM", …)
+ */
+function isAntiPersonnel(name: string, mountTag: string): boolean {
+  return mountTag.toUpperCase() === "APM" || /infantry|mauser/i.test(name);
+}
+
 /** Expand a mount into `copies` identical names (the squad's total of that item). */
 function expand(name: string, copies: number): string[] {
   return Array.from({ length: Math.max(1, copies) }, () => name);
@@ -114,6 +127,9 @@ export function convertBattleArmor(unit: BattleArmorUnit): BattleArmorCard {
   const unknownWeapons = new Set<string>();
 
   for (const mount of unit.mounts) {
+    // Anti-personnel infantry small arms are flavor in BattleTech (abstracted by
+    // the anti-infantry column), so drop them entirely — no weapon, no warning.
+    if (isAntiPersonnel(mount.name, mount.mount)) continue;
     // Ammo and gear go through the equipment filter, never the weapon path —
     // even though an ammo line ("SRM 2 Ammo") contains a weapon-looking word.
     const isAmmo = /\bammo\b/i.test(mount.name);
