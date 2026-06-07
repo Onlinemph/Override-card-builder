@@ -867,3 +867,34 @@ describe("DFA card batch 4: ER Med Pulse, ATM-12, Plasma + heat round + aliases"
     expect(conv("ISLBXAC10").unknown).toBe(false);
   });
 });
+
+describe("DFA card batch 5: Arrow IV artillery + forged TSEMP", () => {
+  const conv = (name: string, tech: TechBase = "Clan") =>
+    convertWeapon({ name, location: "RA", rawLocation: "RA", rearMounted: false }, tech, 50);
+
+  it("Arrow IV -> 4+M1 (7) with no point-blank fire (–/+4/+4/+4/+4)", () => {
+    const c = conv("Arrow IV");
+    expect(c.damageText).toBe("4+M1 (7)");
+    expect(c.rangeText).toBe("– +4 +4 +4 +4");
+    expect(c.unknown).toBe(false);
+  });
+
+  it("canonicalizes Arrow IV spellings (ISArrowIVSystem, omnipod)", () => {
+    expect(normalizeWeaponName("ISArrowIVSystem")).toBe("arrow iv");
+    expect(conv("ISArrowIVSystem").damageText).toBe("4+M1 (7)");
+    expect(conv("CLArrowIV (omnipod)").damageText).toBe("4+M1 (7)");
+  });
+
+  it("TSEMP Cannon -> SPECIAL damage, AC/10 range, 2 heat to fire", () => {
+    const c = conv("TSEMP Cannon", "IS");
+    expect(c.damageText).toBe("SPECIAL");
+    expect(c.rangeText).toBe("+0 +0 +2 +4 –"); // like AC/10
+    expect(ticHeat({ weapons: [c] } as never)).toBe(2);
+    expect(c.unknown).toBe(false);
+  });
+
+  it("folds all TSEMP variants onto one profile", () => {
+    expect(normalizeWeaponName("TSEMP One-Shot")).toBe("tsemp cannon");
+    expect(conv("ISTSEMPCannon", "IS").damageText).toBe("SPECIAL");
+  });
+});

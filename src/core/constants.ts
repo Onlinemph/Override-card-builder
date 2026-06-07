@@ -446,6 +446,10 @@ export const WEAPON_RV_MISSILE: Readonly<Record<string, RangeVaryingMissileProfi
   "atm 6": { byRange: [2, 1, 0], mDice: 1, max: 5 },
   "atm 9": { byRange: [3, 1, 0], mDice: 2, max: 8 },
   "atm 12": { byRange: [5, 3, 1], mDice: 2, max: 11 }, // VERIFIED vs DFA card (cATM-12 -> 5|3|1+M2 (11))
+
+  // Arrow IV artillery: flat base across ranges, so byRange is uniform and the
+  // formatter collapses it to "4+M1 (7)". VERIFIED vs DFA card.
+  "arrow iv": { byRange: [4, 4, 4], mDice: 1, max: 7 },
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -621,6 +625,7 @@ export const WEAPON_RANGES: Readonly<Record<string, WeaponRange>> = {
   // --- Energy/ballistic: plasma + flamers (canonical) ---
   "plasma rifle": { min: 0, medium: 10, long: 15 }, // CONFIRM
   "plasma cannon": { min: 0, medium: 10, long: 15 }, // VERIFIED vs DFA card cPlasCannon: +0/+0/+2/+4/–
+  "tsemp cannon": { min: 0, medium: 10, long: 15 }, // forged: ranges like an AC/10
   "vehicle flamer": { min: 0, medium: 2, long: 3 }, // CONFIRM
   "er flamer": { min: 0, medium: 4, long: 5 }, // CONFIRM
 
@@ -787,6 +792,8 @@ export const WEAPON_HEAT: Readonly<Record<string, number>> = {
   "atm 6": 4,
   "atm 9": 6,
   "atm 12": 8,
+  "arrow iv": 10, // round(10/5) -> 2
+  "tsemp cannon": 10, // round(10/5) -> 2 (forged: 2 heat to fire)
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -818,6 +825,22 @@ export const WEAPON_BRACKET_OVERRIDE: Readonly<Record<string, import("./types.js
   // Variable-Speed Pulse Laser: -3 at PB/S, fading to +0 by medium. VERIFIED vs
   // DFA card vsMPLas: -3/-3/+0/–/–.
   "medium vsp laser": { pb: -3, s: -3, m: 0, l: null, x: null },
+  // Arrow IV artillery: no point-blank fire; flat +4 from short out. VERIFIED vs
+  // DFA card: –/+4/+4/+4/+4.
+  "arrow iv": { pb: null, s: 4, m: 4, l: 4, x: 4 },
+} as const;
+
+// ---------------------------------------------------------------------------
+// SPECIAL (non-numeric) damage. A few weapons have effects Override prints as a
+// literal label rather than a damage number — e.g. the TSEMP Cannon, which
+// disrupts systems instead of dealing damage. The damage cell shows this string
+// verbatim; range and heat still come from the normal tables. Keyed on the
+// normalized name. (TSEMP: forged fresh — not on an official Override card —
+// SPECIAL damage, AC/10 range, 2 heat to fire.)
+// ---------------------------------------------------------------------------
+
+export const WEAPON_SPECIAL_DAMAGE: Readonly<Record<string, string>> = {
+  "tsemp cannon": "SPECIAL",
 } as const;
 
 // ---------------------------------------------------------------------------

@@ -37,6 +37,7 @@ import {
   TIC_MAX_DAMAGE,
   WEAPON_BRACKET_OVERRIDE,
   WEAPON_HEAT_DAMAGE,
+  WEAPON_SPECIAL_DAMAGE,
   WEAPON_DAMAGE_BY_RANGE,
   WEAPON_RANGES,
   WEAPON_RANGES_CLAN,
@@ -143,6 +144,8 @@ export function normalizeWeaponName(raw: string): string {
   s = s.replace(/\b(srm|lrm|mml|atm|iatm)\s*-\s*(\d+)/g, "$1 $2"); // srm-6/mml-5/atm-6 -> "srm 6" etc.
   s = s.replace(/\bx[\s-]?pulse\b/g, "xpulse"); // "X-Pulse"/"X Pulse" -> "xpulse"
   s = s.replace(/re-?engineered/g, "reengineered"); // "Re-engineered" -> "reengineered"
+  s = s.replace(/^arrow ?iv\b.*/, "arrow iv"); // "Arrow IV System"/"ArrowIV" -> "arrow iv"
+  s = s.replace(/^tsemp\b.*/, "tsemp cannon"); // any TSEMP variant -> "tsemp cannon"
   s = s.replace(/\bimproved atm\b/g, "atm").replace(/\bi\s*atm\b/g, "atm"); // iATM shares the ATM stat block (streak)
   s = s.replace(/\bmg\b/g, "machine gun"); // MG abbreviation -> full name
   s = s.replace(/\bos\s*$/, "").trimEnd(); // trailing "os" (one-shot variant without parens)
@@ -190,6 +193,8 @@ export function lookupWeaponDamage(
   // them as unknown weapons.
   const rvm = WEAPON_RV_MISSILE[key];
   if (rvm) return { twDamage: rvm.max, unknown: false };
+  // SPECIAL-damage weapons (TSEMP) are known too, even with no numeric damage.
+  if (key in WEAPON_SPECIAL_DAMAGE) return { twDamage: 0, unknown: false };
   const tw = techBase === "Clan" ? (WEAPON_DAMAGE_CLAN[key] ?? WEAPON_DAMAGE[key]) : WEAPON_DAMAGE[key];
   if (tw === undefined) return { twDamage: 0, unknown: true };
   return { twDamage: tw, unknown: false };
@@ -310,7 +315,12 @@ export function computeDamageProfile(
 export function formatDamage(p: DamageProfile): string {
   const h = p.heatDamage ? `+H${p.heatDamage}` : ""; // plasma heat dice (e.g. "0+H2")
   if (p.kind === "missile") return `${p.base}+M${p.mDice} (${p.max})`;
-  if (p.kind === "rvmissile") return `${p.byRange.join("|")}+M${p.mDice} (${p.max})`;
+  if (p.kind === "rvmissile") {
+    // Collapse a flat profile (Arrow IV: 4|4|4) to a single base, "4+M1 (7)".
+    const flat = p.byRange.every((v) => v === p.byRange[0]);
+    const dmg = flat ? `${p.byRange[0]}` : p.byRange.join("|");
+    return `${dmg}+M${p.mDice} (${p.max})`;
+  }
   if (p.kind === "cluster" && p.cDice[0]! > 0) return `${p.base}+C${p.cDice.join("|")}`;
   if (p.kind === "variable") return `${p.byRange.join("|")}${h}`;
   return `${p.max}${h}`;
@@ -536,8 +546,30 @@ export function convertWeapon(w: Weapon, techBase: TechBase, mass: number): Card
     };
   }
 
-  // Range-varying missile racks (MML, ATM/iATM): per-bracket base + M dice, from
-  // the bespoke WEAPON_RV_MISSILE table rather than the single-TW formula.
+  // SPECIAL-damage weapons (TSEMP): the damage cell is a literal label; range
+  // and heat come from the normal tables (a bracket override may apply).
+  const special = WEAPON_SPECIAL_DAMAGE[key];
+  if (special) {
+    const profile: DamageProfile = { kind: "variable", base: 0, mDice: 0, cDice: [], byRange: [], max: 0 };
+    const rangeData = (wtech === "Clan" ? WEAPON_RANGES_CLAN[key] : undefined) ?? WEAPON_RANGES[key];
+    const range = WEAPON_BRACKET_OVERRIDE[key] ?? (rangeData ? computeRangeBrackets(rangeData) : null);
+    return {
+      name: w.name,
+      location: w.location,
+      rearMounted: w.rearMounted,
+      twDamage: 0,
+      damage: 0,
+      profile,
+      damageText: special,
+      range,
+      rangeText: range ? formatRangeBrackets(range) : null,
+      unknown: false,
+    };
+  }
+
+  // Range-varying missile racks (MML, ATM/iATM, Arrow IV): per-bracket base + M
+  // dice, from the bespoke WEAPON_RV_MISSILE table rather than the single-TW
+  // formula. A literal bracket override (Arrow IV) wins over the computed row.
   const rvm = WEAPON_RV_MISSILE[key];
   if (rvm) {
     const profile: DamageProfile = {
@@ -549,7 +581,7 @@ export function convertWeapon(w: Weapon, techBase: TechBase, mass: number): Card
       max: rvm.max,
     };
     const rangeData = (wtech === "Clan" ? WEAPON_RANGES_CLAN[key] : undefined) ?? WEAPON_RANGES[key];
-    const range = rangeData ? computeRangeBrackets(rangeData) : null;
+    const range = WEAPON_BRACKET_OVERRIDE[key] ?? (rangeData ? computeRangeBrackets(rangeData) : null);
     return {
       name: w.name,
       location: w.location,
