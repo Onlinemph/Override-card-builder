@@ -51,22 +51,30 @@ function facingBox(
 
 /**
  * Facing armor diagram: Front on top, sides flanking the turret, Rear at bottom.
- * VTOLs add the Rotor as a row above Front (and the grid grows a `has-rotor` row).
+ *
+ * Hit numbers follow the Override CV / VTOL location table (2d6): FR 6-8,
+ * RS 3-4, LS 10-11, TAC (through-armor crit) on 2 & 12. On ground vehicles the
+ * turret takes 5 & 9; on VTOLs those same rolls hit the Rotor instead (shown
+ * above Front, the grid growing a `has-rotor` row). The rear is struck only from
+ * the rear arc, so it carries no roll.
  */
 function armorDiagram(card: VehicleCard): string {
   const a = card.armor;
   const s = card.structure;
-  const rotor = card.hasRotor ? facingBox("vrotor", "Rotor", "6*", a.rotor, s) : "";
-  const cls = card.hasRotor ? "vdoll has-rotor" : "vdoll";
+  const vtol = card.hasRotor;
+  // 5 & 9 hit the rotor on a VTOL, otherwise the turret.
+  const rotor = vtol ? facingBox("vrotor", "Rotor", "5,9", a.rotor, s) : "";
+  const turretHits = vtol ? "" : "5,9";
+  const cls = vtol ? "vdoll has-rotor" : "vdoll";
   return `<div class="${cls}">
     ${rotor}
     ${facingBox("vfront", "Front", "6,7,8", a.front, s)}
     ${facingBox("vleft", "Left Side", "10,11", a.left, s)}
-    ${facingBox("vturret", "Turret", "5,9", a.turret, s)}
+    ${facingBox("vturret", "Turret", turretHits, a.turret, s)}
     ${facingBox("vright", "Right Side", "3,4", a.right, s)}
     ${facingBox("vrear", "Rear", "", a.rear, s)}
   </div>
-  <p class="mdoll-legend"><i class="hex armor"></i> armor &nbsp; <i class="hex struct"></i> structure</p>`;
+  <p class="mdoll-legend"><i class="hex armor"></i> armor &nbsp; <i class="hex struct"></i> structure &nbsp; · &nbsp; TAC (crit) on 2 &amp; 12</p>`;
 }
 
 /** The weapons table: one row per facing TIC (no Punch/Kick for vehicles). */
