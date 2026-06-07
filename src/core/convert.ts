@@ -46,6 +46,7 @@ import {
   WEAPON_DAMAGE,
   WEAPON_DAMAGE_CLAN,
   WEAPON_DAMAGE_DIVISOR,
+  WEAPON_HEAT,
 } from "./constants.js";
 import type {
   CardEquipment,
@@ -148,8 +149,10 @@ export function abbreviateWeapon(raw: string, techBase: TechBase = "IS"): string
   const key = normalizeWeaponName(raw);
   const mapped = WEAPON_ABBREV[key];
   if (mapped) {
-    const clanPrefixable = /^(srm|lrm|ssrm|ac\/|hag|gauss)/i.test(mapped);
-    return techBase === "Clan" && clanPrefixable ? `c${mapped}` : mapped;
+    // The printed card prefixes Clan ballistic/missile weapons with "c"
+    // (cSRM-2, cRAC/5) but leaves energy weapons bare (SLas, ER PPC).
+    const energy = /laser|ppc|flamer|plasma|tag|narc/.test(key);
+    return techBase === "Clan" && !energy ? `c${mapped}` : mapped;
   }
   // Fallback: strip qualifiers/tech prefixes and split glued names, keep caps.
   let s = raw.replace(/\([^)]*\)/g, "").replace(/\s*\[ba\]/gi, "").trim();
@@ -428,8 +431,28 @@ function meleeRange(tnMod: number): RangeBrackets {
  * identical weapon engine. `mass` is only consulted for tonnage-scaled physical
  * melee weapons; pass 0 when it does not apply.
  */
+/**
+ * Detect a weapon's own tech base from its name prefix ("CLERLargeLaser" /
+ * "Clan …" -> Clan; "ISMediumLaser" / "Inner Sphere …" -> IS), or null when the
+ * name carries no tech marker. Used so a Mixed-tech 'Mech converts each weapon
+ * on its own tech, rather than forcing the whole unit onto one table.
+ */
+/** Total Warfare heat for a weapon (single shot), 0 when not in WEAPON_HEAT. */
+export function lookupWeaponHeat(name: string): number {
+  return WEAPON_HEAT[normalizeWeaponName(name)] ?? 0;
+}
+
+export function detectWeaponTech(raw: string): TechBase | null {
+  const s = raw.trim();
+  if (/^cl(?=[A-Z])/.test(s) || /^(clan)\b/i.test(s)) return "Clan";
+  if (/^is(?=[A-Z])/.test(s) || /^(is|inner sphere)\b/i.test(s)) return "IS";
+  return null;
+}
+
 export function convertWeapon(w: Weapon, techBase: TechBase, mass: number): CardWeapon {
   const key = normalizeWeaponName(w.name);
+  // A weapon's own CL/IS prefix wins over the unit's nominal base (Mixed tech).
+  const wtech = detectWeaponTech(w.name) ?? techBase;
 
   // Physical melee weapons (Hatchet/Sword/Mace/Claws): damage from tonnage, not
   // a TW table; point-blank only, with a flat to-hit modifier (page 40).
@@ -452,7 +475,7 @@ export function convertWeapon(w: Weapon, techBase: TechBase, mass: number): Card
     };
   }
 
-  const { twDamage, unknown } = lookupWeaponDamage(w.name, techBase);
+  const { twDamage, unknown } = lookupWeaponDamage(w.name, wtech);
   // v1: one weapon per TIC, so each weapon is its own group.
   // TODO(TIC grouping): replace per-weapon conversion with grouped sums.
   const byRange = WEAPON_DAMAGE_BY_RANGE[key];
@@ -469,7 +492,7 @@ export function convertWeapon(w: Weapon, techBase: TechBase, mass: number): Card
   // Clan ranges diverge for some weapons (ER lasers, RACs) — consult the Clan
   // override table first for Clan units, then fall back to the shared table.
   const rangeData =
-    (techBase === "Clan" ? WEAPON_RANGES_CLAN[key] : undefined) ?? WEAPON_RANGES[key];
+    (wtech === "Clan" ? WEAPON_RANGES_CLAN[key] : undefined) ?? WEAPON_RANGES[key];
   const range = rangeData ? computeRangeBrackets(rangeData) : null;
   return {
     name: w.name,
@@ -506,6 +529,18 @@ export function isLegalTicProfile(p: DamageProfile): boolean {
 }
 
 /**
+ * Location key used for TIC grouping. The Override card treats the whole torso
+ * as one location, so identical weapons split across CT/LT/RT (e.g. one LRM-15
+ * in each side torso) group into a single TIC ("x2 cLRM-15" @ T). Rear-torso
+ * sections collapse together too; arms, legs, and head stay distinct.
+ */
+function groupingLocation(loc: CardWeapon["location"]): string {
+  if (loc === "CT" || loc === "LT" || loc === "RT") return "T";
+  if (loc === "CTR" || loc === "LTR" || loc === "RTR") return "Tr";
+  return loc;
+}
+
+/**
  * True if a proposed set of weapons forms a legal TIC: a single weapon is
  * always legal (even over-cap, e.g. Heavy Gauss); a group must be within the
  * caps and share one location/facing. Used by the editable-grouping UI.
@@ -515,7 +550,9 @@ export function isLegalTic(members: CardWeapon[]): boolean {
   if (members.length === 1) return true;
   const first = members[0]!;
   const sameLocation = members.every(
-    (m) => m.location === first.location && m.rearMounted === first.rearMounted,
+    (m) =>
+      groupingLocation(m.location) === groupingLocation(first.location) &&
+      m.rearMounted === first.rearMounted,
   );
   return sameLocation && isLegalTicProfile(buildTic(members).profile);
 }
@@ -553,13 +590,20 @@ export function buildTic(members: CardWeapon[]): Tic {
 
   const keys = members.map((m) => normalizeWeaponName(m.name));
   const summedTw = members.reduce((sum, m) => sum + m.twDamage, 0);
+  const allSameName = keys.every((k) => k === keys[0]);
+
+  // For a group of IDENTICAL weapons, scale the single weapon's profile by the
+  // count — base and M/C dice grow linearly, max = ceil(sumTW / 3). This matches
+  // the printed card (2x cLRM-15 -> 2+M4 (10), not floor(30/10)=3). A mixed-name
+  // group (rare; LRM 10 + LRM 5) falls back to a summed profile.
   const kinds = new Set(members.map((m) => m.profile.kind));
   const kind: DamageKind = kinds.has("missile") ? "missile" : kinds.has("cluster") ? "cluster" : "direct";
   const rangeVarying = keys.some(isRangeVaryingCluster);
   const allRocket = keys.every(isRocketLauncher);
-  const profile = computeDamageProfile(summedTw, kind, rangeVarying, allRocket);
+  const profile = allSameName
+    ? scaleSquadDamage(first, members.length)
+    : computeDamageProfile(summedTw, kind, rangeVarying, allRocket);
 
-  const allSameName = keys.every((k) => k === keys[0]);
   const sameRange = members.every((m) => m.rangeText === first.rangeText);
   return {
     weapons: members,
@@ -601,7 +645,7 @@ export function groupIntoTics(weapons: CardWeapon[]): Tic[] {
       if (
         !used[j] &&
         isGroupable(x) &&
-        x.location === w.location &&
+        groupingLocation(x.location) === groupingLocation(w.location) &&
         x.rearMounted === w.rearMounted &&
         normalizeWeaponName(x.name) === key
       ) {
@@ -744,6 +788,7 @@ export function convertUnit(unit: Unit): OverrideCard {
     model: unit.model,
     mass: unit.mass,
     techBase: unit.techBase,
+    config: unit.config,
     move: formatMove(unit.movement.walkMP, unit.movement.runMP, unit.movement.jumpMP),
     walkMove: unit.movement.walkMP,
     runMove: unit.movement.runMP,

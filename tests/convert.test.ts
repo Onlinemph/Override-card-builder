@@ -299,7 +299,9 @@ describe("TIC grouping (page 41 caps: base <= 5, max <= 14)", () => {
     // 3 LRM-15: TW 45 -> max 15 > 14. Legal pair (TW 30 -> 3+M3 (10)) + single.
     const tics = ticsFor([0, 1, 2].map(() => W("LRM 15", "LT")));
     expect(tics.map((t) => t.count)).toEqual([2, 1]);
-    expect(tics[0]!.damageText).toBe("3+M3 (10)");
+    // Identical-weapon group scales the single profile by count (matches the
+    // printed card): 2x LRM-15 -> base 1*2, M 2*2, max ceil(30/3).
+    expect(tics[0]!.damageText).toBe("2+M4 (10)");
     expect(tics[1]!.damageText).toBe("1+M2 (5)");
   });
 

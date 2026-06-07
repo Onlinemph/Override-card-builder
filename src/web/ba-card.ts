@@ -87,7 +87,7 @@ function firepowerTable(card: BattleArmorCard): string {
     rows.push(`<tr>
       <th class="ba-count">
         <span class="ba-n">${esc(n)}</span>${BA_TROOPER_SVG}
-        <span class="ba-armor-pips">${pips(card.armor, "armor")}${pips(card.health, "health")}</span>
+        <span class="ba-armor-pips">${pips(card.health, "health")}${pips(card.armor, "armor")}</span>
       </th>
       ${weaponCells}${aiCell}
     </tr>`);
@@ -140,8 +140,8 @@ export function renderBACard(card: BattleArmorCard): string {
     </div>
     ${firepowerTable(card)}
     <p class="ba-legend">
-      <span class="ba-armor-pips">${pips(card.armor, "armor")}${pips(card.health, "health")}</span>
-      ${esc(card.armor)} armor + <span class="ba-hl-red">1 health</span> (final hit) per suit
+      <span class="ba-armor-pips">${pips(card.health, "health")}${pips(card.armor, "armor")}</span>
+      <span class="ba-hl-red">1 health</span> (final hit) + ${esc(card.armor)} armor per suit
     </p>
     <p class="ba-note">Armor &amp; TMM mirror the ’Mech rules (best-effort) — validate against the DFA generator.</p>
     ${warnings}

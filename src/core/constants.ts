@@ -558,6 +558,85 @@ export const WEAPON_DAMAGE_CLAN: Readonly<Record<string, number>> = {
 } as const;
 
 // ---------------------------------------------------------------------------
+// WEAPON HEAT — Total Warfare heat per weapon (single shot), keyed on the same
+// NORMALIZED name as WEAPON_DAMAGE. The Override card's `Ht` column is
+// ceil(sum of member heat / HEAT_DISSIPATION_DIVISOR), the same /5 scale as
+// heat-sink dissipation — so a heat-neutral 'Mech reads equal Ht and Sinks
+// (e.g. Alpha Wolf Prime: x2 cLRM-15 Ht 2 + 2x cRAC/5 Ht 1 = 4 = Sinks 4).
+// Weapons absent here contribute 0 heat. Extend as needed.
+// ---------------------------------------------------------------------------
+
+export const WEAPON_HEAT: Readonly<Record<string, number>> = {
+  // Energy
+  "small laser": 1,
+  "medium laser": 3,
+  "large laser": 8,
+  "er small laser": 2,
+  "er medium laser": 5,
+  "er large laser": 12,
+  "small pulse laser": 2,
+  "medium pulse laser": 4,
+  "large pulse laser": 10,
+  "micro pulse laser": 1,
+  "er micro laser": 1,
+  ppc: 10,
+  "er ppc": 15,
+  "light ppc": 5,
+  "heavy ppc": 15,
+  "snub-nose ppc": 10,
+  flamer: 3,
+  "er flamer": 4,
+  "vehicle flamer": 3,
+  "plasma rifle": 10,
+  // Ballistic
+  "ac/2": 1,
+  "ac/5": 1,
+  "ac/10": 3,
+  "ac/20": 7,
+  "lb 2-x ac": 1,
+  "lb 5-x ac": 1,
+  "lb 10-x ac": 2,
+  "lb 20-x ac": 6,
+  "ultra ac/2": 1,
+  "ultra ac/5": 1,
+  "ultra ac/10": 3,
+  "ultra ac/20": 7,
+  "rotary ac/2": 1,
+  "rotary ac/5": 1,
+  "light ac/2": 1,
+  "light ac/5": 1,
+  "machine gun": 0,
+  "light machine gun": 0,
+  "heavy machine gun": 0,
+  "gauss rifle": 1,
+  "light gauss rifle": 1,
+  "heavy gauss rifle": 2,
+  "ap gauss rifle": 1,
+  magshot: 1,
+  "hag/20": 4,
+  "hag/30": 6,
+  "hag/40": 8,
+  // Missiles
+  "srm 2": 2,
+  "srm 4": 3,
+  "srm 6": 4,
+  "streak srm 2": 2,
+  "streak srm 4": 3,
+  "streak srm 6": 4,
+  "lrm 5": 2,
+  "lrm 10": 4,
+  "lrm 15": 5,
+  "lrm 20": 6,
+  "mrm 10": 3,
+  "mrm 20": 6,
+  "mrm 30": 10,
+  "mrm 40": 12,
+  "rocket launcher 10": 3,
+  "rocket launcher 15": 4,
+  "rocket launcher 20": 5,
+} as const;
+
+// ---------------------------------------------------------------------------
 // VARIABLE (range-dependent) damage. A few weapons deal different damage at
 // short/medium/long range; the card prints `short|med|long` where each value
 // is ceil(TW/3). Stored as the TW [short, med, long] triple. Keyed on the
@@ -813,6 +892,25 @@ export const WEAPON_ABBREV: Readonly<Record<string, string>> = {
   "ac/5": "AC/5",
   "ac/10": "AC/10",
   "ac/20": "AC/20",
+  "ultra ac/2": "UAC/2",
+  "ultra ac/5": "UAC/5",
+  "ultra ac/10": "UAC/10",
+  "ultra ac/20": "UAC/20",
+  "rotary ac/2": "RAC/2",
+  "rotary ac/5": "RAC/5",
+  "light ac/2": "LAC/2",
+  "light ac/5": "LAC/5",
+  "lb 2-x ac": "LB2-X",
+  "lb 5-x ac": "LB5-X",
+  "lb 10-x ac": "LB10-X",
+  "lb 20-x ac": "LB20-X",
+  "hag/20": "HAG/20",
+  "hag/30": "HAG/30",
+  "hag/40": "HAG/40",
+  "mrm 10": "MRM-10",
+  "mrm 20": "MRM-20",
+  "mrm 30": "MRM-30",
+  "mrm 40": "MRM-40",
 } as const;
 
 // ---------------------------------------------------------------------------

@@ -87,10 +87,11 @@ describe("convertBattleArmor", () => {
     // 5 ER Small Lasers + 5 SRM 2 = 10 weapons; Battle Claw + ammo are not weapons.
     expect(card.weapons).toHaveLength(10);
 
-    // SRM 2 x5 fits one TIC (summed TW 20 -> 2+M2 (7), within the caps).
+    // SRM 2 x5 fits one TIC; the profile scales per weapon (base 1*5, M 1*5,
+    // max ceil(20/3)), matching the firepower table's full-squad column.
     const srm = card.tics.find((t) => /srm/i.test(t.label));
     expect(srm?.count).toBe(5);
-    expect(srm?.damageText).toBe("2+M2 (7)");
+    expect(srm?.damageText).toBe("5+M5 (7)");
 
     // ER Small Lasers split across the page-41 cap into two TICs (3 + 2).
     const laserTics = card.tics.filter((t) => /laser/i.test(t.label));

@@ -454,6 +454,8 @@ export interface OverrideCard {
   model: string;
   mass: number;
   techBase: TechBase;
+  /** Raw config string from the MTF (e.g. "Biped", "Biped Omnimech"). */
+  config: string;
   /** Printed move string, e.g. "8/12" or "5/8 (J)". */
   move: string;
   walkMove: number;
