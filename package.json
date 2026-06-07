@@ -23,6 +23,7 @@
     "build:web": "node scripts/extract-units.mjs && vite build && node scripts/inline.mjs",
     "preview:web": "vite preview",
     "preview:card": "tsx scripts/card-preview.ts",
+    "audit": "tsx scripts/audit-units.ts",
     "typecheck:web": "tsc -p tsconfig.web.json"
   },
   "engines": {
