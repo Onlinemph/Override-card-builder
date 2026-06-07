@@ -229,11 +229,10 @@ Tank
 </UnitType>
 
 <Name>
-Manticore
+Manticore Heavy Tank
 </Name>
 
 <Model>
-Heavy Tank
 
 </Model>
 
@@ -250,26 +249,25 @@ Tracked
 </cruiseMP>
 
 <armor>
-40
-30
-30
-20
-35
+42
+33
+33
+26
+42
 </armor>
 
+<Body Equipment>
+IS Ammo LRM-10
+IS Ammo SRM-6
+</Body Equipment>
+
 <Front Equipment>
-LRM 10
+Medium Laser
 </Front Equipment>
 
-<Right Equipment>
-SRM 6
-</Right Equipment>
-
-<Left Equipment>
-SRM 6
-</Left Equipment>
-
 <Turret Equipment>
+LRM 10
+SRM 6
 PPC
 </Turret Equipment>
 
