@@ -141,12 +141,15 @@ function parseIntStrict(value: string, field: string, file: string): number {
  *   - keyed:   `chassis:Locust` / `model:LCT-1V`
  *   - legacy:  a leading `Version:x.y` line, then chassis and model each on
  *              their own keyless line.
+ *
+ * The model may be blank: many Clan 'Mechs (e.g. Kodiak, Arctic Wolf) are named
+ * by chassis alone and ship an empty `model:` line. A present chassis is enough.
  */
 function parseNames(lines: RawLine[], file: string): { chassis: string; model: string } {
   const chassis = getValue(lines, "chassis");
   const model = getValue(lines, "model");
-  if (chassis && model) {
-    return { chassis, model };
+  if (chassis) {
+    return { chassis, model: model ?? "" };
   }
 
   // Legacy format: Version: line followed by two keyless lines.
@@ -154,13 +157,12 @@ function parseNames(lines: RawLine[], file: string): { chassis: string; model: s
   if (nonEmpty[0] && /^version:/i.test(nonEmpty[0].text)) {
     const c = nonEmpty[1]?.text;
     const m = nonEmpty[2]?.text;
-    if (c && m && !c.includes(":") && !m.includes(":")) {
-      return { chassis: c, model: m };
+    if (c && !c.includes(":")) {
+      return { chassis: c, model: m && !m.includes(":") ? m : "" };
     }
   }
 
-  if (!chassis) throw new ParseError(`missing chassis name`, file, "chassis");
-  throw new ParseError(`missing model name`, file, "model");
+  throw new ParseError(`missing chassis name`, file, "chassis");
 }
 
 function parseMass(lines: RawLine[], file: string): number {

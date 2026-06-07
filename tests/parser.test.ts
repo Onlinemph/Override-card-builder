@@ -105,6 +105,26 @@ Medium Laser, Center Torso (R)
     expect(slots.some((s) => /empty/i.test(s.name))).toBe(false);
   });
 
+  it("accepts a blank model (Clan 'Mechs named by chassis alone)", () => {
+    const mtf = `chassis:Kodiak
+model:
+Config:Biped
+techbase:Clan
+mass:100
+engine:400 Fusion Engine
+heat sinks:10 Double
+walk mp:4
+armor:Standard
+CT armor:10
+HD armor:9
+Weapons:1
+ER Large Laser, Right Arm
+`;
+    const u = parseMtf(mtf, "Kodiak.mtf");
+    expect(u.chassis).toBe("Kodiak");
+    expect(u.model).toBe("");
+  });
+
   it("fails loudly, naming the file and field, on a missing required field", () => {
     const bad = "chassis:Foo\nmodel:Bar\nTechBase:Inner Sphere\nWalk MP:4\n";
     expect(() => parseMtf(bad, "broken.mtf")).toThrowError(ParseError);

@@ -117,7 +117,10 @@ function collectInputFiles(inputs: string[]): string[] {
 
 /** Filesystem-safe output name for a card's JSON file. */
 function jsonFileName(card: { chassis: string; model: string }): string {
-  const base = `${card.chassis}_${card.model}`.replace(/[^A-Za-z0-9._-]+/g, "_");
+  const base = [card.chassis, card.model]
+    .filter((s) => s !== "")
+    .join("_")
+    .replace(/[^A-Za-z0-9._-]+/g, "_");
   return `${base}.override.json`;
 }
 
