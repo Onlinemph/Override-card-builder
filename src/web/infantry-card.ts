@@ -74,6 +74,7 @@ export function renderInfantryCard(card: InfantryCard): string {
             <div class="ms-ud-move"><b>Move:</b> ${esc(card.move)}</div>
             <div><b>TMM:</b> ${esc(card.tmm)}</div>
             <div><b>Anti-’Mech:</b> ${card.antiMek ? "Yes" : "No"}</div>
+            ${card.damage.length ? `<div><b>Damage:</b> ${card.damage.join(" · ")}</div>` : ""}
           </div>
         </div>
         <div class="ms-armament">
@@ -81,8 +82,12 @@ export function renderInfantryCard(card: InfantryCard): string {
           ${secondary}
         </div>
         ${fieldGunsTable(card)}
-        <p class="ba-note">Small-arms platoon damage is abstracted by trooper count and not yet
-          computed — validate against a DFA infantry card. Movement / TMM mirror the ’Mech rules (best-effort).</p>
+        ${
+          card.damage.length
+            ? ""
+            : `<p class="ba-note">Small-arms platoon damage pending per-trooper values for this weapon.
+                Movement / TMM mirror the ’Mech rules (best-effort).</p>`
+        }
         ${warnings}
       </div>
       <div class="ms-right">

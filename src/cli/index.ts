@@ -264,6 +264,9 @@ function printInfantrySummary(card: InfantryCard): void {
       `   Anti-'Mech: ${card.antiMek ? "yes" : "no"}  [best-effort]`,
   );
   lines.push(
+    `  Damage: ${card.damage.length ? card.damage.join(" · ") : "— (per-trooper value pending)"}`,
+  );
+  lines.push(
     `  Primary: ${card.primaryWeapon || "—"}` +
       (card.secondaryWeapon ? `   Secondary: ${card.secondaryWeapon}${card.secondaryCount ? ` x${card.secondaryCount}` : ""}` : ""),
   );

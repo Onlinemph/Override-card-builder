@@ -708,6 +708,11 @@ export interface InfantryCard {
   /** Base TMM (best-effort from move). */
   tmm: number;
   antiMek: boolean;
+  /**
+   * Small-arms platoon damage as 2-point clusters (e.g. [2,2,2,1] = 7). Empty
+   * when the primary weapon is not yet in the per-trooper damage table.
+   */
+  damage: number[];
   /** Cleaned primary weapon display name. */
   primaryWeapon: string;
   /** Cleaned secondary weapon display name, if any. */

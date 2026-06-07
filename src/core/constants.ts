@@ -855,6 +855,28 @@ export const WEAPON_HEAT_DAMAGE: Readonly<Record<string, number>> = {
 } as const;
 
 // ---------------------------------------------------------------------------
+// CONVENTIONAL INFANTRY — per-trooper Total Warfare damage for small arms,
+// keyed on the canonical infantry-weapon name (see infantryWeaponKey). Platoon
+// TW damage = troopers x primary + secondaryCarriers x secondary; the card
+// prints that / 3 (round up), split into 2-point clusters (4 -> 2,2; 7 ->
+// 2,2,2,1). Add a row per weapon as real per-trooper values are supplied. The
+// most common primaries (by unit count) are listed as TODO placeholders.
+// ---------------------------------------------------------------------------
+
+export const INFANTRY_WEAPON_DAMAGE: Readonly<Record<string, number>> = {
+  // TODO(per-trooper values): fill from supplied data. Counts are # of platoons.
+  // "auto rifle": 0,        // 193
+  // "lrm launcher": 0,      //  33
+  // "machine gun": 0,       //  35 (Portable / Support)
+  // "srm launcher": 0,      //  31
+  // "flamer": 0,            //  31 (Man-Pack / Man-Portable)
+  // "laser rifle": 0,       //  44
+  // "assault rifle": 0,     //  39
+  // "pulse laser rifle": 0, //  11
+  // "gyrojet rifle": 0,     //  10
+};
+
+// ---------------------------------------------------------------------------
 // MELEE. Punch/Kick are auto-generated for every BattleMech from tonnage;
 // Override damage = ceil(classic TW / 3). Classic punch TW = ceil(mass/10),
 // kick TW = ceil(mass/5). VERIFIED vs DFA card: 100t -> Punch 4 / Kick 7.

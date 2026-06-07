@@ -4,7 +4,14 @@ import { dirname, join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { convertAny, convertInfantry, parseBlkInfantry, ParseError } from "../src/core/index.js";
+import {
+  clusterDamageInto2s,
+  convertAny,
+  convertInfantry,
+  infantryWeaponKey,
+  parseBlkInfantry,
+  ParseError,
+} from "../src/core/index.js";
 
 const FIXTURES = join(dirname(fileURLToPath(import.meta.url)), "fixtures");
 const load = (name: string) => readFileSync(join(FIXTURES, name), "utf8");
@@ -58,5 +65,30 @@ describe("convertAny dispatch (infantry)", () => {
     const r = convertAny(load("Test Infantry INF-1.blk"), "INF-1.blk");
     expect(r.kind).toBe("infantry");
     if (r.kind === "infantry") expect(r.card.name).toBe("Test Infantry INF-1");
+  });
+});
+
+describe("infantry platoon damage (clustering + per-trooper keys)", () => {
+  it("splits a total into 2-point clusters (trailing 1 if odd)", () => {
+    expect(clusterDamageInto2s(0)).toEqual([]);
+    expect(clusterDamageInto2s(1)).toEqual([1]);
+    expect(clusterDamageInto2s(4)).toEqual([2, 2]);
+    expect(clusterDamageInto2s(5)).toEqual([2, 2, 1]);
+    expect(clusterDamageInto2s(7)).toEqual([2, 2, 2, 1]);
+  });
+
+  it("canonicalizes infantry weapon names for the per-trooper table", () => {
+    expect(infantryWeaponKey("Auto-Rifle")).toBe("auto rifle");
+    expect(infantryWeaponKey("Auto Rifle")).toBe("auto rifle");
+    expect(infantryWeaponKey("InfantryAssaultRifle")).toBe("assault rifle");
+    expect(infantryWeaponKey("SRM Launcher (Hvy, One-Shot)")).toBe("srm launcher");
+    expect(infantryWeaponKey("Machine Gun (Portable)")).toBe("machine gun");
+  });
+
+  it("leaves damage unscored while the primary weapon has no per-trooper value", () => {
+    // INFANTRY_WEAPON_DAMAGE is empty until real values are supplied, so the
+    // fixture's primary (Assault Rifle) is not yet scored.
+    const c = convertInfantry(parseBlkInfantry(load("Test Infantry INF-1.blk"), "INF-1.blk"));
+    expect(c.damage).toEqual([]);
   });
 });

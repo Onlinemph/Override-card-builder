@@ -5,16 +5,16 @@
  * straight across; towed FIELD GUNS are standard 'Mech-scale weapons and are
  * converted by the shared weapon engine (real damage/range/heat).
  *
- * Small-arms PLATOON damage is intentionally NOT fabricated here — it depends on
- * the Total Warfare infantry-weapon (damage-per-trooper) table and a target's
- * armor divisor, neither of which is wired in yet. The card surfaces the weapon
- * names and a note; calibrate against a DFA infantry card before adding numbers.
+ * Small-arms PLATOON damage = (sum of each carrier's per-trooper TW damage) / 3,
+ * round up, then split into 2-point clusters (4 -> 2,2; 7 -> 2,2,2,1). The
+ * per-trooper values live in INFANTRY_WEAPON_DAMAGE; weapons not yet in that
+ * table leave the damage unscored (empty).
  *
  * Movement/TMM mirror the 'Mech rules as a best-effort starting point.
  */
 
-import { lookupTmm } from "./convert.js";
-import { convertWeapon, abbreviatedTicLabel, groupIntoTics, ticHeat } from "./convert.js";
+import { INFANTRY_WEAPON_DAMAGE, WEAPON_DAMAGE_DIVISOR } from "./constants.js";
+import { abbreviatedTicLabel, convertWeapon, groupIntoTics, lookupTmm, roundUp, ticHeat } from "./convert.js";
 import type {
   CardWeapon,
   InfantryCard,
@@ -61,6 +61,52 @@ export function cleanInfantryWeapon(raw: string): string {
   return s.replace(/\s+/g, " ").trim();
 }
 
+/**
+ * Canonical key for an infantry small arm, for the per-trooper damage table:
+ * drop parenthetical qualifiers ("(Inner Sphere)", "(Hvy, One-Shot)") and a
+ * leading "Infantry" maker prefix, split camelCase, and lowercase.
+ *   "Auto-Rifle" / "Auto Rifle"     -> "auto rifle"
+ *   "InfantryAssaultRifle"          -> "assault rifle"
+ *   "SRM Launcher (Hvy, One-Shot)"  -> "srm launcher"
+ */
+export function infantryWeaponKey(raw: string): string {
+  let s = raw.trim().replace(/\([^)]*\)/g, " ").replace(/^infantry/i, "");
+  s = s.replace(/([a-z])([A-Z])/g, "$1 $2").replace(/([A-Za-z])(\d)/g, "$1 $2");
+  return s.toLowerCase().replace(/[^a-z0-9 ]+/g, " ").replace(/\s+/g, " ").trim();
+}
+
+/**
+ * Split a damage total into 2-point clusters, with a trailing 1 when odd:
+ * 4 -> [2,2], 7 -> [2,2,2,1], 1 -> [1], 0 -> []. How the card prints platoon damage.
+ */
+export function clusterDamageInto2s(total: number): number[] {
+  const clusters: number[] = [];
+  let remaining = Math.max(0, total);
+  while (remaining >= 2) {
+    clusters.push(2);
+    remaining -= 2;
+  }
+  if (remaining > 0) clusters.push(remaining);
+  return clusters;
+}
+
+/**
+ * Platoon small-arms damage as 2-point clusters. Sums each carrier's TW damage
+ * (every trooper fires the primary; the secondary's carriers add theirs), then
+ * divides by 3 (round up) before clustering. Returns [] when the primary weapon
+ * is not in the per-trooper table (damage left unscored).
+ */
+function platoonDamage(unit: InfantryUnit): number[] {
+  const primary = INFANTRY_WEAPON_DAMAGE[infantryWeaponKey(unit.primaryWeapon)];
+  if (primary === undefined) return [];
+  let totalTw = unit.troopers * primary;
+  const secondary = unit.secondaryWeapon
+    ? INFANTRY_WEAPON_DAMAGE[infantryWeaponKey(unit.secondaryWeapon)]
+    : undefined;
+  if (secondary !== undefined) totalTw += unit.secondaryPerSquad * unit.squadCount * secondary;
+  return clusterDamageInto2s(roundUp(totalTw / WEAPON_DAMAGE_DIVISOR));
+}
+
 /** Convert towed field guns (standard weapons) into card weapon rows. */
 function buildFieldGuns(names: ReadonlyArray<string>, techBase: InfantryUnit["techBase"]): VehicleWeaponRow[] {
   const cardWeapons: CardWeapon[] = names.map((name) => {
@@ -101,6 +147,7 @@ export function convertInfantry(unit: InfantryUnit): InfantryCard {
     move,
     tmm,
     antiMek: unit.antiMek,
+    damage: platoonDamage(unit),
     primaryWeapon: cleanInfantryWeapon(unit.primaryWeapon),
     ...(unit.secondaryWeapon ? { secondaryWeapon: cleanInfantryWeapon(unit.secondaryWeapon) } : {}),
     secondaryCount: unit.secondaryPerSquad * unit.squadCount,
