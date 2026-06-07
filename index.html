@@ -125,15 +125,15 @@
   </article>`}function $(e){return String(e).replace(/[&<>"']/g,t=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[t])}function In(e){return e==null?"–":e>=0?`+${e}`:`${e}`}function _n(e){return(e?[e.pb,e.s,e.m,e.l,e.x]:[null,null,null,null,null]).map(n=>`<td class="num rng">${$(In(n))}</td>`).join("")}function de(e,t){return e<=0?"":`<span class="hexrow">${`<i class="hex ${t}"></i>`.repeat(e)}</span>`}function B(e,t,n,s,r){if(s===void 0)return`<div class="vloc ${e} vempty"></div>`;const a=n?` <span class="loc-hits">(${$(n)})</span>`:"";return`<div class="vloc ${e}">
     <div class="vloc-name">${$(t)}${a}</div>
     <div class="vloc-pips">${de(s,"armor")}${de(r,"struct")}</div>
-  </div>`}function Dn(e){const t=e.armor,n=e.structure,s=e.hasRotor?B("vrotor","Rotor","6*",t.rotor,n):"";return`<div class="${e.hasRotor?"vdoll has-rotor":"vdoll"}">
-    ${s}
+  </div>`}function Dn(e){const t=e.armor,n=e.structure,s=e.hasRotor,r=s?B("vrotor","Rotor","5,9",t.rotor,n):"",a=s?"":"5,9";return`<div class="${s?"vdoll has-rotor":"vdoll"}">
+    ${r}
     ${B("vfront","Front","6,7,8",t.front,n)}
     ${B("vleft","Left Side","10,11",t.left,n)}
-    ${B("vturret","Turret","5,9",t.turret,n)}
+    ${B("vturret","Turret",a,t.turret,n)}
     ${B("vright","Right Side","3,4",t.right,n)}
     ${B("vrear","Rear","",t.rear,n)}
   </div>
-  <p class="mdoll-legend"><i class="hex armor"></i> armor &nbsp; <i class="hex struct"></i> structure</p>`}function Bn(e){return e.weapons.length===0?'<p class="muted">No weapons.</p>':`<table class="mweapons">
+  <p class="mdoll-legend"><i class="hex armor"></i> armor &nbsp; <i class="hex struct"></i> structure &nbsp; · &nbsp; TAC (crit) on 2 &amp; 12</p>`}function Bn(e){return e.weapons.length===0?'<p class="muted">No weapons.</p>':`<table class="mweapons">
     <thead><tr>
       <th class="wname">Weapons</th><th class="num">Dmg</th><th class="num">Ht</th>
       <th class="loc">Loc</th><th class="num">PB</th><th class="num">S</th>
@@ -353,7 +353,7 @@ BeagleActiveProbe
 `,L=e=>{const t=document.getElementById(e);if(!t)throw new Error(`missing element #${e}`);return t},A=L("mtf"),q=L("output"),N=L("file");function C(e){return String(e).replace(/[&<>"']/g,t=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[t])}function Ue(e,t){return`<article class="card error">
     <h2>Could not convert ${C(e)}</h2>
     <p>${C(t)}</p>
-  </article>`}function P(e,t){try{return{ok:!0,result:vn(e,t)}}catch(n){const s=n instanceof h||n instanceof Error?n.message:String(n);return{ok:!1,html:Ue(t,s)}}}function Wn(e){return e.kind==="battlearmor"?Ln(e.card):e.kind==="vehicle"?Nn(e.card):Pn(e.card)}function I(e){if(e.length===0){q.innerHTML='<p class="muted">Nothing to convert.</p>';return}q.innerHTML=e.map(t=>t.ok?Wn(t.result):t.html).join("")}L("convert").addEventListener("click",()=>{const e=A.value.trim();if(!e){q.innerHTML='<p class="muted">Paste or upload an .mtf or .blk first.</p>';return}I([P(e,"pasted")])});L("example").addEventListener("click",()=>{A.value=pe,I([P(pe,"Locust LCT-1V.mtf")])});L("example-ba").addEventListener("click",()=>{A.value=ge,I([P(ge,"Elemental [Laser].blk")])});L("example-veh").addEventListener("click",()=>{A.value=he,I([P(he,"Manticore Heavy Tank.blk")])});L("example-vtol").addEventListener("click",()=>{A.value=fe,I([P(fe,"Cyrano Gunship.blk")])});L("clear").addEventListener("click",()=>{A.value="",N.value="",q.innerHTML=""});L("upload").addEventListener("click",()=>N.click());N.addEventListener("change",async()=>{try{const e=Array.from(N.files??[]);if(e.length===0)return;const t=await Promise.all(e.map(s=>s.text())),n=t.map((s,r)=>P(s.trim(),e[r].name));A.value=t[0],I(n)}catch(e){q.innerHTML=Ue("upload",e instanceof Error?e.message:String(e))}finally{N.value=""}});qn().catch(()=>{});const be=document.getElementById("build");be&&(be.textContent="build 2026-06-07T12:28:02.677Z");
+  </article>`}function P(e,t){try{return{ok:!0,result:vn(e,t)}}catch(n){const s=n instanceof h||n instanceof Error?n.message:String(n);return{ok:!1,html:Ue(t,s)}}}function Wn(e){return e.kind==="battlearmor"?Ln(e.card):e.kind==="vehicle"?Nn(e.card):Pn(e.card)}function I(e){if(e.length===0){q.innerHTML='<p class="muted">Nothing to convert.</p>';return}q.innerHTML=e.map(t=>t.ok?Wn(t.result):t.html).join("")}L("convert").addEventListener("click",()=>{const e=A.value.trim();if(!e){q.innerHTML='<p class="muted">Paste or upload an .mtf or .blk first.</p>';return}I([P(e,"pasted")])});L("example").addEventListener("click",()=>{A.value=pe,I([P(pe,"Locust LCT-1V.mtf")])});L("example-ba").addEventListener("click",()=>{A.value=ge,I([P(ge,"Elemental [Laser].blk")])});L("example-veh").addEventListener("click",()=>{A.value=he,I([P(he,"Manticore Heavy Tank.blk")])});L("example-vtol").addEventListener("click",()=>{A.value=fe,I([P(fe,"Cyrano Gunship.blk")])});L("clear").addEventListener("click",()=>{A.value="",N.value="",q.innerHTML=""});L("upload").addEventListener("click",()=>N.click());N.addEventListener("change",async()=>{try{const e=Array.from(N.files??[]);if(e.length===0)return;const t=await Promise.all(e.map(s=>s.text())),n=t.map((s,r)=>P(s.trim(),e[r].name));A.value=t[0],I(n)}catch(e){q.innerHTML=Ue("upload",e instanceof Error?e.message:String(e))}finally{N.value=""}});qn().catch(()=>{});const be=document.getElementById("build");be&&(be.textContent="build 2026-06-07T12:58:51.506Z");
 
 </script>
     <style>
