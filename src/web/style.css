@@ -832,3 +832,19 @@ footer {
 .vloc-name { font-weight: 700; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.02em; }
 .vloc-name .loc-hits { color: #15171c; font-size: 0.95rem; }
 .vloc-pips { display: flex; flex-wrap: wrap; gap: 2px; justify-content: center; margin-top: 0.3rem; }
+
+/* ---- Fighter facing armor diagram (nose / wings / aft) ------------------- */
+.fdoll {
+  display: grid;
+  grid-template-columns: 1fr 0.6fr 1fr;
+  grid-template-areas:
+    ".      nose   ."
+    "lwing  .      rwing"
+    ".      aft    .";
+  gap: 0.4rem;
+  align-items: stretch;
+}
+.fnose { grid-area: nose; }
+.flwing { grid-area: lwing; }
+.frwing { grid-area: rwing; }
+.faft { grid-area: aft; }

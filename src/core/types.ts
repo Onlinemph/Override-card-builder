@@ -567,6 +567,95 @@ export interface VehicleCard {
   sourceFile?: string;
 }
 
+// ---------------------------------------------------------------------------
+// Aerospace & Conventional Fighters (BLK Aero / ConvFighter). Armor is by four
+// facings (nose / left wing / right wing / aft); movement is thrust-based; there
+// is no turret or rotor. The weapon -> damage/range/TIC engine is reused per
+// facing, and weapon rows / equipment reuse the vehicle card's row + equipment
+// shapes (VehicleWeaponRow / VehicleEquipment).
+// ---------------------------------------------------------------------------
+
+/** A fighter armor/equipment facing. "fuselage" holds non-facing gear/ammo. */
+export type FighterFacing =
+  | "nose"
+  | "leftWing"
+  | "rightWing"
+  | "aft"
+  | "wings"
+  | "fuselage";
+
+/** One weapon/equipment entry from a BLK fighter facing block (e.g. <Nose Equipment>). */
+export interface FighterMount {
+  /** Item name exactly as written. */
+  name: string;
+  /** Which facing block it came from. */
+  facing: FighterFacing;
+}
+
+/** Armor points per facing, from the BLK `<armor>` block (nose, right, left, aft). */
+export interface FighterArmorRaw {
+  nose: number;
+  rightWing: number;
+  leftWing: number;
+  aft: number;
+}
+
+/** A fully-parsed fighter from a BLK Aero/ConvFighter file. Physical facts only. */
+export interface FighterUnit {
+  kind: "fighter";
+  chassis: string;
+  model: string;
+  techBase: TechBase;
+  /** Tonnage. */
+  tonnage: number;
+  /** True for conventional (atmospheric) fighters; false for aerospace. */
+  conventional: boolean;
+  /** Airframe: "Aerodyne" | "Spheroid". */
+  motionType: string;
+  /** Safe Thrust (≈ walk/cruise). */
+  safeThrust: number;
+  /** Max Thrust (≈ run): explicit if present, else ceil(safe * 1.5). */
+  maxThrust: number;
+  armor: FighterArmorRaw;
+  mounts: FighterMount[];
+  sourceFile?: string;
+}
+
+/** Per-facing Override armor on the fighter card. */
+export interface FighterCardArmor {
+  nose: number;
+  rightWing: number;
+  leftWing: number;
+  aft: number;
+}
+
+/** Converted Override record-card statistics for an aerospace/conventional fighter. */
+export interface FighterCard {
+  kind: "fighter";
+  name: string;
+  chassis: string;
+  model: string;
+  techBase: TechBase;
+  tonnage: number;
+  /** True for conventional fighters (shown as "Conventional Fighter" vs "Aerospace"). */
+  conventional: boolean;
+  motionType: string;
+  /** Printed thrust string, e.g. "6 / 9" (safe / max). */
+  move: string;
+  safeThrust: number;
+  maxThrust: number;
+  /** Base TMM (mirrored from the 'Mech run table on max thrust); card prints `tmm / tmm+1`. */
+  tmm: number;
+  /** Per-facing Override armor (best-effort: TW / 4). */
+  armor: FighterCardArmor;
+  /** Structural Integrity per facing (uniform, best-effort from tonnage). */
+  structure: number;
+  weapons: VehicleWeaponRow[];
+  equipment: VehicleEquipment[];
+  warnings: string[];
+  sourceFile?: string;
+}
+
 /** Converted Override record-card statistics for one unit. */
 export interface OverrideCard {
   /** "Chassis Model". */

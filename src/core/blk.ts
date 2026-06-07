@@ -27,6 +27,10 @@ import type {
   BAWeightClass,
   BattleArmorUnit,
   BlkMount,
+  FighterArmorRaw,
+  FighterFacing,
+  FighterMount,
+  FighterUnit,
   TechBase,
   VehicleArmorRaw,
   VehicleFacing,
@@ -314,5 +318,101 @@ export function parseBlkVehicle(text: string, file = "<unknown>"): VehicleUnit {
     hasTurret,
     hasRotor: isVtol,
     mounts: parseVehicleMounts(blocks),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Aerospace & Conventional Fighters (BLK Aero / ConvFighter / FixedWingSupport).
+// ---------------------------------------------------------------------------
+
+/** BLK `<UnitType>` values (whitespace-stripped, lowercased) handled as fighters. */
+const FIGHTER_UNIT_TYPES = new Set([
+  "aero",
+  "aerospacefighter",
+  "convfighter",
+  "fixedwingsupport",
+]);
+
+/** Conventional (atmospheric) fighter unit types — everything else is aerospace. */
+const CONVENTIONAL_TYPES = new Set(["convfighter", "fixedwingsupport"]);
+
+/** Equipment-block tag (lowercased) -> fighter facing. */
+const FIGHTER_FACING_BLOCKS: Readonly<Record<string, FighterFacing>> = {
+  "nose equipment": "nose",
+  "left wing equipment": "leftWing",
+  "right wing equipment": "rightWing",
+  "aft equipment": "aft",
+  "wings equipment": "wings",
+  "fuselage equipment": "fuselage",
+  "body equipment": "fuselage",
+};
+
+/** Parse the `<armor>` block (nose, right wing, left wing, aft) into facings. */
+function parseFighterArmor(blocks: Block[]): FighterArmorRaw {
+  const block = blocks.find((b) => b.key === "armor");
+  const values = (block?.lines ?? [])
+    .map((l) => Number.parseInt(l, 10))
+    .filter((n) => Number.isFinite(n));
+  const at = (i: number) => values[i] ?? 0;
+  return { nose: at(0), rightWing: at(1), leftWing: at(2), aft: at(3) };
+}
+
+/** Collect weapon/equipment mounts from the per-facing equipment blocks. */
+function parseFighterMounts(blocks: Block[]): FighterMount[] {
+  const mounts: FighterMount[] = [];
+  for (const block of blocks) {
+    const facing = FIGHTER_FACING_BLOCKS[block.key];
+    if (!facing) continue;
+    for (const line of block.lines) {
+      const name = line.trim();
+      if (name) mounts.push({ name, facing });
+    }
+  }
+  return mounts;
+}
+
+/**
+ * Parse BLK Aero/Conventional-fighter text into a `FighterUnit`. Throws if the
+ * file is not a fighter type.
+ *
+ * @param text  Full contents of the .blk file.
+ * @param file  Filename for error messages (defaults to "<unknown>").
+ */
+export function parseBlkFighter(text: string, file = "<unknown>"): FighterUnit {
+  const blocks = readBlocks(text);
+
+  const unitType = scalar(blocks, "unittype");
+  const normalizedType = unitType?.toLowerCase().replace(/\s+/g, "");
+  if (unitType && !FIGHTER_UNIT_TYPES.has(normalizedType ?? "")) {
+    throw new ParseError(
+      `expected an Aerospace/Conventional fighter BLK but got unit type "${unitType}"`,
+      file,
+      "UnitType",
+    );
+  }
+
+  const chassis = scalarAny(blocks, ["name", "chassis_name"]);
+  if (!chassis) throw new ParseError("missing unit name", file, "Name");
+  const model = scalarAny(blocks, ["model"]) ?? "";
+
+  const tonnage = Number.parseFloat(scalarAny(blocks, ["tonnage", "weight"]) ?? "0") || 0;
+  const motionType = scalarAny(blocks, ["motion_type"]) ?? "Aerodyne";
+  const conventional = CONVENTIONAL_TYPES.has(normalizedType ?? "");
+  const safeThrust = intOr(scalarAny(blocks, ["safethrust", "cruisemp", "walkmp"]), 0);
+  const maxRaw = scalarAny(blocks, ["maxthrust", "flankmp", "runmp"]);
+  const maxThrust = maxRaw !== undefined ? intOr(maxRaw, 0) : Math.ceil(safeThrust * RUN_MP_MULTIPLIER);
+
+  return {
+    kind: "fighter",
+    chassis,
+    model,
+    techBase: resolveTechBase(blocks),
+    tonnage,
+    conventional,
+    motionType,
+    safeThrust,
+    maxThrust,
+    armor: parseFighterArmor(blocks),
+    mounts: parseFighterMounts(blocks),
   };
 }

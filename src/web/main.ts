@@ -8,6 +8,7 @@ import "./style.css";
 
 import { convertAny, ParseError } from "../core/index.js";
 import { renderBACard } from "./ba-card.js";
+import { renderFighterCard } from "./fighter-card.js";
 import { renderMechCard } from "./mech-card.js";
 import { renderVehicleCard } from "./vehicle-card.js";
 
@@ -322,6 +323,73 @@ BeagleActiveProbe
 </tonnage>
 `;
 
+// A BLK aerospace fighter, to demo the fighter card (nose/wings/aft + thrust).
+const EXAMPLE_FIGHTER = `<UnitType>
+Aero
+</UnitType>
+
+<Name>
+Shikra
+</Name>
+
+<Model>
+SKR-4N
+</Model>
+
+<type>
+IS Level 3
+</type>
+
+<motion_type>
+Aerodyne
+</motion_type>
+
+<SafeThrust>
+6
+</SafeThrust>
+
+<heatsinks>
+16
+</heatsinks>
+
+<sink_type>
+1
+</sink_type>
+
+<armor>
+111
+83
+83
+70
+</armor>
+
+<Nose Equipment>
+ISGaussRifle
+</Nose Equipment>
+
+<Left Wing Equipment>
+Heavy PPC
+</Left Wing Equipment>
+
+<Right Wing Equipment>
+Heavy PPC
+</Right Wing Equipment>
+
+<Aft Equipment>
+ISMediumPulseLaser
+</Aft Equipment>
+
+<Fuselage Equipment>
+IS Gauss Ammo
+IS Gauss Ammo
+IS Gauss Ammo
+</Fuselage Equipment>
+
+<tonnage>
+90.0
+</tonnage>
+`;
+
 const $ = <T extends HTMLElement>(id: string): T => {
   const el = document.getElementById(id);
   if (!el) throw new Error(`missing element #${id}`);
@@ -365,6 +433,7 @@ function convertOne(text: string, file: string): ConvertResult {
 function cardHtml(result: AnyCard): string {
   if (result.kind === "battlearmor") return renderBACard(result.card);
   if (result.kind === "vehicle") return renderVehicleCard(result.card);
+  if (result.kind === "fighter") return renderFighterCard(result.card);
   return renderMechCard(result.card);
 }
 
@@ -404,6 +473,11 @@ $("example-veh").addEventListener("click", () => {
 $("example-vtol").addEventListener("click", () => {
   textarea.value = EXAMPLE_VTOL;
   showResults([convertOne(EXAMPLE_VTOL, "Cyrano Gunship.blk")]);
+});
+
+$("example-fighter").addEventListener("click", () => {
+  textarea.value = EXAMPLE_FIGHTER;
+  showResults([convertOne(EXAMPLE_FIGHTER, "Shikra SKR-4N.blk")]);
 });
 
 $("clear").addEventListener("click", () => {

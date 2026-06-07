@@ -23,7 +23,7 @@ import { readdirSync, readFileSync, statSync, writeFileSync, mkdirSync } from "n
 import { basename, extname, join, resolve } from "node:path";
 
 import { convertAny, ParseError } from "../core/index.js";
-import type { BattleArmorCard, OverrideCard, VehicleCard } from "../core/index.js";
+import type { BattleArmorCard, FighterCard, OverrideCard, VehicleCard } from "../core/index.js";
 
 /** Input file extensions the tool understands. */
 const SUPPORTED_EXTS = new Set([".mtf", ".blk"]);
@@ -223,6 +223,35 @@ function printVehicleSummary(card: VehicleCard): void {
   process.stdout.write(lines.join("\n") + "\n\n");
 }
 
+function printFighterSummary(card: FighterCard): void {
+  const lines: string[] = [];
+  const kind = card.conventional ? "Conventional Fighter" : "Aerospace Fighter";
+  lines.push(`${card.name}  (${kind}, ${card.motionType}, ${card.tonnage}t ${card.techBase})`);
+  lines.push(
+    `  Thrust ${card.move}   TMM ${card.tmm} / ${card.tmm + 1}   SI ~${card.structure}  [best-effort]`,
+  );
+  const a = card.armor;
+  lines.push(`  Armor  nose ${a.nose}  R-wing ${a.rightWing}  L-wing ${a.leftWing}  aft ${a.aft}`);
+  if (card.weapons.length > 0) {
+    lines.push("  Weapons:");
+    for (const w of card.weapons) {
+      const flag = w.unknown ? "  [!] unknown weapon" : "";
+      const rng = w.rangeText ? ` [${w.rangeText}]` : "";
+      const ht = w.heat > 0 ? ` ht${w.heat}` : "";
+      lines.push(`    - ${w.label} @ ${w.facing}: dmg ${w.damageText}${ht}${rng}${flag}`);
+    }
+  }
+  if (card.equipment.length > 0) {
+    lines.push("  Equipment:");
+    for (const e of card.equipment) {
+      const qty = e.count > 1 ? ` x${e.count}` : "";
+      lines.push(`    - ${e.label} (${e.facing})${qty}`);
+    }
+  }
+  for (const warn of card.warnings) lines.push(`  ! ${warn}`);
+  process.stdout.write(lines.join("\n") + "\n\n");
+}
+
 /** Build a flat CSV (one row per unit) covering the scalar card fields. */
 function toCsv(cards: OverrideCard[]): string {
   const header = [
@@ -326,6 +355,8 @@ function main(): void {
         printBASummary(result.card);
       } else if (result.kind === "vehicle") {
         printVehicleSummary(result.card);
+      } else if (result.kind === "fighter") {
+        printFighterSummary(result.card);
       } else {
         cards.push(result.card);
         printSummary(result.card);

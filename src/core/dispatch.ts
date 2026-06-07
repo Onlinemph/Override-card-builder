@@ -7,17 +7,22 @@
  */
 
 import { convertBattleArmor } from "./battlearmor.js";
-import { blkUnitType, isBlk, parseBlkBattleArmor, parseBlkVehicle } from "./blk.js";
+import { blkUnitType, isBlk, parseBlkBattleArmor, parseBlkFighter, parseBlkVehicle } from "./blk.js";
 import { convertUnit } from "./convert.js";
+import { convertFighter } from "./fighter.js";
 import { ParseError, parseMtf } from "./parser.js";
 import { convertVehicle } from "./vehicle.js";
-import type { BattleArmorCard, OverrideCard, VehicleCard } from "./types.js";
+import type { BattleArmorCard, FighterCard, OverrideCard, VehicleCard } from "./types.js";
 
 /** A converted card, tagged by which unit family produced it. */
 export type AnyCard =
   | { kind: "mech"; card: OverrideCard }
   | { kind: "battlearmor"; card: BattleArmorCard }
-  | { kind: "vehicle"; card: VehicleCard };
+  | { kind: "vehicle"; card: VehicleCard }
+  | { kind: "fighter"; card: FighterCard };
+
+/** BLK `<UnitType>` values (whitespace-stripped) routed to the fighter path. */
+const FIGHTER_TYPES = new Set(["aero", "aerospacefighter", "convfighter", "fixedwingsupport"]);
 
 /** "blk" for MegaMek building-block files, otherwise "mtf". */
 export function detectFormat(text: string): "mtf" | "blk" {
@@ -26,9 +31,10 @@ export function detectFormat(text: string): "mtf" | "blk" {
 
 /**
  * Parse + convert any supported source, dispatching on the file content:
- *   - MTF                  -> BattleMech
- *   - BLK BattleArmor      -> Battle Armor
- *   - BLK Tank / VTOL      -> Combat Vehicle
+ *   - MTF                            -> BattleMech
+ *   - BLK BattleArmor                -> Battle Armor
+ *   - BLK Tank / VTOL                -> Combat Vehicle
+ *   - BLK Aero / ConvFighter / …     -> Aerospace/Conventional Fighter
  * Other BLK unit types throw a clear "unsupported" ParseError.
  */
 export function convertAny(text: string, file = "<unknown>"): AnyCard {
@@ -42,8 +48,11 @@ export function convertAny(text: string, file = "<unknown>"): AnyCard {
   if (type === "tank" || type === "vtol") {
     return { kind: "vehicle", card: convertVehicle(parseBlkVehicle(text, file)) };
   }
+  if (FIGHTER_TYPES.has(type)) {
+    return { kind: "fighter", card: convertFighter(parseBlkFighter(text, file)) };
+  }
   throw new ParseError(
-    `unsupported BLK unit type "${blkUnitType(text) ?? "?"}" (supported: BattleArmor, Tank, VTOL)`,
+    `unsupported BLK unit type "${blkUnitType(text) ?? "?"}" (supported: BattleArmor, Tank, VTOL, Aerospace/Conventional Fighter)`,
     file,
     "UnitType",
   );
