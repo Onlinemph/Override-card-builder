@@ -118,6 +118,7 @@ export function lookupTmm(runMP: number): number {
  */
 export function normalizeWeaponName(raw: string): string {
   let s = raw.trim();
+  s = s.replace(/:[A-Za-z0-9]+$/, ""); // drop a trailing mount/omni tag ("...:OMNI", "...:LA")
   s = s.replace(/\s*\([^)]*\)/g, ""); // drop qualifiers like "(OS)", "(I-OS)", "(Clan)"
   s = s.replace(/\s*\[ba\]/gi, ""); // drop "[BA]" suffix ("Flamer [BA]" -> "Flamer")
   s = s.replace(/^\d+\s+/, ""); // drop leading count
@@ -131,6 +132,7 @@ export function normalizeWeaponName(raw: string): string {
   s = s.toLowerCase().replace(/\s+/g, " ").trim();
   s = s.replace(/^(is|cl|clan)\s+/, ""); // drop spaced tech prefix
   s = s.replace(/^ba\s+/, ""); // drop spaced BA prefix ("ba er small laser" -> "er small laser")
+  s = s.replace(/\berppc\b/g, "er ppc"); // glued all-caps "ERPPC" (from "ISERPPC"/"CLERPPC") -> "er ppc"
   s = s.replace(/\bautocannon\//g, "ac/"); // Autocannon/20 -> ac/20
   s = s.replace(/\bhyper assault gauss\b/g, "hag"); // Hyper Assault Gauss/30 -> hag/30
   s = s.replace(/\b(ac|hag)\s+(\d+)/g, "$1/$2"); // "ac 20"/"hag 30" -> "ac/20"/"hag/30" (also Rotary/Ultra/Light AC)
@@ -493,9 +495,11 @@ export function abbreviatedTicLabel(tic: Tic, unitTech: TechBase): string {
 }
 
 export function detectWeaponTech(raw: string): TechBase | null {
-  const s = raw.trim();
-  if (/^cl(?=[A-Z])/.test(s) || /^(clan)\b/i.test(s)) return "Clan";
-  if (/^is(?=[A-Z])/.test(s) || /^(is|inner sphere)\b/i.test(s)) return "IS";
+  const s = raw.trim().replace(/^\d+\s+/, ""); // tolerate a leading count ("1 ISERPPC")
+  // Attached tech prefix glued to an uppercase acronym ("CLERPPC", "ISMediumLaser"):
+  // case-insensitive so all-caps MegaMek spellings resolve, not just lowercase "cl"/"is".
+  if (/^cl(?=[A-Z])/i.test(s) || /^clan\b/i.test(s)) return "Clan";
+  if (/^is(?=[A-Z])/i.test(s) || /^(is|inner sphere)\b/i.test(s)) return "IS";
   return null;
 }
 

@@ -12,6 +12,7 @@ import {
   computeVariableProfile,
   convertUnit,
   convertWeapon,
+  detectWeaponTech,
   formatDamage,
   scaleSquadDamage,
   formatRangeBrackets,
@@ -744,5 +745,34 @@ describe("MML / ATM / X-Pulse / Improved Heavy laser (DFA card batch)", () => {
     expect(dmg("ISMML5").damageText).toBe("1|1|0+M1 (3)");
     expect(dmg("CLATM9", "Clan").damageText).toBe("3|1|0+M2 (8)");
     expect(dmg("ISMediumXPulseLaser").damageText).toBe("2");
+  });
+});
+
+describe("normalizer: glued ER PPC and trailing mount tags", () => {
+  const conv = (name: string, tech: TechBase = "IS") =>
+    convertWeapon({ name, location: "CT", rawLocation: "CT", rearMounted: false }, tech, 20);
+
+  it("normalizes glued ISERPPC/CLERPPC (with optional count) to er ppc", () => {
+    expect(normalizeWeaponName("1 ISERPPC")).toBe("er ppc");
+    expect(normalizeWeaponName("CLERPPC")).toBe("er ppc");
+  });
+
+  it("keeps IS ER PPC (4) lighter than Clan (5), even on a mixed-tech unit", () => {
+    // detectWeaponTech reads the weapon's own prefix and overrides the unit tech.
+    expect(conv("ISERPPC", "Clan").damageText).toBe("4");
+    expect(conv("CLERPPC", "IS").damageText).toBe("5");
+    expect(conv("1 ISERPPC", "Clan").unknown).toBe(false);
+  });
+
+  it("strips a trailing mount/omni tag (CLERMediumLaser:OMNI -> er medium laser)", () => {
+    expect(normalizeWeaponName("CLERMediumLaser:OMNI")).toBe("er medium laser");
+    expect(conv("CLERMediumLaser:OMNI", "Clan").unknown).toBe(false);
+    expect(conv("ISERSmallLaser:OMNI", "IS").unknown).toBe(false);
+  });
+
+  it("detectWeaponTech tolerates a leading count and uppercase prefixes", () => {
+    expect(detectWeaponTech("1 ISERPPC")).toBe("IS");
+    expect(detectWeaponTech("CLERMediumLaser:OMNI")).toBe("Clan");
+    expect(detectWeaponTech("Medium Laser")).toBeNull();
   });
 });
