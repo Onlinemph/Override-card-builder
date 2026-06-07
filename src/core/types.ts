@@ -139,12 +139,14 @@ export interface Unit {
 
 /**
  * How a weapon's damage is rolled on the Override card.
- *   - direct:   flat damage (base === max, no dice). Lasers, ACs, Gauss, etc.
- *   - variable: flat but range-dependent, printed `short|med|long`. SNPPC, Heavy Gauss.
- *   - missile:  rolls M dice; prints `base+M{mDice} (max)`. LRM/SRM/MRM/RL.
- *   - cluster:  rolls C dice; prints `base+C{cDice}`. LB-X, HAG, Silver Bullet.
+ *   - direct:    flat damage (base === max, no dice). Lasers, ACs, Gauss, etc.
+ *   - variable:  flat but range-dependent, printed `short|med|long`. SNPPC, Heavy Gauss.
+ *   - missile:   rolls M dice; prints `base+M{mDice} (max)`. LRM/SRM/MRM/RL.
+ *   - rvmissile: range-varying missile rack; per-bracket base PLUS M dice, printed
+ *                `short|med|long+M{mDice} (max)`. MML, ATM/iATM.
+ *   - cluster:   rolls C dice; prints `base+C{cDice}`. LB-X, HAG, Silver Bullet.
  */
-export type DamageKind = "direct" | "variable" | "missile" | "cluster";
+export type DamageKind = "direct" | "variable" | "missile" | "rvmissile" | "cluster";
 
 /**
  * Override damage profile. Direct-fire weapons deal flat damage (base === max,

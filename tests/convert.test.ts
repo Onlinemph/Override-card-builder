@@ -704,3 +704,45 @@ TAG, Head
     expect(c.warnings.join(" ")).not.toMatch(/AMS|TAG/);
   });
 });
+
+describe("MML / ATM / X-Pulse / Improved Heavy laser (DFA card batch)", () => {
+  const dmg = (name: string, tech: TechBase = "IS") => {
+    const c = convertWeapon({ name, location: "CT", rawLocation: "CT", rearMounted: false }, tech, 20);
+    return { damageText: c.damageText, rangeText: c.rangeText, unknown: c.unknown };
+  };
+
+  it("Improved Heavy Medium Laser -> 4 (+0/+0/+2/–/–)", () => {
+    expect(dmg("Improved Heavy Medium Laser", "Clan")).toEqual({
+      damageText: "4", rangeText: "+0 +0 +2 – –", unknown: false,
+    });
+  });
+
+  it("Medium X-Pulse Laser -> 2 (-2/-2/+0/–/–)", () => {
+    expect(dmg("Medium X-Pulse Laser")).toEqual({
+      damageText: "2", rangeText: "-2 -2 +0 – –", unknown: false,
+    });
+  });
+
+  it("MML 3/5/7/9 match the card's range-varying missile profiles", () => {
+    expect(dmg("MML 3").damageText).toBe("1|1|0+M1 (2)");
+    expect(dmg("MML 5").damageText).toBe("1|1|0+M1 (3)");
+    expect(dmg("MML 7").damageText).toBe("2|1|1+M1 (4)");
+    expect(dmg("MML 9").damageText).toBe("2|2|1+M1 (5)");
+    expect(dmg("MML 9").rangeText).toBe("+0 +0 +2 +2 +4");
+  });
+
+  it("ATM 3/6/9 match the card, and iATM shares the ATM stat block", () => {
+    expect(dmg("ATM 3", "Clan").damageText).toBe("1|1|0+M1 (3)");
+    expect(dmg("ATM 6", "Clan").damageText).toBe("2|1|0+M1 (5)");
+    expect(dmg("ATM 9", "Clan").damageText).toBe("3|1|0+M2 (8)");
+    expect(dmg("ATM 9", "Clan").rangeText).toBe("+0 +0 +2 +2 +2");
+    expect(dmg("iATM 6", "Clan").damageText).toBe(dmg("ATM 6", "Clan").damageText);
+  });
+
+  it("normalizes glued MegaMek spellings (ISMML5, CLATM9, ISMediumXPulseLaser)", () => {
+    expect(dmg("ISMML5").unknown).toBe(false);
+    expect(dmg("ISMML5").damageText).toBe("1|1|0+M1 (3)");
+    expect(dmg("CLATM9", "Clan").damageText).toBe("3|1|0+M2 (8)");
+    expect(dmg("ISMediumXPulseLaser").damageText).toBe("2");
+  });
+});

@@ -48,6 +48,7 @@ import {
   WEAPON_DAMAGE_CLAN,
   WEAPON_DAMAGE_DIVISOR,
   WEAPON_HEAT,
+  WEAPON_RV_MISSILE,
 } from "./constants.js";
 import type {
   CardEquipment,
@@ -133,7 +134,9 @@ export function normalizeWeaponName(raw: string): string {
   s = s.replace(/\bautocannon\//g, "ac/"); // Autocannon/20 -> ac/20
   s = s.replace(/\bhyper assault gauss\b/g, "hag"); // Hyper Assault Gauss/30 -> hag/30
   s = s.replace(/\b(ac|hag)\s+(\d+)/g, "$1/$2"); // "ac 20"/"hag 30" -> "ac/20"/"hag/30" (also Rotary/Ultra/Light AC)
-  s = s.replace(/\b(srm|lrm)\s*-\s*(\d+)/g, "$1 $2"); // srm-6 -> srm 6
+  s = s.replace(/\b(srm|lrm|mml|atm|iatm)\s*-\s*(\d+)/g, "$1 $2"); // srm-6/mml-5/atm-6 -> "srm 6" etc.
+  s = s.replace(/\bx[\s-]?pulse\b/g, "xpulse"); // "X-Pulse"/"X Pulse" -> "xpulse"
+  s = s.replace(/\bimproved atm\b/g, "atm").replace(/\bi\s*atm\b/g, "atm"); // iATM shares the ATM stat block (streak)
   s = s.replace(/\bmg\b/g, "machine gun"); // MG abbreviation -> full name
   s = s.replace(/\bos\s*$/, "").trimEnd(); // trailing "os" (one-shot variant without parens)
   return s.replace(/\s+/g, " ").trim();
@@ -175,6 +178,11 @@ export function lookupWeaponDamage(
   techBase: TechBase = "IS",
 ): { twDamage: number; unknown: boolean } {
   const key = normalizeWeaponName(name);
+  // Range-varying missiles (MML, ATM/iATM) carry a bespoke profile, not a single
+  // TW number, but they are KNOWN — report the printed max so callers don't flag
+  // them as unknown weapons.
+  const rvm = WEAPON_RV_MISSILE[key];
+  if (rvm) return { twDamage: rvm.max, unknown: false };
   const tw = techBase === "Clan" ? (WEAPON_DAMAGE_CLAN[key] ?? WEAPON_DAMAGE[key]) : WEAPON_DAMAGE[key];
   if (tw === undefined) return { twDamage: 0, unknown: true };
   return { twDamage: tw, unknown: false };
@@ -286,13 +294,15 @@ export function computeDamageProfile(
 
 /**
  * Format a profile for the card:
- *   - missile:  `base+M{mDice} (max)`
- *   - cluster:  `base+C{cDice}` (HAG: `base+C{short}|{med}|{long}`)
- *   - variable: `short|med|long`
- *   - direct:   flat `max`
+ *   - missile:   `base+M{mDice} (max)`
+ *   - rvmissile: `short|med|long+M{mDice} (max)` (MML, ATM/iATM)
+ *   - cluster:   `base+C{cDice}` (HAG: `base+C{short}|{med}|{long}`)
+ *   - variable:  `short|med|long`
+ *   - direct:    flat `max`
  */
 export function formatDamage(p: DamageProfile): string {
   if (p.kind === "missile") return `${p.base}+M${p.mDice} (${p.max})`;
+  if (p.kind === "rvmissile") return `${p.byRange.join("|")}+M${p.mDice} (${p.max})`;
   if (p.kind === "cluster" && p.cDice[0]! > 0) return `${p.base}+C${p.cDice.join("|")}`;
   if (p.kind === "variable") return p.byRange.join("|");
   return `${p.max}`;
@@ -511,6 +521,34 @@ export function convertWeapon(w: Weapon, techBase: TechBase, mass: number): Card
       damageText: formatDamage(profile),
       range,
       rangeText: formatRangeBrackets(range),
+      unknown: false,
+    };
+  }
+
+  // Range-varying missile racks (MML, ATM/iATM): per-bracket base + M dice, from
+  // the bespoke WEAPON_RV_MISSILE table rather than the single-TW formula.
+  const rvm = WEAPON_RV_MISSILE[key];
+  if (rvm) {
+    const profile: DamageProfile = {
+      kind: "rvmissile",
+      base: 0,
+      mDice: rvm.mDice,
+      cDice: [],
+      byRange: [...rvm.byRange],
+      max: rvm.max,
+    };
+    const rangeData = (wtech === "Clan" ? WEAPON_RANGES_CLAN[key] : undefined) ?? WEAPON_RANGES[key];
+    const range = rangeData ? computeRangeBrackets(rangeData) : null;
+    return {
+      name: w.name,
+      location: w.location,
+      rearMounted: w.rearMounted,
+      twDamage: rvm.max,
+      damage: rvm.max,
+      profile,
+      damageText: formatDamage(profile),
+      range,
+      rangeText: range ? formatRangeBrackets(range) : null,
       unknown: false,
     };
   }

@@ -266,6 +266,12 @@ export const WEAPON_DAMAGE: Readonly<Record<string, number>> = {
   "medium pulse laser": 6,
   "large pulse laser": 9,
 
+  // --- Energy: X-Pulse lasers (IS; same damage as the base laser, -2 to-hit) ---
+  "medium xpulse laser": 5, // VERIFIED vs DFA card (MXPLas -> 2)
+
+  // --- Energy: Improved Heavy Lasers (Clan; same damage as the Heavy laser) ---
+  "improved heavy medium laser": 10, // VERIFIED vs DFA card (ciHMLas -> 4)
+
   // --- Energy: PPCs ---
   ppc: 10,
   "er ppc": 10, // IS ER PPC; Clan ER PPC is 15 (see WEAPON_DAMAGE_CLAN)
@@ -390,9 +396,45 @@ export const WEAPON_DAMAGE: Readonly<Record<string, number>> = {
   "micro pulse laser": 3, // IS TW 3 (Clan override in WEAPON_DAMAGE_CLAN)
   "support ppc": 2, // BA/support scale PPC
 
-  // TODO(variable damage / Track A range brackets): ATM 3/6/9/12, MML 3/5/7/9,
-  // HAG 20/30/40, Rotary AC bursts. These vary by range/mode/ammo; left unset
-  // so they surface as warnings rather than wrong numbers.
+  // MML and ATM/iATM are range-varying MISSILE racks: their printed damage is a
+  // per-bracket base PLUS M dice, so they live in WEAPON_RV_MISSILE (below)
+  // rather than as a single TW number here.
+  //
+  // TODO(variable damage): ATM 12, HAG bursts, Rotary AC bursts. Still unset so
+  // they surface as warnings rather than wrong numbers.
+} as const;
+
+// ---------------------------------------------------------------------------
+// RANGE-VARYING MISSILE racks (MML, ATM/iATM). Their Override damage is printed
+// `short|med|long+M{mDice} (max)` — a per-bracket guaranteed base, plus M dice,
+// up to a max — which the single-TW formula in WEAPON_DAMAGE cannot express.
+// Values taken straight from the DFA Override card (the oracle). Keyed on the
+// normalized name; convert.ts prefers this table and treats these as KNOWN.
+//
+// iATM (improved ATM) shares the ATM stat block — it is just streak — so the
+// name normalizer folds "iATM N" onto "atm N".
+// ---------------------------------------------------------------------------
+
+export interface RangeVaryingMissileProfile {
+  /** Per-bracket guaranteed base damage [short, med, long]. */
+  byRange: readonly [number, number, number];
+  /** M (missile) dice rolled on top of the base. */
+  mDice: number;
+  /** Printed maximum damage. */
+  max: number;
+}
+
+export const WEAPON_RV_MISSILE: Readonly<Record<string, RangeVaryingMissileProfile>> = {
+  // MML (Multi-Missile Launcher). VERIFIED vs DFA card.
+  "mml 3": { byRange: [1, 1, 0], mDice: 1, max: 2 },
+  "mml 5": { byRange: [1, 1, 0], mDice: 1, max: 3 },
+  "mml 7": { byRange: [2, 1, 1], mDice: 1, max: 4 },
+  "mml 9": { byRange: [2, 2, 1], mDice: 1, max: 5 },
+
+  // ATM / iATM (Clan). VERIFIED vs DFA card (cATM (AIV)).
+  "atm 3": { byRange: [1, 1, 0], mDice: 1, max: 3 },
+  "atm 6": { byRange: [2, 1, 0], mDice: 1, max: 5 },
+  "atm 9": { byRange: [3, 1, 0], mDice: 2, max: 8 },
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -492,6 +534,23 @@ export const WEAPON_RANGES: Readonly<Record<string, WeaponRange>> = {
   "small pulse laser": { min: 0, medium: 2, long: 3, toHitMod: -2 }, // VERIFIED (IS SPLas): -2/-2/–/–/–
   "medium pulse laser": { min: 0, medium: 4, long: 6, toHitMod: -2 }, // VERIFIED (IS MPLas): -2/-2/+2/–/–
   "large pulse laser": { min: 0, medium: 7, long: 10, toHitMod: -2 }, // VERIFIED (IS LPLas): -2/-2/+0/–/–
+
+  // --- Energy: X-Pulse laser (IS; -2 pulse quality; VERIFIED vs DFA card MXPLas: -2/-2/+0/–/–) ---
+  "medium xpulse laser": { min: 0, medium: 6, long: 9, toHitMod: -2 },
+
+  // --- Energy: Improved Heavy Medium Laser (Clan; VERIFIED vs DFA card ciHMLas: +0/+0/+2/–/–) ---
+  "improved heavy medium laser": { min: 0, medium: 6, long: 9 },
+
+  // --- Missiles: MML (range-varying; VERIFIED vs DFA card: +0/+0/+2/+2/+4) ---
+  "mml 3": { min: 0, medium: 6, long: 21 },
+  "mml 5": { min: 0, medium: 6, long: 21 },
+  "mml 7": { min: 0, medium: 6, long: 21 },
+  "mml 9": { min: 0, medium: 6, long: 21 },
+
+  // --- Missiles: ATM / iATM (Clan, range-varying; VERIFIED vs DFA card: +0/+0/+2/+2/+2) ---
+  "atm 3": { min: 0, medium: 12, long: 27 },
+  "atm 6": { min: 0, medium: 12, long: 27 },
+  "atm 9": { min: 0, medium: 12, long: 27 },
 
   // --- Energy: IS ER lasers (Clan ranges differ; see WEAPON_RANGES_CLAN) ---
   "er small laser": { min: 0, medium: 4, long: 5 }, // VERIFIED (IS erSLas): +0/+0/+4/–/–
@@ -632,6 +691,8 @@ export const WEAPON_HEAT: Readonly<Record<string, number>> = {
   "small pulse laser": 2,
   "medium pulse laser": 4,
   "large pulse laser": 10,
+  "medium xpulse laser": 6,
+  "improved heavy medium laser": 7,
   "micro pulse laser": 1,
   "er micro laser": 1,
   ppc: 10,
@@ -689,6 +750,14 @@ export const WEAPON_HEAT: Readonly<Record<string, number>> = {
   "rocket launcher 10": 3,
   "rocket launcher 15": 4,
   "rocket launcher 20": 5,
+  // MML (LRM-mode heat) and ATM/iATM.
+  "mml 3": 2,
+  "mml 5": 3,
+  "mml 7": 4,
+  "mml 9": 5,
+  "atm 3": 2,
+  "atm 6": 4,
+  "atm 9": 6,
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -893,6 +962,8 @@ export const WEAPON_HINTS: ReadonlyArray<string> = [
   "machine gun",
   "mg",
   "launcher",
+  "mml",
+  "atm",
   "plasma",
   "hag",
   "ac/",
