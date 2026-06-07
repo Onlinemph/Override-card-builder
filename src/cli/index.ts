@@ -149,7 +149,8 @@ function printSummary(card: OverrideCard): void {
     lines.push("  Equipment:");
     for (const e of card.equipment) {
       const qty = e.count > 1 ? ` x${e.count}` : "";
-      lines.push(`    - ${e.label} @ ${e.location}${qty}`);
+      const loc = e.global ? "" : ` @ ${e.location}`;
+      lines.push(`    - ${e.label}${loc}${qty}`);
     }
   }
   for (const warn of card.warnings) lines.push(`  ! ${warn}`);

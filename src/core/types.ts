@@ -267,6 +267,8 @@ export interface CardEquipment {
   category: "ammo" | "equipment";
   /** Number of bins/slots (ammo and jump jets count; other gear is 1). */
   count: number;
+  /** True for body-wide systems (Stealth Armor, signature gear) shown once, no location. */
+  global?: boolean;
 }
 
 /** Per-section armor on the Override card. */

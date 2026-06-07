@@ -354,15 +354,16 @@ describe("equipment surfacing (ammo + important gear from crit slots)", () => {
   const c = card("Atlas AS7-D (crits).mtf");
   const find = (label: string) => c.equipment.find((e) => e.label === label);
 
-  it("counts ammo bins by location", () => {
-    expect(find("AC/20 Ammo")).toMatchObject({ location: "RT", category: "ammo", count: 2 });
-    expect(find("LRM-20 Ammo")).toMatchObject({ location: "LT", category: "ammo", count: 2 });
-    expect(find("SRM-6 Ammo")).toMatchObject({ location: "LT", category: "ammo", count: 1 });
+  it("counts ammo bins, collapsing torso sections onto one Torso (CT)", () => {
+    // CT/LT/RT all merge to CT — Override has only one "Torso".
+    expect(find("AC/20 Ammo")).toMatchObject({ location: "CT", category: "ammo", count: 2 });
+    expect(find("LRM-20 Ammo")).toMatchObject({ location: "CT", category: "ammo", count: 2 });
+    expect(find("SRM-6 Ammo")).toMatchObject({ location: "CT", category: "ammo", count: 1 });
   });
 
-  it("surfaces important gear (CASE, ECM) with location, once each", () => {
-    expect(find("CASE")).toMatchObject({ location: "LT", category: "equipment", count: 1 });
-    expect(find("ECM")).toMatchObject({ location: "LT", category: "equipment", count: 1 });
+  it("surfaces important gear (CASE, ECM) at the collapsed Torso, once each", () => {
+    expect(find("CASE")).toMatchObject({ location: "CT", category: "equipment", count: 1 });
+    expect(find("ECM")).toMatchObject({ location: "CT", category: "equipment", count: 1 });
   });
 
   it("excludes weapons, actuators, engine, and structure from equipment", () => {

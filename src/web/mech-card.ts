@@ -155,7 +155,11 @@ function weaponsTable(card: OverrideCard): string {
 function equipmentLine(card: OverrideCard): string {
   if (card.equipment.length === 0) return "—";
   return card.equipment
-    .map((e) => `${esc(e.label)}${e.count > 1 ? ` ×${e.count}` : ""} <span class="eq-loc">(${esc(e.location)})</span>`)
+    .map((e) => {
+      const qty = e.count > 1 ? ` ×${e.count}` : "";
+      const loc = e.global ? "" : ` <span class="eq-loc">(${esc(locCode(e.location, false))})</span>`;
+      return `${esc(e.label)}${qty}${loc}`;
+    })
     .join(", ");
 }
 

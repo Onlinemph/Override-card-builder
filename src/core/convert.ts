@@ -711,26 +711,46 @@ export function ammoLabel(raw: string): string {
  * curated important-gear list. Grouped by location + label; ammo and jump jets
  * are tallied, other gear shown once. Ordered by location, ammo last.
  */
+/**
+ * Collapse the three torso sections (and their rears) onto a single canonical
+ * "CT" location: Override has only one "Torso", so torso-mounted equipment is
+ * merged and displayed there (e.g. LRM ammo in LT + RT -> one "LRM Ammo @ T").
+ */
+function equipmentLocation(loc: CritSlot["location"]): CritSlot["location"] {
+  return loc === "LT" || loc === "RT" || loc === "CTR" || loc === "LTR" || loc === "RTR"
+    ? "CT"
+    : loc;
+}
+
 export function buildEquipment(critSlots: ReadonlyArray<CritSlot>): CardEquipment[] {
   const byKey = new Map<string, CardEquipment>();
-  const bump = (label: string, location: CritSlot["location"], category: "ammo" | "equipment", countable: boolean) => {
-    const key = `${location}|${category}|${label}`;
+  const bump = (
+    label: string,
+    location: CritSlot["location"],
+    category: "ammo" | "equipment",
+    countable: boolean,
+    global = false,
+  ) => {
+    // Body-wide systems (global) are keyed by label alone, so their per-location
+    // crit slots collapse to a single, location-less entry.
+    const key = global ? `*|${category}|${label}` : `${location}|${category}|${label}`;
     const existing = byKey.get(key);
     if (existing) {
       if (countable) existing.count += 1;
     } else {
-      byKey.set(key, { label, location, category, count: 1 });
+      byKey.set(key, { label, location, category, count: 1, ...(global ? { global: true } : {}) });
     }
   };
 
   for (const slot of critSlots) {
     const lower = slot.name.toLowerCase();
+    const loc = equipmentLocation(slot.location); // CT/LT/RT -> one "Torso"
     if (lower.includes("ammo")) {
-      bump(ammoLabel(slot.name), slot.location, "ammo", true); // each bin counts
+      bump(ammoLabel(slot.name), loc, "ammo", true); // each bin counts
       continue;
     }
     const match = IMPORTANT_EQUIPMENT.find((e) => e.match.some((m) => lower.includes(m)));
-    if (match) bump(match.label, slot.location, "equipment", match.countable ?? false);
+    if (match) bump(match.label, loc, "equipment", match.countable ?? false, match.unique ?? false);
   }
 
   const locRank = (loc: CardEquipment["location"]) => {

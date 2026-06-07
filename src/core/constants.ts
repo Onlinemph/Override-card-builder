@@ -730,6 +730,8 @@ export interface ImportantEquipment {
   label: string;
   /** True for 1-slot-each items that should be counted (jump jets). */
   countable?: boolean;
+  /** True for body-wide systems shown once with no location (Stealth Armor, sig gear). */
+  unique?: boolean;
 }
 
 export const IMPORTANT_EQUIPMENT: ReadonlyArray<ImportantEquipment> = [
@@ -745,9 +747,9 @@ export const IMPORTANT_EQUIPMENT: ReadonlyArray<ImportantEquipment> = [
   { match: ["c3 slave", "c3slave", "c3 boosted", "c3i", "c3"], label: "C3" },
   { match: ["supercharger"], label: "Supercharger" },
   { match: ["masc"], label: "MASC" },
-  { match: ["stealth"], label: "Stealth Armor" },
-  { match: ["null signature"], label: "Null Sig System" },
-  { match: ["void signature"], label: "Void Sig System" },
+  { match: ["stealth"], label: "Stealth Armor", unique: true },
+  { match: ["null signature"], label: "Null Sig System", unique: true },
+  { match: ["void signature"], label: "Void Sig System", unique: true },
   { match: ["tag"], label: "TAG" },
   { match: ["improved jump jet", "jump jet"], label: "Jump Jet", countable: true },
 ];
