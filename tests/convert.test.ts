@@ -667,3 +667,40 @@ describe("Clan weapon ranges and heat-generating equipment", () => {
     expect(c.heatDissipation).toBe(6); // round(28/5)
   });
 });
+
+describe("AMS / Laser AMS / TAG are equipment, not weapons", () => {
+  const mtf = `chassis:Test
+model:EQ-1
+Config:Biped
+techbase:Inner Sphere
+mass:55
+engine:275 Fusion Engine
+heat sinks:10 Single
+walk mp:5
+armor:Standard
+CT armor:10
+HD armor:9
+Weapons:4
+Medium Laser, Right Arm
+AMS, Left Arm
+Laser AMS, Right Torso
+TAG, Head
+`;
+  const c = convertUnit(parseMtf(mtf, "EQ-1.mtf"));
+
+  it("keeps the real weapon and drops the equipment from the weapons/TICs", () => {
+    expect(c.weapons.map((w) => w.name)).toEqual(["Medium Laser"]);
+    expect(c.tics.flatMap((t) => t.weapons.map((w) => w.name))).toEqual(["Medium Laser"]);
+  });
+
+  it("surfaces AMS, LAMS and TAG on the equipment line", () => {
+    const labels = c.equipment.map((e) => e.label);
+    expect(labels).toContain("AMS");
+    expect(labels).toContain("LAMS");
+    expect(labels).toContain("TAG");
+  });
+
+  it("emits no unknown-weapon warnings for them", () => {
+    expect(c.warnings.join(" ")).not.toMatch(/AMS|TAG/);
+  });
+});

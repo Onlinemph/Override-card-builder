@@ -743,6 +743,20 @@ function equipmentLocation(loc: CritSlot["location"]): CritSlot["location"] {
     : loc;
 }
 
+/**
+ * Equipment that MegaMek lists in the `Weapons:` block (it has a to-hit/range in
+ * Total Warfare) but Override treats as non-damaging EQUIPMENT — AMS, Laser AMS,
+ * and TAG. Such lines are pulled out of the weapons list and shown on the
+ * equipment line instead of becoming a (zero-damage, unknown) weapon TIC.
+ */
+const WEAPON_BLOCK_EQUIPMENT_LABELS = new Set(["AMS", "LAMS", "TAG"]);
+
+export function isWeaponBlockEquipment(name: string): boolean {
+  const lower = name.toLowerCase();
+  const match = IMPORTANT_EQUIPMENT.find((e) => e.match.some((m) => lower.includes(m)));
+  return match !== undefined && WEAPON_BLOCK_EQUIPMENT_LABELS.has(match.label);
+}
+
 export function buildEquipment(critSlots: ReadonlyArray<CritSlot>): CardEquipment[] {
   const byKey = new Map<string, CardEquipment>();
   const bump = (
@@ -828,7 +842,20 @@ export function convertUnit(unit: Unit): OverrideCard {
 
   const tmm = lookupTmm(unit.movement.runMP);
 
-  const weapons = unit.weapons.map((w) => convertWeapon(w, unit.techBase, unit.mass));
+  // Split the Weapons block: AMS / Laser AMS / TAG are equipment in Override, not
+  // weapons, so divert them to the equipment line (via pseudo crit slots) instead
+  // of converting them into zero-damage "unknown" TICs.
+  const weaponMounts: Weapon[] = [];
+  const divertedEquipment: CritSlot[] = [];
+  for (const w of unit.weapons) {
+    if (isWeaponBlockEquipment(w.name)) {
+      divertedEquipment.push({ name: w.name, location: w.location, rawLocation: w.rawLocation });
+    } else {
+      weaponMounts.push(w);
+    }
+  }
+
+  const weapons = weaponMounts.map((w) => convertWeapon(w, unit.techBase, unit.mass));
   for (const w of weapons) {
     if (w.unknown) {
       warnings.push(`weapon not in TW damage table: "${w.name}" (damage set to 0)`);
@@ -870,7 +897,7 @@ export function convertUnit(unit: Unit): OverrideCard {
     heatDissipation,
     weapons,
     tics: groupIntoTics(weapons),
-    equipment: buildEquipment(unit.critSlots ?? []),
+    equipment: buildEquipment([...(unit.critSlots ?? []), ...divertedEquipment]),
     melee,
     warnings,
     sourceFile: unit.sourceFile,

@@ -26,6 +26,7 @@ import {
   ammoLabel,
   convertWeapon,
   groupIntoTics,
+  isWeaponBlockEquipment,
   lookupTmm,
   lookupWeaponDamage,
   roundNearest,
@@ -125,7 +126,9 @@ export function convertVehicle(unit: VehicleUnit): VehicleCard {
     for (const mount of unit.mounts.filter((m) => m.facing === facing)) {
       const isAmmo = /\bammo\b/i.test(mount.name);
       const { unknown } = lookupWeaponDamage(mount.name, unit.techBase);
-      if (!isAmmo && (!unknown || looksLikeWeapon(mount.name))) {
+      // AMS / Laser AMS / TAG are equipment in Override, never weapons.
+      const isEquipment = isWeaponBlockEquipment(mount.name);
+      if (!isAmmo && !isEquipment && (!unknown || looksLikeWeapon(mount.name))) {
         const w: Weapon = {
           name: mount.name,
           location: VEHICLE_LOCATION,
