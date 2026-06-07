@@ -131,6 +131,20 @@ export const MIN_STRUCTURE = 1;
 export const HEAT_PER_SINGLE_SINK = 1;
 export const HEAT_PER_DOUBLE_SINK = 2;
 
+/**
+ * Equipment that generates continuous heat each round (stealth/signature
+ * systems). The Override card "pre-pays" this out of dissipation: the printed
+ * Sinks value is (sink dissipation − this load) / 5. Detected from the armor
+ * type (Stealth Armor) or crit-slot names. Keyed by a detection token -> heat.
+ * Each system counts once even if it occupies several crit slots.
+ */
+export const HEAT_GENERATING_EQUIPMENT: ReadonlyArray<{ match: string; heat: number }> = [
+  { match: "stealth", heat: 10 }, // Stealth Armor (needs ECM)
+  { match: "null signature", heat: 10 }, // Null Signature System
+  { match: "void signature", heat: 10 }, // Void Signature System
+  { match: "chameleon", heat: 6 }, // Chameleon Light Polarization Shield
+];
+
 // ---------------------------------------------------------------------------
 // Head armor lookup. Bracketed on the head's TW armor value. Cap 5 total.
 //   TW 0-2 -> 1, 3-5 -> 2, 6-7 -> 3, 8-9 -> 4, 10+ -> 5 (cap).
@@ -534,6 +548,12 @@ export const WEAPON_RANGES_CLAN: Readonly<Record<string, WeaponRange>> = {
   "medium pulse laser": { min: 0, medium: 8, long: 12, toHitMod: -2 },
   // Clan Rotary AC/5 reaches further than IS. VERIFIED vs DFA card cRAC/5: +0/+0/+0/+2/+4.
   "rotary ac/5": { min: 0, medium: 16, long: 24 },
+  // Clan LRMs have NO minimum range (IS LRMs have min 6). med/long match IS.
+  // Clan LRM-15 -> +0/+0/+0/+2/+4 (vs IS +4/+2/+0/+2/+4). VERIFIED vs DFA card.
+  "lrm 5": { min: 0, medium: 14, long: 21 },
+  "lrm 10": { min: 0, medium: 14, long: 21 },
+  "lrm 15": { min: 0, medium: 14, long: 21 },
+  "lrm 20": { min: 0, medium: 14, long: 21 },
 } as const;
 
 /**
@@ -725,6 +745,9 @@ export const IMPORTANT_EQUIPMENT: ReadonlyArray<ImportantEquipment> = [
   { match: ["c3 slave", "c3slave", "c3 boosted", "c3i", "c3"], label: "C3" },
   { match: ["supercharger"], label: "Supercharger" },
   { match: ["masc"], label: "MASC" },
+  { match: ["stealth"], label: "Stealth Armor" },
+  { match: ["null signature"], label: "Null Sig System" },
+  { match: ["void signature"], label: "Void Sig System" },
   { match: ["tag"], label: "TAG" },
   { match: ["improved jump jet", "jump jet"], label: "Jump Jet", countable: true },
 ];

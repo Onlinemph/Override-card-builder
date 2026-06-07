@@ -629,3 +629,40 @@ describe("scaleSquadDamage (Battle Armor: each suit fires its own copy)", () => 
     expect(scaleSquadDamage(slas, 0)).toMatchObject({ kind: "direct", base: 0, max: 0 });
   });
 });
+
+describe("Clan weapon ranges and heat-generating equipment", () => {
+  const mkUnit = (over: Partial<Parameters<typeof convertUnit>[0]>) =>
+    convertUnit({
+      chassis: "T", model: "1", mass: 90, techBase: "Clan", config: "Biped Omnimech",
+      engine: { rating: 360, type: "XL" },
+      movement: { walkMP: 4, runMP: 6, jumpMP: 0, runDerived: true },
+      heatSinks: { count: 14, type: "double" },
+      armor: { CT: 46 }, structure: {},
+      weapons: [{ name: "LRM 15", location: "LT" as never, rawLocation: "Left Torso", rearMounted: false }],
+      ...over,
+    });
+
+  it("uses Clan LRM ranges (no minimum range) for a Clan unit", () => {
+    const c = mkUnit({});
+    const lrm = c.tics.find((t) => /lrm/i.test(t.label))!;
+    // Clan LRM-15: min 0 -> PB/S +0; med 14 -> M +0; long 21 -> L +2, X +4.
+    expect(lrm.rangeText).toBe("+0 +0 +0 +2 +4");
+  });
+
+  it("uses IS LRM ranges (min 6) for an IS unit", () => {
+    const c = mkUnit({ techBase: "IS" });
+    const lrm = c.tics.find((t) => /lrm/i.test(t.label))!;
+    expect(lrm.rangeText).toBe("+4 +2 +0 +2 +4");
+  });
+
+  it("pre-pays Stealth Armor heat out of dissipation (Alpha Wolf: 28 - 10 -> 4)", () => {
+    // 14 doubles = 28 dissipation; Stealth Armor burns 10 -> 18 -> round(18/5) = 4.
+    const c = mkUnit({ armorType: "Stealth(Inner Sphere)" });
+    expect(c.heatDissipation).toBe(4);
+  });
+
+  it("ignores stealth heat for a plain-armor unit", () => {
+    const c = mkUnit({ armorType: "Standard" });
+    expect(c.heatDissipation).toBe(6); // round(28/5)
+  });
+});

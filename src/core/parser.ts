@@ -65,6 +65,7 @@ export function parseMtf(text: string, file = "<unknown>"): Unit {
   const engine = parseEngine(lines, file);
   const movement = parseMovement(lines, file);
   const heatSinks = parseHeatSinks(lines, file);
+  const armorType = getValue(lines, "armor"); // bare "Armor:" line (type, not a location)
   const armor = parseArmor(lines, file);
   const structure = deriveStructure(mass, file);
   const weapons = parseWeapons(lines, file);
@@ -79,6 +80,7 @@ export function parseMtf(text: string, file = "<unknown>"): Unit {
     engine,
     movement,
     heatSinks,
+    armorType,
     armor,
     structure,
     weapons,

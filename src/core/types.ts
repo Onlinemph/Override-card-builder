@@ -117,6 +117,8 @@ export interface Unit {
   engine: Engine;
   movement: Movement;
   heatSinks: HeatSinks;
+  /** Armor type from the bare `Armor:` line (e.g. "Standard", "Stealth(...)"). */
+  armorType?: string;
   /** Armor points per location, including rear torso locations. */
   armor: Partial<Record<MechLocation, number>>;
   /** Internal structure points per front location, derived from tonnage. */
