@@ -23,7 +23,7 @@ import { readdirSync, readFileSync, statSync, writeFileSync, mkdirSync } from "n
 import { basename, extname, join, resolve } from "node:path";
 
 import { convertAny, ParseError } from "../core/index.js";
-import type { BattleArmorCard, OverrideCard } from "../core/index.js";
+import type { BattleArmorCard, OverrideCard, VehicleCard } from "../core/index.js";
 
 /** Input file extensions the tool understands. */
 const SUPPORTED_EXTS = new Set([".mtf", ".blk"]);
@@ -191,6 +191,36 @@ function printBASummary(card: BattleArmorCard): void {
   process.stdout.write(lines.join("\n") + "\n\n");
 }
 
+/** Print a Combat Vehicle card summary. Armor/TMM/structure are best-effort. */
+function printVehicleSummary(card: VehicleCard): void {
+  const lines: string[] = [];
+  lines.push(`${card.name}  (Combat Vehicle, ${card.motionType}, ${card.tonnage}t ${card.techBase})`);
+  lines.push(`  Move ${card.move}   TMM ${card.tmm}   Structure ~${card.structure}  [best-effort]`);
+  const a = card.armor;
+  lines.push(
+    `  Armor  front ${a.front}  right ${a.right}  left ${a.left}  rear ${a.rear}` +
+      (card.hasTurret ? `  turret ${a.turret}` : ""),
+  );
+  if (card.weapons.length > 0) {
+    lines.push("  Weapons:");
+    for (const w of card.weapons) {
+      const flag = w.unknown ? "  [!] unknown weapon" : "";
+      const rng = w.rangeText ? ` [${w.rangeText}]` : "";
+      const ht = w.heat > 0 ? ` ht${w.heat}` : "";
+      lines.push(`    - ${w.label} @ ${w.facing}: dmg ${w.damageText}${ht}${rng}${flag}`);
+    }
+  }
+  if (card.equipment.length > 0) {
+    lines.push("  Equipment:");
+    for (const e of card.equipment) {
+      const qty = e.count > 1 ? ` x${e.count}` : "";
+      lines.push(`    - ${e.label}${qty}`);
+    }
+  }
+  for (const warn of card.warnings) lines.push(`  ! ${warn}`);
+  process.stdout.write(lines.join("\n") + "\n\n");
+}
+
 /** Build a flat CSV (one row per unit) covering the scalar card fields. */
 function toCsv(cards: OverrideCard[]): string {
   const header = [
@@ -292,6 +322,8 @@ function main(): void {
       converted++;
       if (result.kind === "battlearmor") {
         printBASummary(result.card);
+      } else if (result.kind === "vehicle") {
+        printVehicleSummary(result.card);
       } else {
         cards.push(result.card);
         printSummary(result.card);

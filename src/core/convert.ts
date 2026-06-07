@@ -461,6 +461,27 @@ export function lookupWeaponHeat(name: string): number {
   return WEAPON_HEAT[normalizeWeaponName(name)] ?? 0;
 }
 
+/** Override Ht for a TIC: ceil(sum of member TW heat / 5), the heat-sink scale. */
+export function ticHeat(tic: Tic): number {
+  const tw = tic.weapons.reduce((sum, w) => sum + lookupWeaponHeat(w.name), 0);
+  return Math.ceil(tw / HEAT_DISSIPATION_DIVISOR);
+}
+
+/**
+ * Display label for a TIC on the card: count prefix ("x2"), the Clan "c"
+ * abbreviation via the weapon's own tech, and a "(RF)" suffix for rapid-fire
+ * autocannon (Rotary / Ultra). Mixed-name groups keep the TIC's plain label.
+ */
+export function abbreviatedTicLabel(tic: Tic, unitTech: TechBase): string {
+  const names = tic.weapons.map((w) => w.name);
+  if (!names.every((n) => n === names[0])) return tic.label;
+  const name = names[0]!;
+  const tech = detectWeaponTech(name) ?? unitTech;
+  let ab = abbreviateWeapon(name, tech);
+  if (/\b(rotary|ultra)\b/i.test(name) || /^(rac|uac|crac|cuac)/i.test(ab)) ab += " (RF)";
+  return tic.count > 1 ? `x${tic.count} ${ab}` : ab;
+}
+
 export function detectWeaponTech(raw: string): TechBase | null {
   const s = raw.trim();
   if (/^cl(?=[A-Z])/.test(s) || /^(clan)\b/i.test(s)) return "Clan";

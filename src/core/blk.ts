@@ -15,15 +15,24 @@
  *   CLERSmallLaser:LA
  *   </Squad Equipment>
  *
- * Scope: BattleArmor only for now. Other unit types (Tank, Aero, Infantry, …)
- * parse far enough to identify the type and then throw a clear "unsupported"
- * error, so the dispatcher can report it cleanly. The block reader is generic,
- * so extending to other types is additive.
+ * Scope: BattleArmor and Tank (combat vehicles). Other unit types (Aero,
+ * Infantry, …) parse far enough to identify the type, then the dispatcher
+ * throws a clear "unsupported" error. The block reader is generic, so extending
+ * to further types is additive.
  */
 
-import { BA_WEIGHT_CLASSES, TECH_BASE_MAP } from "./constants.js";
+import { BA_WEIGHT_CLASSES, RUN_MP_MULTIPLIER, TECH_BASE_MAP } from "./constants.js";
 import { ParseError } from "./parser.js";
-import type { BAWeightClass, BattleArmorUnit, BlkMount, TechBase } from "./types.js";
+import type {
+  BAWeightClass,
+  BattleArmorUnit,
+  BlkMount,
+  TechBase,
+  VehicleArmorRaw,
+  VehicleFacing,
+  VehicleMount,
+  VehicleUnit,
+} from "./types.js";
 
 /** One `<Tag> … </Tag>` block: its tag and the content lines between the tags. */
 interface Block {
@@ -38,6 +47,12 @@ interface Block {
 /** True if the text looks like a BLK file (has a `<UnitType>`/`<BlockVersion>` tag). */
 export function isBlk(text: string): boolean {
   return /<\s*(unittype|blockversion)\s*>/i.test(text);
+}
+
+/** The raw `<UnitType>` value (e.g. "BattleArmor", "Tank"), or undefined. */
+export function blkUnitType(text: string): string | undefined {
+  const m = text.match(/<\s*unittype\s*>\s*\n\s*([^\n<]+)/i);
+  return m ? m[1]!.trim() : undefined;
 }
 
 /**
@@ -188,5 +203,99 @@ export function parseBlkBattleArmor(text: string, file = "<unknown>"): BattleArm
     armorPerTrooper,
     chassisType,
     mounts: parseMounts(blocks, troopers),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Combat Vehicles (BLK Tank).
+// ---------------------------------------------------------------------------
+
+/** Equipment-block tag (lowercased) -> armor/equipment facing. */
+const FACING_BLOCKS: Readonly<Record<string, VehicleFacing>> = {
+  "body equipment": "body",
+  "front equipment": "front",
+  "right equipment": "right",
+  "left equipment": "left",
+  "rear equipment": "rear",
+  "turret equipment": "turret",
+  "turret 2 equipment": "turret",
+};
+
+/** Parse the `<armor>` block (front, right, left, rear, [turret]) into facings. */
+function parseVehicleArmor(blocks: Block[]): { armor: VehicleArmorRaw; hasTurret: boolean } {
+  const block = blocks.find((b) => b.key === "armor");
+  const values = (block?.lines ?? [])
+    .map((l) => Number.parseInt(l, 10))
+    .filter((n) => Number.isFinite(n));
+  const at = (i: number) => values[i] ?? 0;
+  const hasTurret = values.length >= 5;
+  return {
+    armor: {
+      front: at(0),
+      right: at(1),
+      left: at(2),
+      rear: at(3),
+      ...(hasTurret ? { turret: at(4) } : {}),
+    },
+    hasTurret,
+  };
+}
+
+/** Collect weapon/equipment mounts from the per-facing equipment blocks. */
+function parseVehicleMounts(blocks: Block[]): VehicleMount[] {
+  const mounts: VehicleMount[] = [];
+  for (const block of blocks) {
+    const facing = FACING_BLOCKS[block.key];
+    if (!facing) continue;
+    for (const line of block.lines) {
+      const name = line.trim();
+      if (name) mounts.push({ name, facing });
+    }
+  }
+  return mounts;
+}
+
+/**
+ * Parse BLK Tank text into a `VehicleUnit`. Throws if the file is not a Tank.
+ *
+ * @param text  Full contents of the .blk file.
+ * @param file  Filename for error messages (defaults to "<unknown>").
+ */
+export function parseBlkVehicle(text: string, file = "<unknown>"): VehicleUnit {
+  const blocks = readBlocks(text);
+
+  const unitType = scalar(blocks, "unittype");
+  if (unitType && unitType.toLowerCase() !== "tank") {
+    throw new ParseError(
+      `expected a Tank BLK but got unit type "${unitType}"`,
+      file,
+      "UnitType",
+    );
+  }
+
+  const chassis = scalarAny(blocks, ["name", "chassis_name"]);
+  if (!chassis) throw new ParseError("missing unit name", file, "Name");
+  const model = scalarAny(blocks, ["model"]) ?? "";
+
+  const tonnage = Number.parseFloat(scalarAny(blocks, ["tonnage", "weight"]) ?? "0") || 0;
+  const motionType = scalarAny(blocks, ["motion_type"]) ?? "Tracked";
+  const cruiseMP = intOr(scalarAny(blocks, ["cruisemp", "walkmp"]), 0);
+  const flankRaw = scalarAny(blocks, ["flankmp", "runmp"]);
+  const flankMP = flankRaw !== undefined ? intOr(flankRaw, 0) : Math.ceil(cruiseMP * RUN_MP_MULTIPLIER);
+
+  const { armor, hasTurret } = parseVehicleArmor(blocks);
+
+  return {
+    kind: "vehicle",
+    chassis,
+    model,
+    techBase: resolveTechBase(blocks),
+    tonnage,
+    motionType,
+    cruiseMP,
+    flankMP,
+    armor,
+    hasTurret,
+    mounts: parseVehicleMounts(blocks),
   };
 }

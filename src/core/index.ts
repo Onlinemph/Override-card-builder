@@ -11,4 +11,5 @@ export * from "./parser.js";
 export * from "./convert.js";
 export * from "./blk.js";
 export * from "./battlearmor.js";
+export * from "./vehicle.js";
 export * from "./dispatch.js";

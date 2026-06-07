@@ -13,6 +13,7 @@ import { fileURLToPath } from "node:url";
 import { convertAny } from "../src/core/index.js";
 import { renderBACard } from "../src/web/ba-card.js";
 import { renderMechCard } from "../src/web/mech-card.js";
+import { renderVehicleCard } from "../src/web/vehicle-card.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = join(here, "..");
@@ -23,7 +24,11 @@ const outPath = process.argv[3] ?? join(root, "card-preview.html");
 const text = readFileSync(input, "utf8");
 const result = convertAny(text, input);
 const cardHtml =
-  result.kind === "battlearmor" ? renderBACard(result.card) : renderMechCard(result.card);
+  result.kind === "battlearmor"
+    ? renderBACard(result.card)
+    : result.kind === "vehicle"
+      ? renderVehicleCard(result.card)
+      : renderMechCard(result.card);
 
 const css = readFileSync(join(root, "src/web/style.css"), "utf8");
 const html = `<!doctype html>

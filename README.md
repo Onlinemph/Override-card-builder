@@ -4,12 +4,13 @@ Convert MegaMek `.mtf` BattleMech and `.blk` Battle Armor files into
 **BattleTech: Override** record-card stats. TypeScript, ESM, Node runtime
 (`tsx` for dev, `vitest` for tests).
 
-> **Unit types:** BattleMechs (`.mtf`) are fully supported. Battle Armor
-> (`.blk`) is supported with its weapon/TIC math reusing the 'Mech engine; its
-> armor and TMM currently **mirror the 'Mech rules** as a best-effort starting
-> point (marked `TODO(BA-rules)` in `battlearmor.ts`) — validate against the DFA
-> generator. Other BLK types (vehicles, aerospace, infantry) are not yet wired
-> in; the BLK parser rejects them with a clear "unsupported unit type" error.
+> **Unit types:** BattleMechs (`.mtf`), Battle Armor (`.blk`), and Combat
+> Vehicles (`.blk` Tank) are supported, all reusing the shared weapon →
+> damage/range/TIC engine. The non-'Mech armor / TMM / structure conversions
+> currently **mirror the 'Mech rules** as a best-effort starting point (marked
+> `TODO(BA-rules)` / `TODO(vehicle-rules)`) — validate against the DFA generator.
+> Other BLK types (aerospace, infantry, ProtoMechs) are not yet wired in; the
+> dispatcher rejects them with a clear "unsupported unit type" error.
 
 ## Architecture
 

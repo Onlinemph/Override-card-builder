@@ -8,8 +8,8 @@
  * / Ht / Loc / PB S M L X) — there is no interactive TIC editing on the card.
  */
 
-import { abbreviateWeapon, detectWeaponTech, lookupWeaponHeat } from "../core/index.js";
-import type { OverrideCard, RangeBrackets, TechBase, Tic } from "../core/index.js";
+import { abbreviatedTicLabel, ticHeat } from "../core/index.js";
+import type { OverrideCard, RangeBrackets, Tic } from "../core/index.js";
 
 /** Escape text for safe insertion into HTML. */
 function esc(s: string | number): string {
@@ -39,29 +39,6 @@ const LOC_CODES: Record<string, string> = {
 function locCode(loc: Tic["location"], rear: boolean): string {
   const base = LOC_CODES[loc] ?? loc;
   return rear ? `${base}(R)` : base;
-}
-
-/**
- * Abbreviated weapon label for a TIC, matching the printed card: count prefix
- * ("x2 cLRM-15"), Clan "c" via the weapon's own tech, and a "(RF)" suffix for
- * rapid-fire autocannon (Rotary / Ultra). Falls back to the TIC's plain label
- * for mixed-name groups (which abbreviate poorly).
- */
-function ticLabel(tic: Tic, unitTech: TechBase): string {
-  const names = tic.weapons.map((w) => w.name);
-  const allSame = names.every((n) => n === names[0]);
-  if (!allSame) return tic.label;
-  const name = names[0]!;
-  const tech = detectWeaponTech(name) ?? unitTech;
-  let ab = abbreviateWeapon(name, tech);
-  if (/\b(rotary|ultra)\b/i.test(name) || /^(rac|uac|crac|cuac)/i.test(ab)) ab += " (RF)";
-  return tic.count > 1 ? `x${tic.count} ${ab}` : ab;
-}
-
-/** Override Ht for a TIC: ceil(sum of member TW heat / 5), the heat-sink scale. */
-function ticHeat(tic: Tic): number {
-  const tw = tic.weapons.reduce((sum, w) => sum + lookupWeaponHeat(w.name), 0);
-  return Math.ceil(tw / 5);
 }
 
 /** A row of hex pips of a given class (armor = purple, struct = red). */
@@ -125,7 +102,7 @@ function weaponsTable(card: OverrideCard): string {
       const flag = t.weapons.some((w) => w.unknown) ? ' <span class="warn-flag">[?]</span>' : "";
       const heat = ticHeat(t);
       return `<tr>
-        <td class="wname">${esc(ticLabel(t, card.techBase))}${flag}</td>
+        <td class="wname">${esc(abbreviatedTicLabel(t, card.techBase))}${flag}</td>
         <td class="num wdmg">${esc(t.damageText)}</td>
         <td class="num">${esc(heat)}</td>
         <td class="loc">${esc(locCode(t.location, t.rearMounted))}</td>

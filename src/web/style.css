@@ -796,3 +796,31 @@ footer {
 .mdoll-legend { display: flex; align-items: center; gap: 0.35rem; justify-content: center; font-size: 0.72rem; color: #2a2d35; margin: 0.5rem 0 0; }
 .mdoll-legend .hex { vertical-align: middle; }
 .mech-sheet .warnings { color: #b03020; padding-left: 1.1rem; }
+
+/* ---- Combat Vehicle facing armor diagram --------------------------------- */
+.vdoll {
+  display: grid;
+  grid-template-columns: 1fr 1.3fr 1fr;
+  grid-template-areas:
+    ".     front  ."
+    "left  turret right"
+    ".     rear   .";
+  gap: 0.4rem;
+  align-items: stretch;
+}
+.vloc {
+  background: #e3e3dd;
+  border: 1.5px solid #9a9a92;
+  border-radius: 8px;
+  padding: 0.4rem 0.35rem;
+  text-align: center;
+}
+.vloc.vempty { background: transparent; border: none; }
+.vfront { grid-area: front; }
+.vleft { grid-area: left; }
+.vturret { grid-area: turret; }
+.vright { grid-area: right; }
+.vrear { grid-area: rear; }
+.vloc-name { font-weight: 700; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.02em; }
+.vloc-name .loc-hits { color: #15171c; font-size: 0.95rem; }
+.vloc-pips { display: flex; flex-wrap: wrap; gap: 2px; justify-content: center; margin-top: 0.3rem; }

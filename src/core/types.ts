@@ -450,6 +450,103 @@ export interface BattleArmorCard {
   sourceFile?: string;
 }
 
+// ---------------------------------------------------------------------------
+// Combat Vehicles (BLK Tank). Armor is by FACING (front/right/left/rear and an
+// optional turret) rather than per-limb; there is no melee, head, or internal
+// structure table. The weapon -> damage/range/TIC engine is reused per facing.
+// ---------------------------------------------------------------------------
+
+/** A vehicle armor/equipment facing. "body" holds non-facing gear. */
+export type VehicleFacing = "front" | "right" | "left" | "rear" | "turret" | "body";
+
+/** One weapon/equipment entry from a BLK facing block (e.g. <Turret Equipment>). */
+export interface VehicleMount {
+  /** Item name exactly as written. */
+  name: string;
+  /** Which facing block it came from. */
+  facing: VehicleFacing;
+}
+
+/** Armor points per facing, straight from the BLK `<armor>` block. */
+export interface VehicleArmorRaw {
+  front: number;
+  right: number;
+  left: number;
+  rear: number;
+  /** Present only when the vehicle has a turret. */
+  turret?: number;
+}
+
+/** A fully-parsed combat vehicle from a BLK Tank file. Physical facts only. */
+export interface VehicleUnit {
+  kind: "vehicle";
+  chassis: string;
+  model: string;
+  techBase: TechBase;
+  /** Tonnage. */
+  tonnage: number;
+  /** Movement mode: "Tracked" | "Wheeled" | "Hover" | "WiGE" | "Naval" | … */
+  motionType: string;
+  /** Cruise MP (≈ walk). */
+  cruiseMP: number;
+  /** Flank MP (≈ run): explicit if present, else ceil(cruise * 1.5). */
+  flankMP: number;
+  armor: VehicleArmorRaw;
+  hasTurret: boolean;
+  mounts: VehicleMount[];
+  sourceFile?: string;
+}
+
+/** One weapon row on the vehicle card: a TIC scoped to a facing. */
+export interface VehicleWeaponRow {
+  /** Abbreviated label (count + Clan prefix + "(RF)"). */
+  label: string;
+  /** Display facing: "Front" | "Turret" | "Right" | "Left" | "Rear". */
+  facing: string;
+  /** Printed damage string. */
+  damageText: string;
+  /** Override heat (ceil sum TW heat / 5). */
+  heat: number;
+  range: RangeBrackets | null;
+  rangeText: string | null;
+  unknown: boolean;
+}
+
+/** Per-facing Override armor on the vehicle card. */
+export interface VehicleCardArmor {
+  front: number;
+  right: number;
+  left: number;
+  rear: number;
+  turret?: number;
+}
+
+/** Converted Override record-card statistics for a combat vehicle. */
+export interface VehicleCard {
+  kind: "vehicle";
+  name: string;
+  chassis: string;
+  model: string;
+  techBase: TechBase;
+  tonnage: number;
+  motionType: string;
+  /** Printed move string, e.g. "8/12" (cruise/flank). */
+  move: string;
+  cruiseMP: number;
+  flankMP: number;
+  /** Base TMM (mirrored from the 'Mech flank-MP table — best-effort). */
+  tmm: number;
+  /** Per-facing Override armor (best-effort: mirrors 'Mech arm/leg = TW/3). */
+  armor: VehicleCardArmor;
+  /** Best-effort internal structure (single value, mirrored from tonnage). */
+  structure: number;
+  hasTurret: boolean;
+  weapons: VehicleWeaponRow[];
+  equipment: CardEquipment[];
+  warnings: string[];
+  sourceFile?: string;
+}
+
 /** Converted Override record-card statistics for one unit. */
 export interface OverrideCard {
   /** "Chassis Model". */

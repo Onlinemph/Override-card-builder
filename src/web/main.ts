@@ -9,6 +9,7 @@ import "./style.css";
 import { convertAny, ParseError } from "../core/index.js";
 import { renderBACard } from "./ba-card.js";
 import { renderMechCard } from "./mech-card.js";
+import { renderVehicleCard } from "./vehicle-card.js";
 
 // ---------------------------------------------------------------------------
 // Unit browser — powered by the pre-built index served as a STATIC asset at
@@ -222,6 +223,61 @@ Battle Claw:LA
 </Squad Equipment>
 `;
 
+// A BLK combat vehicle (Tank), to demo the vehicle path in the browser.
+const EXAMPLE_TANK = `<UnitType>
+Tank
+</UnitType>
+
+<Name>
+Manticore
+</Name>
+
+<Model>
+Heavy Tank
+
+</Model>
+
+<type>
+IS Level 1
+</type>
+
+<motion_type>
+Tracked
+</motion_type>
+
+<cruiseMP>
+4
+</cruiseMP>
+
+<armor>
+40
+30
+30
+20
+35
+</armor>
+
+<Front Equipment>
+LRM 10
+</Front Equipment>
+
+<Right Equipment>
+SRM 6
+</Right Equipment>
+
+<Left Equipment>
+SRM 6
+</Left Equipment>
+
+<Turret Equipment>
+PPC
+</Turret Equipment>
+
+<tonnage>
+60.0
+</tonnage>
+`;
+
 const $ = <T extends HTMLElement>(id: string): T => {
   const el = document.getElementById(id);
   if (!el) throw new Error(`missing element #${id}`);
@@ -263,9 +319,9 @@ function convertOne(text: string, file: string): ConvertResult {
 
 /** HTML for a successfully converted card, dispatched on unit kind. */
 function cardHtml(result: AnyCard): string {
-  return result.kind === "battlearmor"
-    ? renderBACard(result.card)
-    : renderMechCard(result.card);
+  if (result.kind === "battlearmor") return renderBACard(result.card);
+  if (result.kind === "vehicle") return renderVehicleCard(result.card);
+  return renderMechCard(result.card);
 }
 
 /** Render the converted cards. Both 'Mech and BA cards are static (no editor). */
@@ -294,6 +350,11 @@ $("example").addEventListener("click", () => {
 $("example-ba").addEventListener("click", () => {
   textarea.value = EXAMPLE_ELEMENTAL;
   showResults([convertOne(EXAMPLE_ELEMENTAL, "Elemental [Laser].blk")]);
+});
+
+$("example-veh").addEventListener("click", () => {
+  textarea.value = EXAMPLE_TANK;
+  showResults([convertOne(EXAMPLE_TANK, "Manticore Heavy Tank.blk")]);
 });
 
 $("clear").addEventListener("click", () => {
