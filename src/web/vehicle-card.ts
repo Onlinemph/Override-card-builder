@@ -49,11 +49,17 @@ function facingBox(
   </div>`;
 }
 
-/** Facing armor diagram: Front on top, sides flanking the turret, Rear at bottom. */
+/**
+ * Facing armor diagram: Front on top, sides flanking the turret, Rear at bottom.
+ * VTOLs add the Rotor as a row above Front (and the grid grows a `has-rotor` row).
+ */
 function armorDiagram(card: VehicleCard): string {
   const a = card.armor;
   const s = card.structure;
-  return `<div class="vdoll">
+  const rotor = card.hasRotor ? facingBox("vrotor", "Rotor", "6*", a.rotor, s) : "";
+  const cls = card.hasRotor ? "vdoll has-rotor" : "vdoll";
+  return `<div class="${cls}">
+    ${rotor}
     ${facingBox("vfront", "Front", "6,7,8", a.front, s)}
     ${facingBox("vleft", "Left Side", "10,11", a.left, s)}
     ${facingBox("vturret", "Turret", "5,9", a.turret, s)}
@@ -114,7 +120,7 @@ export function renderVehicleCard(card: VehicleCard): string {
         <div class="ms-unitdata">
           <div class="ms-ud-h">UNIT DATA</div>
           <div class="ms-ud-stats">
-            <div><b>Type:</b> Combat Vehicle</div>
+            <div><b>Type:</b> ${card.hasRotor ? "VTOL" : "Combat Vehicle"}</div>
             <div><b>Mass:</b> ${esc(card.tonnage)} Tons</div>
             <div class="ms-ud-move"><b>Move:</b> ${esc(card.move)}</div>
             <div><b>TMM:</b> ${esc(card.tmm)} / ${esc(card.tmm + 1)}</div>

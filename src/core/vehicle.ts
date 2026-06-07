@@ -6,9 +6,12 @@
  * heat-rated exactly like the 'Mech card.
  *
  * Numbers are tuned against the DFA Manticore Heavy Tank card (60t, armor
- * 42/33/33/26/42): armor = TW/5, structure ~ tonnage/30, TMM = base/+1 on flank
- * MP, move shows the motion letter ("4 / 6t"). Still marked best-effort -
- * keep validating new vehicles against DFA.
+ * 42/33/33/26/42): armor = TW/4 (verified), structure by tonnage bracket
+ * (verified), TMM = base/+1 on flank MP, move shows the motion letter ("4 / 6t").
+ * TMM is still best-effort - keep validating new vehicles against DFA.
+ *
+ * VTOLs share this card. They add a rotor location (the 5th armor value) and a
+ * flying move (motion letter "v"); a turret, if present, is the 6th armor value.
  */
 
 import {
@@ -50,6 +53,7 @@ const FACING_CODE: Readonly<Record<VehicleFacing, string>> = {
   right: "RS",
   left: "LS",
   rear: "RR",
+  rotor: "RO",
   body: "BD",
 };
 const FACING_ORDER: ReadonlyArray<VehicleFacing> = [
@@ -58,6 +62,7 @@ const FACING_ORDER: ReadonlyArray<VehicleFacing> = [
   "right",
   "left",
   "rear",
+  "rotor",
   "body",
 ];
 
@@ -66,7 +71,7 @@ function looksLikeWeapon(name: string): boolean {
   return WEAPON_HINTS.some((hint) => lower.includes(hint));
 }
 
-/** Armor: TW / 5, round nearest, min 1 (0 if the facing is absent). */
+/** Armor: TW / 4, round nearest, min 1 (0 if the facing is absent). */
 function convertArmor(tw: number): number {
   return tw > 0 ? Math.max(1, roundNearest(tw / VEHICLE_ARMOR_DIVISOR)) : 0;
 }
@@ -157,6 +162,7 @@ export function convertVehicle(unit: VehicleUnit): VehicleCard {
     left: convertArmor(a.left),
     rear: convertArmor(a.rear),
     ...(unit.hasTurret ? { turret: convertArmor(a.turret ?? 0) } : {}),
+    ...(unit.hasRotor ? { rotor: convertArmor(a.rotor ?? 0) } : {}),
   };
 
   // Internal structure per facing (uniform), by tonnage bracket (verified vs DFA).
@@ -181,6 +187,7 @@ export function convertVehicle(unit: VehicleUnit): VehicleCard {
     armor,
     structure,
     hasTurret: unit.hasTurret,
+    hasRotor: unit.hasRotor,
     weapons,
     equipment: buildVehicleEquipment(otherMounts),
     warnings,

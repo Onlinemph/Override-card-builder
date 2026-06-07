@@ -808,6 +808,13 @@ footer {
   gap: 0.4rem;
   align-items: stretch;
 }
+.vdoll.has-rotor {
+  grid-template-areas:
+    ".     rotor  ."
+    ".     front  ."
+    "left  turret right"
+    ".     rear   .";
+}
 .vloc {
   background: #e3e3dd;
   border: 1.5px solid #9a9a92;
@@ -821,6 +828,7 @@ footer {
 .vturret { grid-area: turret; }
 .vright { grid-area: right; }
 .vrear { grid-area: rear; }
+.vrotor { grid-area: rotor; }
 .vloc-name { font-weight: 700; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.02em; }
 .vloc-name .loc-hits { color: #15171c; font-size: 0.95rem; }
 .vloc-pips { display: flex; flex-wrap: wrap; gap: 2px; justify-content: center; margin-top: 0.3rem; }

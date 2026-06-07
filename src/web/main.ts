@@ -276,6 +276,52 @@ PPC
 </tonnage>
 `;
 
+// A BLK VTOL, to demo the rotor location + flying move on the vehicle card.
+const EXAMPLE_VTOL = `<UnitType>
+VTOL
+</UnitType>
+
+<Name>
+Cyrano Gunship
+</Name>
+
+<Model>
+
+</Model>
+
+<type>
+IS Level 2
+</type>
+
+<motion_type>
+VTOL
+</motion_type>
+
+<cruiseMP>
+12
+</cruiseMP>
+
+<armor>
+5
+4
+4
+2
+2
+</armor>
+
+<Front Equipment>
+Large Laser
+BeagleActiveProbe
+</Front Equipment>
+
+<Rotor Equipment>
+</Rotor Equipment>
+
+<tonnage>
+30.0
+</tonnage>
+`;
+
 const $ = <T extends HTMLElement>(id: string): T => {
   const el = document.getElementById(id);
   if (!el) throw new Error(`missing element #${id}`);
@@ -353,6 +399,11 @@ $("example-ba").addEventListener("click", () => {
 $("example-veh").addEventListener("click", () => {
   textarea.value = EXAMPLE_TANK;
   showResults([convertOne(EXAMPLE_TANK, "Manticore Heavy Tank.blk")]);
+});
+
+$("example-vtol").addEventListener("click", () => {
+  textarea.value = EXAMPLE_VTOL;
+  showResults([convertOne(EXAMPLE_VTOL, "Cyrano Gunship.blk")]);
 });
 
 $("clear").addEventListener("click", () => {

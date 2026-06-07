@@ -456,8 +456,11 @@ export interface BattleArmorCard {
 // structure table. The weapon -> damage/range/TIC engine is reused per facing.
 // ---------------------------------------------------------------------------
 
-/** A vehicle armor/equipment facing. "body" holds non-facing gear. */
-export type VehicleFacing = "front" | "right" | "left" | "rear" | "turret" | "body";
+/**
+ * A vehicle armor/equipment facing. "body" holds non-facing gear; "rotor" is the
+ * VTOL main rotor (its own fragile location).
+ */
+export type VehicleFacing = "front" | "right" | "left" | "rear" | "turret" | "rotor" | "body";
 
 /** One weapon/equipment entry from a BLK facing block (e.g. <Turret Equipment>). */
 export interface VehicleMount {
@@ -475,9 +478,11 @@ export interface VehicleArmorRaw {
   rear: number;
   /** Present only when the vehicle has a turret. */
   turret?: number;
+  /** Present only on VTOLs — the main rotor's armor. */
+  rotor?: number;
 }
 
-/** A fully-parsed combat vehicle from a BLK Tank file. Physical facts only. */
+/** A fully-parsed combat vehicle from a BLK Tank/VTOL file. Physical facts only. */
 export interface VehicleUnit {
   kind: "vehicle";
   chassis: string;
@@ -485,7 +490,7 @@ export interface VehicleUnit {
   techBase: TechBase;
   /** Tonnage. */
   tonnage: number;
-  /** Movement mode: "Tracked" | "Wheeled" | "Hover" | "WiGE" | "Naval" | … */
+  /** Movement mode: "Tracked" | "Wheeled" | "Hover" | "VTOL" | "Naval" | … */
   motionType: string;
   /** Cruise MP (≈ walk). */
   cruiseMP: number;
@@ -493,6 +498,8 @@ export interface VehicleUnit {
   flankMP: number;
   armor: VehicleArmorRaw;
   hasTurret: boolean;
+  /** True for VTOLs — adds the rotor location. */
+  hasRotor: boolean;
   mounts: VehicleMount[];
   sourceFile?: string;
 }
@@ -519,6 +526,8 @@ export interface VehicleCardArmor {
   left: number;
   rear: number;
   turret?: number;
+  /** VTOL rotor armor (present only on VTOLs). */
+  rotor?: number;
 }
 
 /** Notable vehicle equipment (ammo/gear) with its facing (e.g. "BD" body). */
@@ -550,6 +559,8 @@ export interface VehicleCard {
   /** Internal structure per facing (uniform, best-effort from tonnage). */
   structure: number;
   hasTurret: boolean;
+  /** True for VTOLs — the card shows a rotor location. */
+  hasRotor: boolean;
   weapons: VehicleWeaponRow[];
   equipment: VehicleEquipment[];
   warnings: string[];

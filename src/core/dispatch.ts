@@ -26,9 +26,9 @@ export function detectFormat(text: string): "mtf" | "blk" {
 
 /**
  * Parse + convert any supported source, dispatching on the file content:
- *   - MTF                -> BattleMech
- *   - BLK BattleArmor    -> Battle Armor
- *   - BLK Tank           -> Combat Vehicle
+ *   - MTF                  -> BattleMech
+ *   - BLK BattleArmor      -> Battle Armor
+ *   - BLK Tank / VTOL      -> Combat Vehicle
  * Other BLK unit types throw a clear "unsupported" ParseError.
  */
 export function convertAny(text: string, file = "<unknown>"): AnyCard {
@@ -39,11 +39,11 @@ export function convertAny(text: string, file = "<unknown>"): AnyCard {
   if (type === "battlearmor") {
     return { kind: "battlearmor", card: convertBattleArmor(parseBlkBattleArmor(text, file)) };
   }
-  if (type === "tank") {
+  if (type === "tank" || type === "vtol") {
     return { kind: "vehicle", card: convertVehicle(parseBlkVehicle(text, file)) };
   }
   throw new ParseError(
-    `unsupported BLK unit type "${blkUnitType(text) ?? "?"}" (supported: BattleArmor, Tank)`,
+    `unsupported BLK unit type "${blkUnitType(text) ?? "?"}" (supported: BattleArmor, Tank, VTOL)`,
     file,
     "UnitType",
   );

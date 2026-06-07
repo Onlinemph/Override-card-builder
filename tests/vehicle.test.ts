@@ -38,10 +38,58 @@ describe("parseBlkVehicle", () => {
     ]);
   });
 
-  it("rejects a non-Tank BLK file", () => {
-    expect(() => parseBlkVehicle("<UnitType>\nVTOL\n</UnitType>\n<Name>\nX\n</Name>\n", "x.blk")).toThrowError(
-      ParseError,
-    );
+  it("rejects a non-vehicle BLK file", () => {
+    expect(() =>
+      parseBlkVehicle("<UnitType>\nInfantry\n</UnitType>\n<Name>\nX\n</Name>\n", "x.blk"),
+    ).toThrowError(ParseError);
+  });
+});
+
+describe("parseBlkVehicle (VTOL)", () => {
+  const u = parseBlkVehicle(load("Test Copter TV-1.blk"), "Test Copter TV-1.blk");
+
+  it("parses the rotor as the 5th armor value and flags hasRotor", () => {
+    expect(u.motionType).toBe("VTOL");
+    expect(u.hasRotor).toBe(true);
+    expect(u.hasTurret).toBe(false);
+    expect(u.tonnage).toBe(20);
+    expect(u.cruiseMP).toBe(8);
+    expect(u.flankMP).toBe(12); // ceil(8 * 1.5)
+    // <armor>: front, right, left, rear, rotor.
+    expect(u.armor).toEqual({ front: 12, right: 8, left: 8, rear: 4, rotor: 2 });
+  });
+
+  it("collects rotor/facing mounts", () => {
+    expect(u.mounts).toEqual([
+      { name: "LRM 5", facing: "front" },
+      { name: "Machine Gun", facing: "right" },
+      { name: "Machine Gun", facing: "left" },
+    ]);
+  });
+});
+
+describe("convertVehicle (VTOL)", () => {
+  const c = convertVehicle(parseBlkVehicle(load("Test Copter TV-1.blk"), "TV-1.blk"));
+
+  it("shows the flying move letter and a rotor armor location", () => {
+    expect(c.move).toBe("8 / 12v"); // VTOL motion letter
+    expect(c.hasRotor).toBe(true);
+    // armor = TW / 4, round nearest (rotor 2 -> 1, min 1).
+    expect(c.armor).toEqual({ front: 3, right: 2, left: 2, rear: 1, rotor: 1 });
+    expect(c.structure).toBe(1); // 20t -> 1 (≤40t bracket)
+  });
+
+  it("tags rotor weapons with the RO facing code", () => {
+    const front = c.weapons.find((w) => /LRM/.test(w.label));
+    expect(front?.facing).toBe("FR");
+  });
+});
+
+describe("convertAny dispatch (VTOL)", () => {
+  it("routes a BLK VTOL to the vehicle path", () => {
+    const r = convertAny(load("Test Copter TV-1.blk"), "TV-1.blk");
+    expect(r.kind).toBe("vehicle");
+    if (r.kind === "vehicle") expect(r.card.hasRotor).toBe(true);
   });
 });
 

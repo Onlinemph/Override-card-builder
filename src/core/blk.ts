@@ -217,26 +217,39 @@ const FACING_BLOCKS: Readonly<Record<string, VehicleFacing>> = {
   "right equipment": "right",
   "left equipment": "left",
   "rear equipment": "rear",
+  "rotor equipment": "rotor",
   "turret equipment": "turret",
   "turret 2 equipment": "turret",
 };
 
-/** Parse the `<armor>` block (front, right, left, rear, [turret]) into facings. */
-function parseVehicleArmor(blocks: Block[]): { armor: VehicleArmorRaw; hasTurret: boolean } {
+/**
+ * Parse the `<armor>` block into facings.
+ *
+ * Ground vehicles list `front, right, left, rear, [turret]`. VTOLs always carry
+ * a rotor, so their order is `front, right, left, rear, rotor, [turret]` — the
+ * 5th value is the rotor, and a 6th value (if present) is the turret.
+ */
+function parseVehicleArmor(
+  blocks: Block[],
+  isVtol: boolean,
+): { armor: VehicleArmorRaw; hasTurret: boolean } {
   const block = blocks.find((b) => b.key === "armor");
   const values = (block?.lines ?? [])
     .map((l) => Number.parseInt(l, 10))
     .filter((n) => Number.isFinite(n));
   const at = (i: number) => values[i] ?? 0;
+  const base = { front: at(0), right: at(1), left: at(2), rear: at(3) };
+
+  if (isVtol) {
+    const hasTurret = values.length >= 6;
+    return {
+      armor: { ...base, rotor: at(4), ...(hasTurret ? { turret: at(5) } : {}) },
+      hasTurret,
+    };
+  }
   const hasTurret = values.length >= 5;
   return {
-    armor: {
-      front: at(0),
-      right: at(1),
-      left: at(2),
-      rear: at(3),
-      ...(hasTurret ? { turret: at(4) } : {}),
-    },
+    armor: { ...base, ...(hasTurret ? { turret: at(4) } : {}) },
     hasTurret,
   };
 }
@@ -256,7 +269,8 @@ function parseVehicleMounts(blocks: Block[]): VehicleMount[] {
 }
 
 /**
- * Parse BLK Tank text into a `VehicleUnit`. Throws if the file is not a Tank.
+ * Parse BLK Tank/VTOL text into a `VehicleUnit`. Throws if the file is neither a
+ * Tank nor a VTOL (both share the combat-vehicle card; VTOLs add a rotor).
  *
  * @param text  Full contents of the .blk file.
  * @param file  Filename for error messages (defaults to "<unknown>").
@@ -265,9 +279,10 @@ export function parseBlkVehicle(text: string, file = "<unknown>"): VehicleUnit {
   const blocks = readBlocks(text);
 
   const unitType = scalar(blocks, "unittype");
-  if (unitType && unitType.toLowerCase() !== "tank") {
+  const normalizedType = unitType?.toLowerCase();
+  if (unitType && normalizedType !== "tank" && normalizedType !== "vtol") {
     throw new ParseError(
-      `expected a Tank BLK but got unit type "${unitType}"`,
+      `expected a Tank or VTOL BLK but got unit type "${unitType}"`,
       file,
       "UnitType",
     );
@@ -279,11 +294,12 @@ export function parseBlkVehicle(text: string, file = "<unknown>"): VehicleUnit {
 
   const tonnage = Number.parseFloat(scalarAny(blocks, ["tonnage", "weight"]) ?? "0") || 0;
   const motionType = scalarAny(blocks, ["motion_type"]) ?? "Tracked";
+  const isVtol = normalizedType === "vtol" || motionType.toLowerCase() === "vtol";
   const cruiseMP = intOr(scalarAny(blocks, ["cruisemp", "walkmp"]), 0);
   const flankRaw = scalarAny(blocks, ["flankmp", "runmp"]);
   const flankMP = flankRaw !== undefined ? intOr(flankRaw, 0) : Math.ceil(cruiseMP * RUN_MP_MULTIPLIER);
 
-  const { armor, hasTurret } = parseVehicleArmor(blocks);
+  const { armor, hasTurret } = parseVehicleArmor(blocks, isVtol);
 
   return {
     kind: "vehicle",
@@ -296,6 +312,7 @@ export function parseBlkVehicle(text: string, file = "<unknown>"): VehicleUnit {
     flankMP,
     armor,
     hasTurret,
+    hasRotor: isVtol,
     mounts: parseVehicleMounts(blocks),
   };
 }
