@@ -9,6 +9,7 @@ import "./style.css";
 import { convertAny, ParseError } from "../core/index.js";
 import { renderBACard } from "./ba-card.js";
 import { renderFighterCard } from "./fighter-card.js";
+import { renderInfantryCard } from "./infantry-card.js";
 import { renderMechCard } from "./mech-card.js";
 import { renderVehicleCard } from "./vehicle-card.js";
 
@@ -390,6 +391,58 @@ IS Gauss Ammo
 </tonnage>
 `;
 
+// A BLK conventional infantry platoon, to demo the infantry path in the browser.
+const EXAMPLE_INFANTRY = `<UnitType>
+Infantry
+</UnitType>
+
+<Name>
+Field Gun Infantry
+</Name>
+
+<Model>
+Motorized Batteries
+</Model>
+
+<squad_size>
+5
+</squad_size>
+
+<squadn>
+6
+</squadn>
+
+<Primary>
+Auto Rifle
+</Primary>
+
+<Secondary>
+Heavy PPC
+</Secondary>
+
+<secondn>
+1
+</secondn>
+
+<type>
+IS Level 2
+</type>
+
+<motion_type>
+Motorized
+</motion_type>
+
+<antimek>
+8
+</antimek>
+
+<Field Guns Equipment>
+ISLAC5
+ISLAC5
+ISLAC5
+</Field Guns Equipment>
+`;
+
 const $ = <T extends HTMLElement>(id: string): T => {
   const el = document.getElementById(id);
   if (!el) throw new Error(`missing element #${id}`);
@@ -434,6 +487,7 @@ function cardHtml(result: AnyCard): string {
   if (result.kind === "battlearmor") return renderBACard(result.card);
   if (result.kind === "vehicle") return renderVehicleCard(result.card);
   if (result.kind === "fighter") return renderFighterCard(result.card);
+  if (result.kind === "infantry") return renderInfantryCard(result.card);
   return renderMechCard(result.card);
 }
 
@@ -478,6 +532,11 @@ $("example-vtol").addEventListener("click", () => {
 $("example-fighter").addEventListener("click", () => {
   textarea.value = EXAMPLE_FIGHTER;
   showResults([convertOne(EXAMPLE_FIGHTER, "Shikra SKR-4N.blk")]);
+});
+
+$("example-inf").addEventListener("click", () => {
+  textarea.value = EXAMPLE_INFANTRY;
+  showResults([convertOne(EXAMPLE_INFANTRY, "Field Gun Infantry.blk")]);
 });
 
 $("clear").addEventListener("click", () => {

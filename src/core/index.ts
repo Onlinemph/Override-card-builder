@@ -13,4 +13,5 @@ export * from "./blk.js";
 export * from "./battlearmor.js";
 export * from "./vehicle.js";
 export * from "./fighter.js";
+export * from "./infantry.js";
 export * from "./dispatch.js";

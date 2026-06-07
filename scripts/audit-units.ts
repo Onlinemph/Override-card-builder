@@ -118,10 +118,15 @@ for (const full of files) {
     byKind.set(result.kind, (byKind.get(result.kind) ?? 0) + 1);
 
     const warnings = result.card.warnings ?? [];
-    // A converted unit with no firepower at all is usually a parse miss worth a look.
-    const weaponCount = "weapons" in result.card ? result.card.weapons.length : 0;
-    const equipCount = "equipment" in result.card ? result.card.equipment.length : 0;
-    const noFirepower = weaponCount === 0 && equipCount === 0;
+    // A converted unit with no firepower at all is usually a parse miss worth a
+    // look. Count weapons across every card shape (BA `firepower`, infantry
+    // `fieldGuns` + small arms), so legit unarmed-but-modeled units don't flag.
+    const card = result.card as Record<string, unknown>;
+    const len = (k: string) => (Array.isArray(card[k]) ? (card[k] as unknown[]).length : 0);
+    const armed =
+      len("weapons") + len("equipment") + len("firepower") + len("fieldGuns") > 0 ||
+      result.kind === "infantry"; // infantry always carry small arms (not yet scored)
+    const noFirepower = !armed;
 
     if (warnings.length > 0 || noFirepower) {
       rec.status = "warning";

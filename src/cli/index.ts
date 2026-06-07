@@ -23,7 +23,7 @@ import { readdirSync, readFileSync, statSync, writeFileSync, mkdirSync } from "n
 import { basename, extname, join, resolve } from "node:path";
 
 import { convertAny, ParseError } from "../core/index.js";
-import type { BattleArmorCard, FighterCard, OverrideCard, VehicleCard } from "../core/index.js";
+import type { BattleArmorCard, FighterCard, InfantryCard, OverrideCard, VehicleCard } from "../core/index.js";
 
 /** Input file extensions the tool understands. */
 const SUPPORTED_EXTS = new Set([".mtf", ".blk"]);
@@ -255,6 +255,31 @@ function printFighterSummary(card: FighterCard): void {
   process.stdout.write(lines.join("\n") + "\n\n");
 }
 
+/** Print a Conventional Infantry card summary. Small-arms damage pending DFA calibration. */
+function printInfantrySummary(card: InfantryCard): void {
+  const lines: string[] = [];
+  lines.push(`${card.name}  (Infantry, ${card.motionLabel}, ${card.techBase})`);
+  lines.push(
+    `  Troopers ${card.troopers}   Move ${card.move}   TMM ${card.tmm}` +
+      `   Anti-'Mech: ${card.antiMek ? "yes" : "no"}  [best-effort]`,
+  );
+  lines.push(
+    `  Primary: ${card.primaryWeapon || "—"}` +
+      (card.secondaryWeapon ? `   Secondary: ${card.secondaryWeapon}${card.secondaryCount ? ` x${card.secondaryCount}` : ""}` : ""),
+  );
+  if (card.fieldGuns.length > 0) {
+    lines.push("  Field Guns:");
+    for (const g of card.fieldGuns) {
+      const flag = g.unknown ? "  [!] unknown weapon" : "";
+      const rng = g.rangeText ? ` [${g.rangeText}]` : "";
+      const ht = g.heat > 0 ? ` ht${g.heat}` : "";
+      lines.push(`    - ${g.label}: dmg ${g.damageText}${ht}${rng}${flag}`);
+    }
+  }
+  for (const warn of card.warnings) lines.push(`  ! ${warn}`);
+  process.stdout.write(lines.join("\n") + "\n\n");
+}
+
 /** Build a flat CSV (one row per unit) covering the scalar card fields. */
 function toCsv(cards: OverrideCard[]): string {
   const header = [
@@ -360,6 +385,8 @@ function main(): void {
         printVehicleSummary(result.card);
       } else if (result.kind === "fighter") {
         printFighterSummary(result.card);
+      } else if (result.kind === "infantry") {
+        printInfantrySummary(result.card);
       } else {
         cards.push(result.card);
         printSummary(result.card);

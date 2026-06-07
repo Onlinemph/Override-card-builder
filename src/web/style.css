@@ -746,6 +746,7 @@ footer {
 .mweapons tr.melee td { border-top: 1.5px solid #15171c; font-style: italic; }
 
 .ms-equip { font-size: 0.84rem; margin: 0.4rem 0; }
+.ms-armament { font-size: 0.86rem; margin: 0.5rem 0; display: flex; flex-direction: column; gap: 0.2rem; }
 .ms-equip b { font-weight: 700; }
 .ms-equip .eq-loc { color: #6b7079; }
 

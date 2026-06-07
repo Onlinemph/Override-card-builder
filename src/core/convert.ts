@@ -141,6 +141,7 @@ export function normalizeWeaponName(raw: string): string {
   s = s.replace(/\bhyper assault gauss\b/g, "hag"); // Hyper Assault Gauss/30 -> hag/30
   s = s.replace(/\b(ac|hag)\s+(\d+)/g, "$1/$2"); // "ac 20"/"hag 30" -> "ac/20"/"hag/30" (also Rotary/Ultra/Light AC)
   s = s.replace(/\blb[\s-]?x[\s-]?ac[\s-]?(\d+)/g, "lb $1-x ac"); // glued "LBXAC10" -> "lb 10-x ac"
+  s = s.replace(/\blac[\s/-]?(\d+)/g, "light ac/$1"); // "LAC5"/"LAC/5" -> "light ac/5"
   s = s.replace(/\b(srm|lrm|mml|atm|iatm)\s*-\s*(\d+)/g, "$1 $2"); // srm-6/mml-5/atm-6 -> "srm 6" etc.
   s = s.replace(/\bx[\s-]?pulse\b/g, "xpulse"); // "X-Pulse"/"X Pulse" -> "xpulse"
   s = s.replace(/re-?engineered/g, "reengineered"); // "Re-engineered" -> "reengineered"

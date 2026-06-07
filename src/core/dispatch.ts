@@ -7,19 +7,21 @@
  */
 
 import { convertBattleArmor } from "./battlearmor.js";
-import { blkUnitType, isBlk, parseBlkBattleArmor, parseBlkFighter, parseBlkVehicle } from "./blk.js";
+import { blkUnitType, isBlk, parseBlkBattleArmor, parseBlkFighter, parseBlkInfantry, parseBlkVehicle } from "./blk.js";
 import { convertUnit } from "./convert.js";
 import { convertFighter } from "./fighter.js";
+import { convertInfantry } from "./infantry.js";
 import { ParseError, parseMtf } from "./parser.js";
 import { convertVehicle } from "./vehicle.js";
-import type { BattleArmorCard, FighterCard, OverrideCard, VehicleCard } from "./types.js";
+import type { BattleArmorCard, FighterCard, InfantryCard, OverrideCard, VehicleCard } from "./types.js";
 
 /** A converted card, tagged by which unit family produced it. */
 export type AnyCard =
   | { kind: "mech"; card: OverrideCard }
   | { kind: "battlearmor"; card: BattleArmorCard }
   | { kind: "vehicle"; card: VehicleCard }
-  | { kind: "fighter"; card: FighterCard };
+  | { kind: "fighter"; card: FighterCard }
+  | { kind: "infantry"; card: InfantryCard };
 
 /** BLK `<UnitType>` values (whitespace-stripped) routed to the fighter path. */
 const FIGHTER_TYPES = new Set(["aero", "aerospacefighter", "convfighter", "fixedwingsupport"]);
@@ -35,6 +37,7 @@ export function detectFormat(text: string): "mtf" | "blk" {
  *   - BLK BattleArmor                -> Battle Armor
  *   - BLK Tank / VTOL                -> Combat Vehicle
  *   - BLK Aero / ConvFighter / …     -> Aerospace/Conventional Fighter
+ *   - BLK Infantry                   -> Conventional Infantry
  * Other BLK unit types throw a clear "unsupported" ParseError.
  */
 export function convertAny(text: string, file = "<unknown>"): AnyCard {
@@ -51,8 +54,11 @@ export function convertAny(text: string, file = "<unknown>"): AnyCard {
   if (FIGHTER_TYPES.has(type)) {
     return { kind: "fighter", card: convertFighter(parseBlkFighter(text, file)) };
   }
+  if (type === "infantry") {
+    return { kind: "infantry", card: convertInfantry(parseBlkInfantry(text, file)) };
+  }
   throw new ParseError(
-    `unsupported BLK unit type "${blkUnitType(text) ?? "?"}" (supported: BattleArmor, Tank, VTOL, Aerospace/Conventional Fighter)`,
+    `unsupported BLK unit type "${blkUnitType(text) ?? "?"}" (supported: BattleArmor, Tank, VTOL, Aerospace/Conventional Fighter, Infantry)`,
     file,
     "UnitType",
   );

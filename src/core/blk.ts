@@ -31,6 +31,7 @@ import type {
   FighterFacing,
   FighterMount,
   FighterUnit,
+  InfantryUnit,
   TechBase,
   VehicleArmorRaw,
   VehicleFacing,
@@ -414,5 +415,69 @@ export function parseBlkFighter(text: string, file = "<unknown>"): FighterUnit {
     maxThrust,
     armor: parseFighterArmor(blocks),
     mounts: parseFighterMounts(blocks),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Conventional Infantry (BLK Infantry).
+// ---------------------------------------------------------------------------
+
+/** Collect the towed field-gun weapon names from the `<Field Guns Equipment>` block. */
+function parseFieldGuns(blocks: Block[]): string[] {
+  const block = blocks.find((b) => b.key === "field guns equipment");
+  const guns: string[] = [];
+  for (const line of block?.lines ?? []) {
+    // Skip ammo; field guns are the weapons themselves.
+    if (/\bammo\b/i.test(line)) continue;
+    const colon = line.lastIndexOf(":");
+    const name = (colon >= 0 ? line.slice(0, colon) : line).trim();
+    if (name) guns.push(name);
+  }
+  return guns;
+}
+
+/**
+ * Parse BLK Infantry text into an `InfantryUnit`. Throws if the file is not
+ * Infantry.
+ *
+ * @param text  Full contents of the .blk file.
+ * @param file  Filename for error messages (defaults to "<unknown>").
+ */
+export function parseBlkInfantry(text: string, file = "<unknown>"): InfantryUnit {
+  const blocks = readBlocks(text);
+
+  const unitType = scalar(blocks, "unittype");
+  if (unitType && unitType.toLowerCase() !== "infantry") {
+    throw new ParseError(`expected an Infantry BLK but got unit type "${unitType}"`, file, "UnitType");
+  }
+
+  const chassis = scalarAny(blocks, ["name", "chassis_name"]);
+  if (!chassis) throw new ParseError("missing unit name", file, "Name");
+  const model = scalarAny(blocks, ["model"]) ?? "";
+
+  const squadSize = intOr(scalarAny(blocks, ["squad_size", "squadsize"]), 1);
+  const squadCount = intOr(scalarAny(blocks, ["squadn", "squad_count"]), 1);
+  const motionType = scalarAny(blocks, ["motion_type"]) ?? "Leg";
+  const primaryWeapon = scalarAny(blocks, ["primary"]) ?? "";
+  const secondaryWeapon = scalarAny(blocks, ["secondary"]);
+  const secondaryPerSquad = intOr(scalarAny(blocks, ["secondn"]), 0);
+  // The <antimek> tag (an anti-'Mech skill value) is present only when the
+  // platoon can make anti-'Mech attacks.
+  const antiMek = scalarAny(blocks, ["antimek"]) !== undefined;
+
+  return {
+    kind: "infantry",
+    chassis,
+    model,
+    techBase: resolveTechBase(blocks),
+    troopers: squadSize * squadCount,
+    squadSize,
+    squadCount,
+    motionType,
+    primaryWeapon,
+    ...(secondaryWeapon ? { secondaryWeapon } : {}),
+    secondaryPerSquad,
+    antiMek,
+    fieldGuns: parseFieldGuns(blocks),
   };
 }

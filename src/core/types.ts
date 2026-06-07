@@ -660,6 +660,66 @@ export interface FighterCard {
   sourceFile?: string;
 }
 
+// ---------------------------------------------------------------------------
+// Conventional Infantry (BLK Infantry). A platoon is N troopers (squad_size x
+// squadn) carrying a primary small arm (plus an optional secondary), with a
+// movement mode and optional anti-'Mech ability and towed field guns. Small-arms
+// platoon damage needs the TW infantry-weapon table (pending DFA calibration);
+// field guns are standard weapons converted by the shared engine.
+// ---------------------------------------------------------------------------
+
+/** A fully-parsed conventional infantry platoon from a BLK file. Physical facts only. */
+export interface InfantryUnit {
+  kind: "infantry";
+  chassis: string;
+  model: string;
+  techBase: TechBase;
+  /** Total troopers = squad size x squad count. */
+  troopers: number;
+  squadSize: number;
+  squadCount: number;
+  /** Raw `motion_type` (e.g. "Leg", "Jump", "Motorized", "Beast:Horse"). */
+  motionType: string;
+  /** Primary weapon name (every trooper). */
+  primaryWeapon: string;
+  /** Secondary weapon name, if any. */
+  secondaryWeapon?: string;
+  /** Secondary weapons per squad (BLK `secondn`). */
+  secondaryPerSquad: number;
+  /** True when the platoon can make anti-'Mech (leg/swarm) attacks. */
+  antiMek: boolean;
+  /** Towed field-gun weapon names (standard 'Mech-scale weapons). */
+  fieldGuns: string[];
+  sourceFile?: string;
+}
+
+/** Converted Override record-card statistics for an infantry platoon. */
+export interface InfantryCard {
+  kind: "infantry";
+  name: string;
+  chassis: string;
+  model: string;
+  techBase: TechBase;
+  troopers: number;
+  /** Display movement label (e.g. "Foot", "Jump", "Motorized", "Beast"). */
+  motionLabel: string;
+  /** Printed move string (best-effort by motion type, e.g. "1" or "1 (J)"). */
+  move: string;
+  /** Base TMM (best-effort from move). */
+  tmm: number;
+  antiMek: boolean;
+  /** Cleaned primary weapon display name. */
+  primaryWeapon: string;
+  /** Cleaned secondary weapon display name, if any. */
+  secondaryWeapon?: string;
+  /** Total secondary weapons across the platoon. */
+  secondaryCount: number;
+  /** Towed field guns, converted as standard weapon rows (facing left blank). */
+  fieldGuns: VehicleWeaponRow[];
+  warnings: string[];
+  sourceFile?: string;
+}
+
 /** Converted Override record-card statistics for one unit. */
 export interface OverrideCard {
   /** "Chassis Model". */
