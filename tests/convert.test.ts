@@ -776,3 +776,56 @@ describe("normalizer: glued ER PPC and trailing mount tags", () => {
     expect(detectWeaponTech("Medium Laser")).toBeNull();
   });
 });
+
+describe("DFA card batch 3: heavy/VSP/re-engineered lasers + ECM/C3 divert", () => {
+  const dmg = (name: string, tech: TechBase = "IS") => {
+    const c = convertWeapon({ name, location: "CT", rawLocation: "CT", rearMounted: false }, tech, 20);
+    return { damageText: c.damageText, rangeText: c.rangeText, unknown: c.unknown };
+  };
+
+  it("Heavy Large Laser carries +1, the Improved variant removes it", () => {
+    expect(dmg("Heavy Large Laser", "Clan")).toEqual({
+      damageText: "6", rangeText: "+1 +1 +3 +5 –", unknown: false,
+    });
+    expect(dmg("Improved Heavy Large Laser", "Clan")).toEqual({
+      damageText: "6", rangeText: "+0 +0 +2 +4 –", unknown: false,
+    });
+  });
+
+  it("Small X-Pulse and Medium Re-engineered lasers match the card", () => {
+    expect(dmg("Small X-Pulse Laser")).toEqual({ damageText: "1", rangeText: "-2 -2 +2 – –", unknown: false });
+    expect(dmg("Medium Re-engineered Laser")).toEqual({ damageText: "2", rangeText: "-1 -1 +1 – –", unknown: false });
+  });
+
+  it("Medium VSP Laser uses variable damage + a literal range-bracket override", () => {
+    expect(dmg("Medium VSP Laser")).toEqual({ damageText: "3|3|2", rangeText: "-3 -3 +0 – –", unknown: false });
+    expect(dmg("ISMediumVSPLaser").damageText).toBe("3|3|2"); // glued spelling
+  });
+
+  it("diverts ECM / C3 / probes from the weapons block to equipment", () => {
+    const mtf = `chassis:Test
+model:EQ-2
+Config:Biped
+techbase:Inner Sphere
+mass:55
+engine:275 Fusion Engine
+heat sinks:10 Single
+walk mp:5
+armor:Standard
+CT armor:10
+HD armor:9
+Weapons:4
+Medium Laser, Right Arm
+ISGuardianECM, Center Torso
+ISC3SlaveUnit, Center Torso
+BeagleActiveProbe, Left Torso
+`;
+    const c = convertUnit(parseMtf(mtf, "EQ-2.mtf"));
+    expect(c.weapons.map((w) => w.name)).toEqual(["Medium Laser"]);
+    const labels = c.equipment.map((e) => e.label);
+    expect(labels).toContain("ECM");
+    expect(labels).toContain("C3");
+    expect(labels).toContain("Active Probe");
+    expect(c.warnings.join(" ")).not.toMatch(/ECM|C3|Probe/);
+  });
+});

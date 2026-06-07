@@ -35,6 +35,7 @@ import {
   STRUCTURE_DIVISOR,
   TIC_MAX_BASE,
   TIC_MAX_DAMAGE,
+  WEAPON_BRACKET_OVERRIDE,
   WEAPON_DAMAGE_BY_RANGE,
   WEAPON_RANGES,
   WEAPON_RANGES_CLAN,
@@ -138,6 +139,7 @@ export function normalizeWeaponName(raw: string): string {
   s = s.replace(/\b(ac|hag)\s+(\d+)/g, "$1/$2"); // "ac 20"/"hag 30" -> "ac/20"/"hag/30" (also Rotary/Ultra/Light AC)
   s = s.replace(/\b(srm|lrm|mml|atm|iatm)\s*-\s*(\d+)/g, "$1 $2"); // srm-6/mml-5/atm-6 -> "srm 6" etc.
   s = s.replace(/\bx[\s-]?pulse\b/g, "xpulse"); // "X-Pulse"/"X Pulse" -> "xpulse"
+  s = s.replace(/re-?engineered/g, "reengineered"); // "Re-engineered" -> "reengineered"
   s = s.replace(/\bimproved atm\b/g, "atm").replace(/\bi\s*atm\b/g, "atm"); // iATM shares the ATM stat block (streak)
   s = s.replace(/\bmg\b/g, "machine gun"); // MG abbreviation -> full name
   s = s.replace(/\bos\s*$/, "").trimEnd(); // trailing "os" (one-shot variant without parens)
@@ -572,10 +574,12 @@ export function convertWeapon(w: Weapon, techBase: TechBase, mass: number): Card
         );
   // Range data is a separate, growing table; weapons absent from it have no row.
   // Clan ranges diverge for some weapons (ER lasers, RACs) — consult the Clan
-  // override table first for Clan units, then fall back to the shared table.
+  // override table first for Clan units, then fall back to the shared table. A
+  // literal bracket override (range-varying to-hit, e.g. VSP) wins over both.
   const rangeData =
     (wtech === "Clan" ? WEAPON_RANGES_CLAN[key] : undefined) ?? WEAPON_RANGES[key];
-  const range = rangeData ? computeRangeBrackets(rangeData) : null;
+  const range =
+    WEAPON_BRACKET_OVERRIDE[key] ?? (rangeData ? computeRangeBrackets(rangeData) : null);
   return {
     name: w.name,
     location: w.location,
@@ -788,15 +792,14 @@ function equipmentLocation(loc: CritSlot["location"]): CritSlot["location"] {
 /**
  * Equipment that MegaMek lists in the `Weapons:` block (it has a to-hit/range in
  * Total Warfare) but Override treats as non-damaging EQUIPMENT — AMS, Laser AMS,
- * and TAG. Such lines are pulled out of the weapons list and shown on the
- * equipment line instead of becoming a (zero-damage, unknown) weapon TIC.
+ * TAG, ECM, C3, Active Probe, etc. Such lines are pulled out of the weapons list
+ * and shown on the equipment line instead of becoming a (zero-damage, unknown)
+ * weapon TIC. Any item recognised by IMPORTANT_EQUIPMENT qualifies (none of the
+ * support-gear match tokens collide with a real weapon name).
  */
-const WEAPON_BLOCK_EQUIPMENT_LABELS = new Set(["AMS", "LAMS", "TAG"]);
-
 export function isWeaponBlockEquipment(name: string): boolean {
   const lower = name.toLowerCase();
-  const match = IMPORTANT_EQUIPMENT.find((e) => e.match.some((m) => lower.includes(m)));
-  return match !== undefined && WEAPON_BLOCK_EQUIPMENT_LABELS.has(match.label);
+  return IMPORTANT_EQUIPMENT.some((e) => e.match.some((m) => lower.includes(m)));
 }
 
 export function buildEquipment(critSlots: ReadonlyArray<CritSlot>): CardEquipment[] {

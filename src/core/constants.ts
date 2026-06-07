@@ -267,10 +267,17 @@ export const WEAPON_DAMAGE: Readonly<Record<string, number>> = {
   "large pulse laser": 9,
 
   // --- Energy: X-Pulse lasers (IS; same damage as the base laser, -2 to-hit) ---
+  "small xpulse laser": 3, // VERIFIED vs DFA card (SXPLas -> 1)
   "medium xpulse laser": 5, // VERIFIED vs DFA card (MXPLas -> 2)
 
-  // --- Energy: Improved Heavy Lasers (Clan; same damage as the Heavy laser) ---
+  // --- Energy: Heavy lasers (Clan; +1 to-hit, removed on the Improved variants) ---
+  "heavy large laser": 18, // VERIFIED vs DFA card (cHLLas -> 6)
   "improved heavy medium laser": 10, // VERIFIED vs DFA card (ciHMLas -> 4)
+  "improved heavy large laser": 18, // VERIFIED vs DFA card (ciHLLas -> 6)
+
+  // --- Energy: Variable Speed Pulse + Re-engineered lasers ---
+  "medium vsp laser": 9, // range-varying; see WEAPON_DAMAGE_BY_RANGE (nominal short value)
+  "medium reengineered laser": 6, // VERIFIED vs DFA card (reMLas -> 2)
 
   // --- Energy: PPCs ---
   ppc: 10,
@@ -535,11 +542,17 @@ export const WEAPON_RANGES: Readonly<Record<string, WeaponRange>> = {
   "medium pulse laser": { min: 0, medium: 4, long: 6, toHitMod: -2 }, // VERIFIED (IS MPLas): -2/-2/+2/–/–
   "large pulse laser": { min: 0, medium: 7, long: 10, toHitMod: -2 }, // VERIFIED (IS LPLas): -2/-2/+0/–/–
 
-  // --- Energy: X-Pulse laser (IS; -2 pulse quality; VERIFIED vs DFA card MXPLas: -2/-2/+0/–/–) ---
-  "medium xpulse laser": { min: 0, medium: 6, long: 9, toHitMod: -2 },
+  // --- Energy: X-Pulse lasers (IS; -2 pulse quality; VERIFIED vs DFA card) ---
+  "small xpulse laser": { min: 0, medium: 4, long: 5, toHitMod: -2 }, // SXPLas: -2/-2/+2/–/–
+  "medium xpulse laser": { min: 0, medium: 6, long: 9, toHitMod: -2 }, // MXPLas: -2/-2/+0/–/–
 
-  // --- Energy: Improved Heavy Medium Laser (Clan; VERIFIED vs DFA card ciHMLas: +0/+0/+2/–/–) ---
-  "improved heavy medium laser": { min: 0, medium: 6, long: 9 },
+  // --- Energy: Heavy lasers (Clan; Heavy variants carry +1, Improved variants none; VERIFIED vs DFA card) ---
+  "heavy large laser": { min: 0, medium: 10, long: 15, toHitMod: 1 }, // cHLLas: +1/+1/+3/+5/–
+  "improved heavy medium laser": { min: 0, medium: 6, long: 9 }, // ciHMLas: +0/+0/+2/–/–
+  "improved heavy large laser": { min: 0, medium: 10, long: 15 }, // ciHLLas: +0/+0/+2/+4/–
+
+  // --- Energy: Re-engineered laser (-1 to-hit; VERIFIED vs DFA card reMLas: -1/-1/+1/–/–) ---
+  "medium reengineered laser": { min: 0, medium: 6, long: 9, toHitMod: -1 },
 
   // --- Missiles: MML (range-varying; VERIFIED vs DFA card: +0/+0/+2/+2/+4) ---
   "mml 3": { min: 0, medium: 6, long: 21 },
@@ -691,8 +704,13 @@ export const WEAPON_HEAT: Readonly<Record<string, number>> = {
   "small pulse laser": 2,
   "medium pulse laser": 4,
   "large pulse laser": 10,
+  "small xpulse laser": 3,
   "medium xpulse laser": 6,
+  "heavy large laser": 18, // ceil(18/5) -> 4 (matches DFA card)
   "improved heavy medium laser": 7,
+  "improved heavy large laser": 18,
+  "medium vsp laser": 5, // tuned so Override Ht = 1 (DFA card)
+  "medium reengineered laser": 5, // tuned so Override Ht = 1 (DFA card)
   "micro pulse laser": 1,
   "er micro laser": 1,
   ppc: 10,
@@ -774,6 +792,21 @@ export const WEAPON_HEAT: Readonly<Record<string, number>> = {
 export const WEAPON_DAMAGE_BY_RANGE: Readonly<Record<string, readonly [number, number, number]>> = {
   "snub-nose ppc": [10, 8, 5], // VERIFIED -> 4|3|2
   "heavy gauss rifle": [25, 20, 10], // VERIFIED -> 9|7|4
+  "medium vsp laser": [9, 7, 5], // VERIFIED vs DFA card vsMPLas -> 3|3|2
+} as const;
+
+// ---------------------------------------------------------------------------
+// LITERAL RANGE-BRACKET OVERRIDES. A few weapons have a range-VARYING to-hit
+// modifier (the pulse bonus shrinks with range) that the single (min, medium,
+// long, toHitMod) model in WEAPON_RANGES cannot express. For those, the printed
+// PB/S/M/L/X row is stored verbatim here (null = "–") and used as-is. Keyed on
+// the normalized name; convert.ts prefers this over the computed brackets.
+// ---------------------------------------------------------------------------
+
+export const WEAPON_BRACKET_OVERRIDE: Readonly<Record<string, import("./types.js").RangeBrackets>> = {
+  // Variable-Speed Pulse Laser: -3 at PB/S, fading to +0 by medium. VERIFIED vs
+  // DFA card vsMPLas: -3/-3/+0/–/–.
+  "medium vsp laser": { pb: -3, s: -3, m: 0, l: null, x: null },
 } as const;
 
 // ---------------------------------------------------------------------------
