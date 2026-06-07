@@ -863,115 +863,115 @@ export const WEAPON_HEAT_DAMAGE: Readonly<Record<string, number>> = {
 // most common primaries (by unit count) are listed as TODO placeholders.
 // ---------------------------------------------------------------------------
 
-export const INFANTRY_WEAPON_DAMAGE: Readonly<Record<string, number>> = {
-  "auto rifle": 0.52,                      // 193x  Auto-Rifle
-  "laser rifle": 0.28,                     // 46x  Laser Rifle
-  "assault rifle": 0.52,                   // 39x  InfantryAssaultRifle
-  "machine gun portable": 0.65,            // 31x  Machine Gun (Portable)
-  "lrm launcher far shot": 0.48,           // 28x  LRM Launcher (FarShot)
-  "srm launcher hvy one shot": 0.57,       // 28x  SRM Launcher (Hvy, One-Shot)
-  "flamer man pack": 0.55,                 // 27x  Flamer (Man-Pack)
-  "pulse laser rifle inner sphere": 0.25,  // 11x  Pulse Laser Rifle (Inner Sphere)
-  "gyrojet rifle": 0.35,                   // 10x  Gyrojet Rifle
-  "needler rifle": 0.23,                   // 9x  Needler Rifle
-  "submachine gun": 0.25,                  // 9x  Submachine Gun
-  "mk 2 portable aa": 0.81,                // 8x  InfantryMk2PortableAA
-  "auto shotgun": 0.23,                    // 8x  Auto-Shotgun
-  "sniper rifle bolt action": 0.18,        // 8x  Sniper Rifle (Bolt Action)
-  "clan mauser iicias": 1.37,              // 6x  InfantryClanMauserIICIAS
-  "lrm": 0.48,                             // 5x  InfantryLRM
-  "auto gl": 1.49,                         // 4x  InfantryAutoGL
-  "plasma rifle man portable": 1.58,       // 4x  Plasma Rifle (Man-Portable)
-  "machine gun support": 0.94,             // 4x  Machine Gun (Support)
-  "flamer man portable": 0.55,             // 4x  Flamer (Man-Portable)
-  "federated barrett m 42 b": 1.02,        // 4x  InfantryFederatedBarrettM42B
-  "blazer rifle": 0.35,                    // 3x  InfantryBlazerRifle
-  "srm launcher std two shot": 1.14,       // 3x  SRM Launcher (Std, Two-Shot)
-  "laser rifle marx xx": 0.26,             // 3x  Laser Rifle (Marx XX)
-  "zeus heavy rifle": 0.22,                // 3x  InfantryZeusHeavyRifle
-  "support laser heavy": 1.47,             // 3x  Support Laser (Heavy)
-  "thunderstroke": 0.26,                   // 3x  InfantryThunderstroke
-  "grand mauler": 0.63,                    // 3x  InfantryGrandMauler
-  "heavy srm": 0.57,                       // 3x  InfantryHeavySRM
-  "gyroslug rifle": 0.35,                  // 3x  Gyroslug Rifle
-  "auto pistol": 0.21,                     // 3x  Auto-Pistol
-  "standard srm": 1.14,                    // 2x  InfantryStandardSRM
-  "sonic stunner": 0.07,                   // 2x  Sonic Stunner
-  "clan gauss smg": 0.14,                  // 2x  InfantryClanGaussSMG
-  "support machine gun": 0.94,             // 2x  InfantrySupportMachineGun
-  "rifle federated long": 0.35,            // 2x  Rifle (Federated Long)
-  "needler rifle m g flechette": 0.11,     // 2x  Needler Rifle (M&G Flechette)
-  "needler support firedrake": 1.2,        // 2x  Needler, Support (Firedrake)
-  "rifle m g g 150": 0.32,                 // 2x  Rifle (M&G G-150)
-  "mppr": 1.58,                            // 2x  InfantryMPPR
-  "tranq gun": 0.14,                       // 2x  Tranq Gun
-  "stunstick": 0.07,                       // 2x  Stunstick
-  "laser rifle mauser 1200 lss": 1.04,     // 2x  Laser Rifle (Mauser 1200 LSS)
-  "particle cannon semi portable": 0.72,   // 2x  Particle Cannon (Semi-Portable)
-  "support needler": 1.2,                  // 2x  InfantrySupportNeedler
-  "laser rifle blazer": 0.35,              // 2x  Laser Rifle (Blazer)
-  "rifle imperator ax 22 assault": 0.52,   // 2x  Rifle (Imperator AX-22 Assault)
-  "support laser": 0.84,                   // 2x  Infantry Support Laser
-  "support pulse laser": 0.81,             // 2x  InfantrySupportPulseLaser
-  "avenger ccw": 0.33,                     // 1x  InfantryAvengerCCW
-  "bolt action rifle": 0.14,               // 1x  InfantryBoltActionRifle
-  "is pulse laser rifle": 0.25,            // 1x  IS Pulse Laser Rifle
-  "mauser 960": 0.93,                      // 1x  InfantryMauser960
-  "imperator ax 22": 0.52,                 // 1x  InfantryImperatorAX22
-  "david light gauss rifle": 0.56,         // 1x  Infantry David Light Gauss Rifle
-  "heavy grenade launcher inferno": 0.69,  // 1x  InfantryHeavyGrenadeLauncherInferno
-  "thunderstroke ii": 0.53,                // 1x  Thunderstroke II
-  "federated barrett m 61 a": 0.75,        // 1x  Federated Barrett M61A
-  "srmlight": 0.57,                        // 1x  InfantrySRMLight
-  "heavy laser": 1.47,                     // 1x  InfantryHeavyLaser
-  "vibro katana": 0.32,                    // 1x  InfantryVibroKatana
-  "semi portable ppc": 0.77,               // 1x  Infantry Semi-Portable PPC
-  "tkassault rifle": 0.44,                 // 1x  InfantryTKAssaultRifle
-  "portable autocannon": 0.77,             // 1x  InfantryPortableAutocannon
-  "shredder heavy needler": 0.34,          // 1x  Shredder Heavy Needler
-  "elephant gun": 0.11,                    // 1x  Elephant Gun
-  "sunbeam starfire": 0.28,                // 1x  InfantrySunbeamStarfire
-  "erlaser": 0.84,                         // 1x  InfantryERLaser
-  "laser rifle ebony assault": 0.21,       // 1x  Laser Rifle (Ebony Assault)
-  "imperator ax 22 assault rifle": 0.52,   // 1x  Imperator AX-22 Assault Rifle
-  "heavy mortar": 0.57,                    // 1x  Infantry Heavy Mortar
-  "bolt action sniper rifle": 0.18,        // 1x  InfantryBoltActionSniperRifle
-  "claymore pistol": 0.09,                 // 1x  InfantryClaymorePistol
-  "heavy flamer": 0.79,                    // 1x  InfantryHeavyFlamer
-  "clan erheavy laser": 1.26,              // 1x  InfantryClanERHeavyLaser
-  "gunther mp 20": 0.33,                   // 1x  Gunther MP-20
-  "hrr": 0.57,                             // 1x  InfantryHRR
-  "marx xxlaser": 0.26,                    // 1x  InfantryMarxXXLaser
-  "vibro blade": 0.21,                     // 1x  InfantryVibroBlade
-  "mrr": 0.53,                             // 1x  InfantryMRR
-  "standard srminferno": 0.68,             // 1x  InfantryStandardSRMInferno
-  "light mortar": 0.53,                    // 1x  InfantryLightMortar
-  "autocannon semi portable": 0.77,        // 1x  Autocannon (Semi-Portable)
-  "lrr": 0.48,                             // 1x  InfantryLRR
-  "auto rifle modern generic": 0.52,       // 1x  Auto-Rifle (Modern, Generic)
-  "blade vibro katana": 0.32,              // 1x  Blade (Vibro-katana)
-  "lrm launcher corean farshot": 0.48,     // 1x  LRM Launcher (Corean Farshot)
-  "support laser er is": 0.84,             // 1x  Support Laser (ER, IS)
-  "laser pistol sunbeam": 0.28,            // 1x  Laser Pistol (Sunbeam)
-  "blade vibro blade": 0.21,               // 1x  Blade (Vibro-blade)
-  "rifle zeus heavy": 0.22,                // 1x  Rifle (Zeus Heavy)
-  "srm launcher light": 0.57,              // 1x  SRM Launcher (Light)
-  "mortar heavy": 0.57,                    // 1x  Mortar (Heavy)
-  "recoilless rifle heavy": 0.57,          // 1x  Recoilless Rifle (Heavy)
-  "rifle federated barrett m 42 b": 1.02,  // 1x  Rifle (Federated-Barrett M42B)
-  "rifle sniper": 0.18,                    // 1x  Rifle (Sniper)
-  "auto pistol magnum": 0.21,              // 1x  Auto-Pistol (Magnum)
-  "grenade launcher auto inferno": 0.41,   // 1x  Grenade Launcher (Auto) - Inferno
-  "laser rifle er sunbeam starfire": 0.28, // 1x  Laser Rifle (ER [Sunbeam Starfire])
-  "gauss rifle light king david": 0.68,    // 1x  Gauss Rifle, Light (King David)
-  "laser pistol blazer": 0.26,             // 1x  Laser Pistol (Blazer)
-  "needler rifle shredder heavy": 0.34,    // 1x  Needler Rifle (Shredder Heavy)
-  "smg gunther mp 20": 0.33,               // 1x  SMG (Gunther MP-20)
-  "gauss rifle thunderstroke ii": 0.53,    // 1x  Gauss Rifle (Thunderstroke II)
-  "gauss rifle light david": 0.56,         // 1x  Gauss Rifle, Light (David)
-  "laser rifle mauser 960": 0.93,          // 1x  Laser Rifle (Mauser 960)
-  "laser hellbore assault": 0.63,          // 1x  Laser (Hellbore Assault)
-  "laser rifle federated barrett m 61 a": 0.75, // 1x  Laser Rifle (Federated-Barrett M61A)
+export const INFANTRY_WEAPON_DAMAGE: Readonly<Record<string, { damage: number; range: number }>> = {
+  "auto rifle": { damage: 0.52, range: 1 },                      // 193x  Auto-Rifle
+  "laser rifle": { damage: 0.28, range: 2 },                     // 46x  Laser Rifle
+  "assault rifle": { damage: 0.52, range: 1 },                   // 39x  InfantryAssaultRifle
+  "machine gun portable": { damage: 0.65, range: 1 },            // 31x  Machine Gun (Portable)
+  "lrm launcher far shot": { damage: 0.48, range: 3 },           // 28x  LRM Launcher (FarShot)
+  "srm launcher hvy one shot": { damage: 0.57, range: 2 },       // 28x  SRM Launcher (Hvy, One-Shot)
+  "flamer man pack": { damage: 0.55, range: 0 },                 // 27x  Flamer (Man-Pack)
+  "pulse laser rifle inner sphere": { damage: 0.25, range: 1 },  // 11x  Pulse Laser Rifle (Inner Sphere)
+  "gyrojet rifle": { damage: 0.35, range: 1 },                   // 10x  Gyrojet Rifle
+  "needler rifle": { damage: 0.23, range: 0 },                   // 9x  Needler Rifle
+  "submachine gun": { damage: 0.25, range: 0 },                  // 9x  Submachine Gun
+  "mk 2 portable aa": { damage: 0.81, range: 2 },                // 8x  InfantryMk2PortableAA
+  "auto shotgun": { damage: 0.23, range: 0 },                    // 8x  Auto-Shotgun
+  "sniper rifle bolt action": { damage: 0.18, range: 2 },        // 8x  Sniper Rifle (Bolt Action)
+  "clan mauser iicias": { damage: 1.37, range: 3 },              // 6x  InfantryClanMauserIICIAS
+  "lrm": { damage: 0.48, range: 3 },                             // 5x  InfantryLRM
+  "auto gl": { damage: 1.49, range: 1 },                         // 4x  InfantryAutoGL
+  "plasma rifle man portable": { damage: 1.58, range: 2 },       // 4x  Plasma Rifle (Man-Portable)
+  "machine gun support": { damage: 0.94, range: 2 },             // 4x  Machine Gun (Support)
+  "flamer man portable": { damage: 0.55, range: 0 },             // 4x  Flamer (Man-Portable)
+  "federated barrett m 42 b": { damage: 1.02, range: 1 },        // 4x  InfantryFederatedBarrettM42B
+  "blazer rifle": { damage: 0.35, range: 2 },                    // 3x  InfantryBlazerRifle
+  "srm launcher std two shot": { damage: 1.14, range: 2 },       // 3x  SRM Launcher (Std, Two-Shot)
+  "laser rifle marx xx": { damage: 0.26, range: 3 },             // 3x  Laser Rifle (Marx XX)
+  "zeus heavy rifle": { damage: 0.22, range: 1 },                // 3x  InfantryZeusHeavyRifle
+  "support laser heavy": { damage: 1.47, range: 5 },             // 3x  Support Laser (Heavy)
+  "thunderstroke": { damage: 0.26, range: 1 },                   // 3x  InfantryThunderstroke
+  "grand mauler": { damage: 0.63, range: 2 },                    // 3x  InfantryGrandMauler
+  "heavy srm": { damage: 0.57, range: 2 },                       // 3x  InfantryHeavySRM
+  "gyroslug rifle": { damage: 0.35, range: 1 },                  // 3x  Gyroslug Rifle
+  "auto pistol": { damage: 0.21, range: 0 },                     // 3x  Auto-Pistol
+  "standard srm": { damage: 1.14, range: 2 },                    // 2x  InfantryStandardSRM
+  "sonic stunner": { damage: 0.07, range: 0 },                   // 2x  Sonic Stunner
+  "clan gauss smg": { damage: 0.14, range: 0 },                  // 2x  InfantryClanGaussSMG
+  "support machine gun": { damage: 0.94, range: 2 },             // 2x  InfantrySupportMachineGun
+  "rifle federated long": { damage: 0.35, range: 1 },            // 2x  Rifle (Federated Long)
+  "needler rifle m g flechette": { damage: 0.11, range: 0 },     // 2x  Needler Rifle (M&G Flechette)
+  "needler support firedrake": { damage: 1.2, range: 1 },        // 2x  Needler, Support (Firedrake)
+  "rifle m g g 150": { damage: 0.32, range: 2 },                 // 2x  Rifle (M&G G-150)
+  "mppr": { damage: 1.58, range: 2 },                            // 2x  InfantryMPPR
+  "tranq gun": { damage: 0.14, range: 0 },                       // 2x  Tranq Gun
+  "stunstick": { damage: 0.07, range: 0 },                       // 2x  Stunstick
+  "laser rifle mauser 1200 lss": { damage: 1.04, range: 2 },     // 2x  Laser Rifle (Mauser 1200 LSS)
+  "particle cannon semi portable": { damage: 0.72, range: 2 },   // 2x  Particle Cannon (Semi-Portable)
+  "support needler": { damage: 1.2, range: 1 },                  // 2x  InfantrySupportNeedler
+  "laser rifle blazer": { damage: 0.35, range: 2 },              // 2x  Laser Rifle (Blazer)
+  "rifle imperator ax 22 assault": { damage: 0.52, range: 1 },   // 2x  Rifle (Imperator AX-22 Assault)
+  "support laser": { damage: 0.84, range: 3 },                   // 2x  Infantry Support Laser
+  "support pulse laser": { damage: 0.81, range: 3 },             // 2x  InfantrySupportPulseLaser
+  "avenger ccw": { damage: 0.33, range: 0 },                     // 1x  InfantryAvengerCCW
+  "bolt action rifle": { damage: 0.14, range: 1 },               // 1x  InfantryBoltActionRifle
+  "is pulse laser rifle": { damage: 0.25, range: 0 },            // 1x  IS Pulse Laser Rifle
+  "mauser 960": { damage: 0.93, range: 2 },                      // 1x  InfantryMauser960
+  "imperator ax 22": { damage: 0.52, range: 1 },                 // 1x  InfantryImperatorAX22
+  "david light gauss rifle": { damage: 0.56, range: 3 },         // 1x  Infantry David Light Gauss Rifle
+  "heavy grenade launcher inferno": { damage: 0.69, range: 1 },  // 1x  InfantryHeavyGrenadeLauncherInferno
+  "thunderstroke ii": { damage: 0.53, range: 2 },                // 1x  Thunderstroke II
+  "federated barrett m 61 a": { damage: 0.75, range: 2 },        // 1x  Federated Barrett M61A
+  "srmlight": { damage: 0.57, range: 2 },                        // 1x  InfantrySRMLight
+  "heavy laser": { damage: 1.47, range: 5 },                     // 1x  InfantryHeavyLaser
+  "vibro katana": { damage: 0.32, range: 0 },                    // 1x  InfantryVibroKatana
+  "semi portable ppc": { damage: 0.77, range: 1 },               // 1x  Infantry Semi-Portable PPC
+  "tkassault rifle": { damage: 0.44, range: 1 },                 // 1x  InfantryTKAssaultRifle
+  "portable autocannon": { damage: 0.77, range: 1 },             // 1x  InfantryPortableAutocannon
+  "shredder heavy needler": { damage: 0.34, range: 0 },          // 1x  Shredder Heavy Needler
+  "elephant gun": { damage: 0.11, range: 1 },                    // 1x  Elephant Gun
+  "sunbeam starfire": { damage: 0.28, range: 3 },                // 1x  InfantrySunbeamStarfire
+  "erlaser": { damage: 0.84, range: 4 },                         // 1x  InfantryERLaser
+  "laser rifle ebony assault": { damage: 0.21, range: 2 },       // 1x  Laser Rifle (Ebony Assault)
+  "imperator ax 22 assault rifle": { damage: 0.52, range: 1 },   // 1x  Imperator AX-22 Assault Rifle
+  "heavy mortar": { damage: 0.57, range: 3 },                    // 1x  Infantry Heavy Mortar
+  "bolt action sniper rifle": { damage: 0.18, range: 2 },        // 1x  InfantryBoltActionSniperRifle
+  "claymore pistol": { damage: 0.09, range: 0 },                 // 1x  InfantryClaymorePistol
+  "heavy flamer": { damage: 0.79, range: 0 },                    // 1x  InfantryHeavyFlamer
+  "clan erheavy laser": { damage: 1.26, range: 7 },              // 1x  InfantryClanERHeavyLaser
+  "gunther mp 20": { damage: 0.33, range: 0 },                   // 1x  Gunther MP-20
+  "hrr": { damage: 0.57, range: 2 },                             // 1x  InfantryHRR
+  "marx xxlaser": { damage: 0.26, range: 3 },                    // 1x  InfantryMarxXXLaser
+  "vibro blade": { damage: 0.21, range: 0 },                     // 1x  InfantryVibroBlade
+  "mrr": { damage: 0.53, range: 2 },                             // 1x  InfantryMRR
+  "standard srminferno": { damage: 0.68, range: 2 },             // 1x  InfantryStandardSRMInferno
+  "light mortar": { damage: 0.53, range: 1 },                    // 1x  InfantryLightMortar
+  "autocannon semi portable": { damage: 0.77, range: 1 },        // 1x  Autocannon (Semi-Portable)
+  "lrr": { damage: 0.48, range: 2 },                             // 1x  InfantryLRR
+  "auto rifle modern generic": { damage: 0.52, range: 1 },       // 1x  Auto-Rifle (Modern, Generic)
+  "blade vibro katana": { damage: 0.32, range: 0 },              // 1x  Blade (Vibro-katana)
+  "lrm launcher corean farshot": { damage: 0.48, range: 3 },     // 1x  LRM Launcher (Corean Farshot)
+  "support laser er is": { damage: 0.84, range: 4 },             // 1x  Support Laser (ER, IS)
+  "laser pistol sunbeam": { damage: 0.28, range: 1 },            // 1x  Laser Pistol (Sunbeam)
+  "blade vibro blade": { damage: 0.21, range: 0 },               // 1x  Blade (Vibro-blade)
+  "rifle zeus heavy": { damage: 0.22, range: 1 },                // 1x  Rifle (Zeus Heavy)
+  "srm launcher light": { damage: 0.57, range: 2 },              // 1x  SRM Launcher (Light)
+  "mortar heavy": { damage: 0.57, range: 3 },                    // 1x  Mortar (Heavy)
+  "recoilless rifle heavy": { damage: 0.57, range: 2 },          // 1x  Recoilless Rifle (Heavy)
+  "rifle federated barrett m 42 b": { damage: 1.02, range: 1 },  // 1x  Rifle (Federated-Barrett M42B)
+  "rifle sniper": { damage: 0.18, range: 2 },                    // 1x  Rifle (Sniper)
+  "auto pistol magnum": { damage: 0.21, range: 0 },              // 1x  Auto-Pistol (Magnum)
+  "grenade launcher auto inferno": { damage: 0.41, range: 1 },   // 1x  Grenade Launcher (Auto) - Inferno
+  "laser rifle er sunbeam starfire": { damage: 0.28, range: 3 }, // 1x  Laser Rifle (ER [Sunbeam Starfire])
+  "gauss rifle light king david": { damage: 0.68, range: 3 },    // 1x  Gauss Rifle, Light (King David)
+  "laser pistol blazer": { damage: 0.26, range: 1 },             // 1x  Laser Pistol (Blazer)
+  "needler rifle shredder heavy": { damage: 0.34, range: 0 },    // 1x  Needler Rifle (Shredder Heavy)
+  "smg gunther mp 20": { damage: 0.33, range: 0 },               // 1x  SMG (Gunther MP-20)
+  "gauss rifle thunderstroke ii": { damage: 0.53, range: 2 },    // 1x  Gauss Rifle (Thunderstroke II)
+  "gauss rifle light david": { damage: 0.56, range: 3 },         // 1x  Gauss Rifle, Light (David)
+  "laser rifle mauser 960": { damage: 0.93, range: 2 },          // 1x  Laser Rifle (Mauser 960)
+  "laser hellbore assault": { damage: 0.63, range: 2 },          // 1x  Laser (Hellbore Assault)
+  "laser rifle federated barrett m 61 a": { damage: 0.75, range: 2 }, // 1x  Laser Rifle (Federated-Barrett M61A)
 } as const;
 
 // ---------------------------------------------------------------------------

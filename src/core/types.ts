@@ -693,6 +693,16 @@ export interface InfantryUnit {
   sourceFile?: string;
 }
 
+/** One band of the infantry damage-degradation track (a run of equal damage). */
+export interface InfantryDamageBreak {
+  /** Highest surviving-trooper count in this band. */
+  from: number;
+  /** Lowest surviving-trooper count in this band. */
+  to: number;
+  /** Cluster damage while the platoon's survivors fall within [to, from]. */
+  damage: number[];
+}
+
 /** Converted Override record-card statistics for an infantry platoon. */
 export interface InfantryCard {
   kind: "infantry";
@@ -709,10 +719,32 @@ export interface InfantryCard {
   tmm: number;
   antiMek: boolean;
   /**
-   * Small-arms platoon damage as 2-point clusters (e.g. [2,2,2,1] = 7). Empty
-   * when the primary weapon is not yet in the per-trooper damage table.
+   * Small-arms platoon damage at FULL strength as 2-point clusters (e.g.
+   * [2,2,2,1] = 7). Empty when the primary weapon is not yet in the per-trooper
+   * damage table. Equal to the last entry of `damageByTroopers`.
    */
   damage: number[];
+  /**
+   * Damage degradation track: index i = the platoon's small-arms damage when
+   * (i+1) troopers survive (full strength last). The card renders this as a
+   * "bodies remaining" marker — cross off a trooper as it dies and read the new
+   * cluster damage. Empty when the primary weapon is unscored.
+   */
+  damageByTroopers: number[][];
+  /**
+   * Compressed degradation breakpoints (full strength first): each segment is a
+   * surviving-trooper band that yields the same damage. Derived from
+   * `damageByTroopers`; convenient for printing a legend.
+   */
+  damageBreaks: InfantryDamageBreak[];
+  /** Primary small-arms range brackets (PB/S/M/L/X to-hit mods), or null when unscored. */
+  range: RangeBrackets | null;
+  /** Printed range row "PB S M L X", or null. */
+  rangeText: string | null;
+  /** Primary weapon max range in hexes (TW), or null when unscored. */
+  primaryRangeHexes: number | null;
+  /** Secondary weapon max range in hexes (TW), if a scored secondary is present. */
+  secondaryRangeHexes?: number | null;
   /** Cleaned primary weapon display name. */
   primaryWeapon: string;
   /** Cleaned secondary weapon display name, if any. */

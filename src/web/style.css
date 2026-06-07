@@ -750,6 +750,17 @@ footer {
 .ms-equip b { font-weight: 700; }
 .ms-equip .eq-loc { color: #6b7079; }
 
+/* Infantry: small-arms range reach + "bodies remaining" degradation track */
+.ms-range-reach { font-size: 0.72rem; color: #6b7079; margin: 0.1rem 0 0.5rem; }
+.ms-bodies { margin: 0.5rem 0; }
+.ms-bodies-h { font-size: 0.62rem; font-weight: 800; letter-spacing: 1px; color: #6b7079; margin-bottom: 0.25rem; }
+.ms-body-row { display: flex; flex-wrap: wrap; gap: 3px; margin-bottom: 0.35rem; }
+.ms-body { width: 9px; height: 12px; border: 1.25px solid #15171c; border-radius: 2px; background: #fff; }
+.ms-degrade { border-collapse: collapse; font-size: 0.74rem; }
+.ms-degrade th { text-align: left; font-weight: 700; color: #6b7079; padding: 0.05rem 0.6rem 0.1rem 0; border-bottom: 1px solid #c7ccd4; }
+.ms-degrade td { padding: 0.05rem 0.6rem 0.05rem 0; }
+.ms-degrade td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
 /* Condition monitor */
 .condmon { display: flex; flex-wrap: wrap; gap: 0.6rem 1rem; align-items: center; font-size: 0.72rem; margin-top: 0.5rem; padding-top: 0.45rem; border-top: 1.5px solid #15171c; }
 .cm-grp { display: inline-flex; align-items: center; gap: 0.3rem; font-weight: 700; }

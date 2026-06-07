@@ -3,9 +3,9 @@
  * import), in the Override record-card style shared with the 'Mech card.
  *
  * Shows the platoon's facts (troopers, movement, anti-'Mech, primary/secondary
- * armament) and a FIELD GUNS table (towed standard weapons, real stats). The
- * small-arms platoon damage is not yet computed — it needs the TW infantry
- * weapon table / a DFA infantry card — so a note flags that.
+ * armament), the small-arms range brackets, a "bodies remaining" damage track
+ * (cross off a trooper as it dies, read the degraded cluster damage) and a
+ * FIELD GUNS table (towed standard weapons, real stats).
  */
 
 import type { InfantryCard, RangeBrackets } from "../core/index.js";
@@ -25,6 +25,61 @@ function bracket(v: number | null | undefined): string {
 function rangeCells(r: RangeBrackets | null): string {
   const vals = r ? [r.pb, r.s, r.m, r.l, r.x] : [null, null, null, null, null];
   return vals.map((v) => `<td class="num rng">${esc(bracket(v))}</td>`).join("");
+}
+
+/** Format a cluster-damage array as "2 · 2 · 1" (or "—" when empty). */
+function dmg(clusters: number[]): string {
+  return clusters.length ? clusters.join(" · ") : "—";
+}
+
+/**
+ * Small-arms range row in the shared PB/S/M/L/X bracket style, with the primary
+ * weapon's max range (hexes) called out. Returns "" when range is unscored.
+ */
+function rangeTable(card: InfantryCard): string {
+  if (!card.range) return "";
+  const reach =
+    card.primaryRangeHexes !== null
+      ? `<div class="ms-range-reach">Max range: ${esc(card.primaryRangeHexes)} hex${card.primaryRangeHexes === 1 ? "" : "es"}${
+          card.secondaryRangeHexes != null && card.secondaryRangeHexes !== card.primaryRangeHexes
+            ? ` (secondary ${esc(card.secondaryRangeHexes)})`
+            : ""
+        }</div>`
+      : "";
+  return `<table class="mweapons">
+    <thead><tr>
+      <th class="wname">Small Arms</th>
+      <th class="num">PB</th><th class="num">S</th><th class="num">M</th><th class="num">L</th><th class="num">X</th>
+    </tr></thead>
+    <tbody><tr><td class="wname">To-hit by range</td>${rangeCells(card.range)}</tr></tbody>
+  </table>${reach}`;
+}
+
+/**
+ * "Bodies remaining" damage track: one pip per trooper (full strength on the
+ * left), with a degradation legend mapping surviving-trooper bands to cluster
+ * damage. Cross off a pip as a trooper dies and read the new damage off the
+ * legend. Returns "" when the platoon's small arms are unscored.
+ */
+function bodiesTrack(card: InfantryCard): string {
+  if (!card.damageByTroopers.length) return "";
+  const pips = card.damageByTroopers
+    .map((_, i) => `<span class="ms-body" title="${esc(i + 1)} left: ${esc(dmg(card.damageByTroopers[i]!))}"></span>`)
+    .join("");
+  const legend = card.damageBreaks
+    .map((b) => {
+      const band = b.from === b.to ? `${b.from}` : `${b.from}–${b.to}`;
+      return `<tr><td class="num">${esc(band)}</td><td class="wdmg">${esc(dmg(b.damage))}</td></tr>`;
+    })
+    .join("");
+  return `<div class="ms-bodies">
+    <div class="ms-bodies-h">BODIES REMAINING</div>
+    <div class="ms-body-row">${pips}</div>
+    <table class="ms-degrade">
+      <thead><tr><th class="num">Troopers</th><th>Damage</th></tr></thead>
+      <tbody>${legend}</tbody>
+    </table>
+  </div>`;
 }
 
 /** Field-gun weapons table (no Loc column — field guns aren't located). */
@@ -74,18 +129,20 @@ export function renderInfantryCard(card: InfantryCard): string {
             <div class="ms-ud-move"><b>Move:</b> ${esc(card.move)}</div>
             <div><b>TMM:</b> ${esc(card.tmm)}</div>
             <div><b>Anti-’Mech:</b> ${card.antiMek ? "Yes" : "No"}</div>
-            ${card.damage.length ? `<div><b>Damage:</b> ${card.damage.join(" · ")}</div>` : ""}
+            ${card.damage.length ? `<div><b>Damage:</b> ${dmg(card.damage)}</div>` : ""}
           </div>
         </div>
         <div class="ms-armament">
           <div><b>Primary:</b> ${esc(card.primaryWeapon || "—")}</div>
           ${secondary}
         </div>
+        ${rangeTable(card)}
+        ${bodiesTrack(card)}
         ${fieldGunsTable(card)}
         ${
           card.damage.length
             ? ""
-            : `<p class="ba-note">Small-arms platoon damage pending per-trooper values for this weapon.
+            : `<p class="ba-note">Small-arms damage/range pending per-trooper values for this weapon.
                 Movement / TMM mirror the ’Mech rules (best-effort).</p>`
         }
         ${warnings}

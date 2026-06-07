@@ -95,9 +95,34 @@ describe("infantry platoon damage (clustering + per-trooper keys)", () => {
     expect(c.damage).toEqual([2, 2, 1]);
   });
 
-  it("leaves damage unscored when the primary weapon is unknown", () => {
+  it("derives small-arms range brackets from the primary weapon's hex range", () => {
+    // Assault Rifle range = 1 hex -> {min:0, medium:1, long:1} -> PB +0, S +0 only.
+    const c = convertInfantry(parseBlkInfantry(load("Test Infantry INF-1.blk"), "INF-1.blk"));
+    expect(c.primaryRangeHexes).toBe(1);
+    expect(c.range).toEqual({ pb: 0, s: 0, m: null, l: null, x: null });
+  });
+
+  it("builds a degradation track + breakpoints that fall as troopers die", () => {
+    const c = convertInfantry(parseBlkInfantry(load("Test Infantry INF-1.blk"), "INF-1.blk"));
+    // One entry per trooper; full strength is the last entry and equals .damage.
+    expect(c.damageByTroopers).toHaveLength(28);
+    expect(c.damageByTroopers[27]).toEqual([2, 2, 1]);
+    // 1 survivor: floor(1 x 0.52) = 0 -> 0 damage -> no clusters.
+    expect(c.damageByTroopers[0]).toEqual([]);
+    // Breakpoints are full-strength-first and monotonically weaken.
+    expect(c.damageBreaks[0]!.from).toBe(28);
+    expect(c.damageBreaks[0]!.damage).toEqual([2, 2, 1]);
+    expect(c.damageBreaks.at(-1)!.to).toBe(1);
+    const totals = c.damageBreaks.map((b) => b.damage.reduce((a, v) => a + v, 0));
+    expect([...totals]).toEqual([...totals].sort((a, b) => b - a)); // non-increasing
+  });
+
+  it("leaves damage and range unscored when the primary weapon is unknown", () => {
     const blk = load("Test Infantry INF-1.blk").replace("InfantryAssaultRifle", "Frobnicator 9000");
     const c = convertInfantry(parseBlkInfantry(blk, "INF-1.blk"));
     expect(c.damage).toEqual([]);
+    expect(c.damageByTroopers).toEqual([]);
+    expect(c.range).toBeNull();
+    expect(c.primaryRangeHexes).toBeNull();
   });
 });

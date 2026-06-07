@@ -7,18 +7,36 @@
  *
  * Small-arms PLATOON damage = (sum of each carrier's per-trooper TW damage) / 3,
  * round up, then split into 2-point clusters (4 -> 2,2; 7 -> 2,2,2,1). The
- * per-trooper values live in INFANTRY_WEAPON_DAMAGE; weapons not yet in that
- * table leave the damage unscored (empty).
+ * per-trooper values (and the weapon's max range in hexes) live in
+ * INFANTRY_WEAPON_DAMAGE; weapons not yet in that table leave the damage and
+ * range unscored (empty).
+ *
+ * Damage DEGRADES as troopers die: `damageByTroopers` recomputes the clusters at
+ * every surviving-trooper count (the card's "bodies remaining" marker), and
+ * `damageBreaks` compresses that into bands. RANGE is the primary weapon's TW
+ * hex range mapped to Override PB/S/M/L/X brackets (thirds model — best-effort,
+ * no DFA infantry oracle exists for the bracket boundaries).
  *
  * Movement/TMM mirror the 'Mech rules as a best-effort starting point.
  */
 
 import { INFANTRY_WEAPON_DAMAGE, WEAPON_DAMAGE_DIVISOR } from "./constants.js";
-import { abbreviatedTicLabel, convertWeapon, groupIntoTics, lookupTmm, roundUp, ticHeat } from "./convert.js";
+import {
+  abbreviatedTicLabel,
+  computeRangeBrackets,
+  convertWeapon,
+  formatRangeBrackets,
+  groupIntoTics,
+  lookupTmm,
+  roundUp,
+  ticHeat,
+} from "./convert.js";
 import type {
   CardWeapon,
   InfantryCard,
+  InfantryDamageBreak,
   InfantryUnit,
+  RangeBrackets,
   VehicleWeaponRow,
   Weapon,
 } from "./types.js";
@@ -95,25 +113,86 @@ export function clusterDamageInto2s(total: number): number[] {
   return clusters;
 }
 
+/** Per-trooper TW damage + max range (hexes) for a small arm, or undefined when unscored. */
+function lookupSmallArm(name: string | undefined): { damage: number; range: number } | undefined {
+  if (!name) return undefined;
+  return INFANTRY_WEAPON_DAMAGE[infantryWeaponKey(name)];
+}
+
 /**
- * Platoon small-arms damage as 2-point clusters. Sums each carrier's TW damage
- * (every trooper fires the primary; the secondary's carriers add theirs), then
- * divides by 3 (round up) before clustering. Returns [] when the primary weapon
- * is not in the per-trooper table (damage left unscored).
+ * Platoon small-arms damage at a given surviving-trooper count `s`, as 2-point
+ * clusters. Every survivor fires the primary; the secondary is carried by a
+ * fraction of the platoon and thins out proportionally as troopers die
+ * (expected secondary survivors = floor(secondaryCarriers x s / troopers)). The
+ * summed TW damage is divided by 3 (round up) before clustering.
  */
-function platoonDamage(unit: InfantryUnit): number[] {
-  const primary = INFANTRY_WEAPON_DAMAGE[infantryWeaponKey(unit.primaryWeapon)];
-  if (primary === undefined) return [];
-  // Each weapon's TW platoon damage = floor(carriers x per-trooper). Sum them,
-  // then divide by 3 (round up) for the Override scale.
-  let totalTw = Math.floor(unit.troopers * primary);
-  const secondary = unit.secondaryWeapon
-    ? INFANTRY_WEAPON_DAMAGE[infantryWeaponKey(unit.secondaryWeapon)]
-    : undefined;
-  if (secondary !== undefined) {
-    totalTw += Math.floor(unit.secondaryPerSquad * unit.squadCount * secondary);
+function platoonDamageAt(unit: InfantryUnit, s: number, primaryDmg: number, secondaryDmg: number | undefined): number[] {
+  let totalTw = Math.floor(s * primaryDmg);
+  if (secondaryDmg !== undefined && unit.troopers > 0) {
+    const secondaryCarriers = unit.secondaryPerSquad * unit.squadCount;
+    const surviving = Math.floor((secondaryCarriers * s) / unit.troopers);
+    totalTw += Math.floor(surviving * secondaryDmg);
   }
   return clusterDamageInto2s(roundUp(totalTw / WEAPON_DAMAGE_DIVISOR));
+}
+
+/**
+ * Full damage-degradation track: index i = platoon damage with (i+1) survivors,
+ * so the last entry is full strength. Empty when the primary weapon is unscored.
+ */
+function platoonDamageTrack(unit: InfantryUnit): number[][] {
+  const primary = lookupSmallArm(unit.primaryWeapon);
+  if (primary === undefined) return [];
+  const secondary = lookupSmallArm(unit.secondaryWeapon)?.damage;
+  const track: number[][] = [];
+  for (let s = 1; s <= unit.troopers; s++) {
+    track.push(platoonDamageAt(unit, s, primary.damage, secondary));
+  }
+  return track;
+}
+
+/**
+ * Compress a degradation track into breakpoints (full strength first): runs of
+ * equal damage collapse into a single {from, to, damage} band. So a 28-trooper
+ * platoon that does 2·2·2 down to 20 survivors, then 2·2 down to 13, etc. prints
+ * as a handful of rows instead of 28.
+ */
+export function damageBreakpoints(track: number[][]): InfantryDamageBreak[] {
+  const breaks: InfantryDamageBreak[] = [];
+  for (let i = track.length - 1; i >= 0; i--) {
+    const survivors = i + 1;
+    const dmg = track[i]!;
+    const last = breaks[breaks.length - 1];
+    if (last && arraysEqual(last.damage, dmg)) {
+      last.to = survivors;
+    } else {
+      breaks.push({ from: survivors, to: survivors, damage: dmg });
+    }
+  }
+  return breaks;
+}
+
+function arraysEqual(a: number[], b: number[]): boolean {
+  return a.length === b.length && a.every((v, i) => v === b[i]);
+}
+
+/**
+ * Override range brackets for an infantry small arm from its TW max range R
+ * (hexes). R is treated as the long-range edge with even thirds (short = R/3,
+ * medium = 2R/3) — the same shape a 'Mech energy weapon's S/M/L triple takes —
+ * then run through the shared bracket conversion. R = 0 (adjacent-only weapons
+ * like flamers/grenades) yields Point-Blank only. Returns null when unscored.
+ *
+ * NOTE: best-effort. There is no DFA infantry oracle for the bracket mapping;
+ * the thirds model keeps it consistent with the calibrated weapon brackets.
+ */
+export function infantryRangeBrackets(rangeHexes: number): RangeBrackets {
+  if (rangeHexes <= 0) return { pb: 0, s: null, m: null, l: null, x: null };
+  return computeRangeBrackets({
+    min: 0,
+    medium: Math.round((2 * rangeHexes) / 3),
+    long: rangeHexes,
+  });
 }
 
 /** Convert towed field guns (standard weapons) into card weapon rows. */
@@ -145,6 +224,14 @@ export function convertInfantry(unit: InfantryUnit): InfantryCard {
     if (g.unknown) warnings.push(`field gun not in TW damage table: "${g.label}" (damage set to 0)`);
   }
 
+  const primaryArm = lookupSmallArm(unit.primaryWeapon);
+  const secondaryArm = lookupSmallArm(unit.secondaryWeapon);
+  if (primaryArm === undefined) {
+    warnings.push(`small-arms damage/range unscored: primary "${unit.primaryWeapon}" not in the infantry weapon table`);
+  }
+  const track = platoonDamageTrack(unit);
+  const range = primaryArm ? infantryRangeBrackets(primaryArm.range) : null;
+
   return {
     kind: "infantry",
     name: `${unit.chassis} ${unit.model}`.trim(),
@@ -156,7 +243,13 @@ export function convertInfantry(unit: InfantryUnit): InfantryCard {
     move,
     tmm,
     antiMek: unit.antiMek,
-    damage: platoonDamage(unit),
+    damage: track.length ? track[track.length - 1]! : [],
+    damageByTroopers: track,
+    damageBreaks: damageBreakpoints(track),
+    range,
+    rangeText: range ? formatRangeBrackets(range) : null,
+    primaryRangeHexes: primaryArm ? primaryArm.range : null,
+    ...(secondaryArm ? { secondaryRangeHexes: secondaryArm.range } : {}),
     primaryWeapon: cleanInfantryWeapon(unit.primaryWeapon),
     ...(unit.secondaryWeapon ? { secondaryWeapon: cleanInfantryWeapon(unit.secondaryWeapon) } : {}),
     secondaryCount: unit.secondaryPerSquad * unit.squadCount,

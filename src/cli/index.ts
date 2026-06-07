@@ -264,12 +264,20 @@ function printInfantrySummary(card: InfantryCard): void {
       `   Anti-'Mech: ${card.antiMek ? "yes" : "no"}  [best-effort]`,
   );
   lines.push(
-    `  Damage: ${card.damage.length ? card.damage.join(" · ") : "— (per-trooper value pending)"}`,
+    `  Damage: ${card.damage.length ? card.damage.join(" · ") : "— (per-trooper value pending)"}` +
+      (card.rangeText ? `   Range [${card.rangeText}]  (max ${card.primaryRangeHexes} hex)` : ""),
   );
   lines.push(
     `  Primary: ${card.primaryWeapon || "—"}` +
       (card.secondaryWeapon ? `   Secondary: ${card.secondaryWeapon}${card.secondaryCount ? ` x${card.secondaryCount}` : ""}` : ""),
   );
+  // Damage degradation as the platoon takes casualties (bodies remaining).
+  if (card.damageBreaks.length > 1) {
+    const bands = card.damageBreaks
+      .map((b) => `${b.from === b.to ? b.from : `${b.from}-${b.to}`}:${b.damage.join("·") || "—"}`)
+      .join("   ");
+    lines.push(`  By troopers left: ${bands}`);
+  }
   if (card.fieldGuns.length > 0) {
     lines.push("  Field Guns:");
     for (const g of card.fieldGuns) {
