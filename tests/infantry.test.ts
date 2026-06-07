@@ -8,6 +8,7 @@ import {
   clusterDamageInto2s,
   convertAny,
   convertInfantry,
+  infantryRangeBrackets,
   infantryWeaponKey,
   parseBlkInfantry,
   ParseError,
@@ -96,10 +97,17 @@ describe("infantry platoon damage (clustering + per-trooper keys)", () => {
   });
 
   it("derives small-arms range brackets from the primary weapon's hex range", () => {
-    // Assault Rifle range = 1 hex -> {min:0, medium:1, long:1} -> PB +0, S +0 only.
+    // Each band escalates +2; the hex range is the highest reachable band.
+    // Assault Rifle range = 1 hex -> reaches Short only: PB +0, S +2, M/L/X out.
     const c = convertInfantry(parseBlkInfantry(load("Test Infantry INF-1.blk"), "INF-1.blk"));
     expect(c.primaryRangeHexes).toBe(1);
-    expect(c.range).toEqual({ pb: 0, s: 0, m: null, l: null, x: null });
+    expect(c.range).toEqual({ pb: 0, s: 2, m: null, l: null, x: null });
+  });
+
+  it("matches the DFA oracle: a Laser Rifle (R=2) reads PB +0, S +2, M +4, L –", () => {
+    expect(infantryRangeBrackets(2)).toEqual({ pb: 0, s: 2, m: 4, l: null, x: null });
+    expect(infantryRangeBrackets(0)).toEqual({ pb: 0, s: null, m: null, l: null, x: null });
+    expect(infantryRangeBrackets(3)).toEqual({ pb: 0, s: 2, m: 4, l: 6, x: null });
   });
 
   it("builds a degradation track + breakpoints that fall as troopers die", () => {

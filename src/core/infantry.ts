@@ -23,9 +23,8 @@
 import { INFANTRY_WEAPON_DAMAGE, WEAPON_DAMAGE_DIVISOR } from "./constants.js";
 import {
   abbreviatedTicLabel,
-  computeRangeBrackets,
   convertWeapon,
-  formatRangeBrackets,
+  formatBracket,
   groupIntoTics,
   lookupTmm,
   roundUp,
@@ -178,21 +177,21 @@ function arraysEqual(a: number[], b: number[]): boolean {
 
 /**
  * Override range brackets for an infantry small arm from its TW max range R
- * (hexes). R is treated as the long-range edge with even thirds (short = R/3,
- * medium = 2R/3) — the same shape a 'Mech energy weapon's S/M/L triple takes —
- * then run through the shared bracket conversion. R = 0 (adjacent-only weapons
- * like flamers/grenades) yields Point-Blank only. Returns null when unscored.
- *
- * NOTE: best-effort. There is no DFA infantry oracle for the bracket mapping;
- * the thirds model keeps it consistent with the calibrated weapon brackets.
+ * (hexes). VERIFIED vs DFA card: a Laser Rifle (R = 2) reads PB +0, S +2, M +4,
+ * L –. So each range band escalates the to-hit by +2, and the weapon's hex range
+ * is the highest band it can reach (PB = 0, S = 1, M = 2, L = 3). Infantry use
+ * only PB/S/M/L — there is no Extreme column. R = 0 (adjacent-only weapons like
+ * flamers/grenades) yields Point-Blank only; weapons with R ≥ 3 all reach Long.
  */
 export function infantryRangeBrackets(rangeHexes: number): RangeBrackets {
-  if (rangeHexes <= 0) return { pb: 0, s: null, m: null, l: null, x: null };
-  return computeRangeBrackets({
-    min: 0,
-    medium: Math.round((2 * rangeHexes) / 3),
-    long: rangeHexes,
-  });
+  const r = Math.max(0, Math.floor(rangeHexes));
+  return {
+    pb: 0,
+    s: r >= 1 ? 2 : null,
+    m: r >= 2 ? 4 : null,
+    l: r >= 3 ? 6 : null,
+    x: null,
+  };
 }
 
 /** Convert towed field guns (standard weapons) into card weapon rows. */
@@ -247,7 +246,8 @@ export function convertInfantry(unit: InfantryUnit): InfantryCard {
     damageByTroopers: track,
     damageBreaks: damageBreakpoints(track),
     range,
-    rangeText: range ? formatRangeBrackets(range) : null,
+    // Infantry use only PB/S/M/L (no Extreme column) — match the DFA card.
+    rangeText: range ? [range.pb, range.s, range.m, range.l].map(formatBracket).join(" ") : null,
     primaryRangeHexes: primaryArm ? primaryArm.range : null,
     ...(secondaryArm ? { secondaryRangeHexes: secondaryArm.range } : {}),
     primaryWeapon: cleanInfantryWeapon(unit.primaryWeapon),

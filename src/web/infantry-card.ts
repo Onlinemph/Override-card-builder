@@ -33,26 +33,21 @@ function dmg(clusters: number[]): string {
 }
 
 /**
- * Small-arms range row in the shared PB/S/M/L/X bracket style, with the primary
- * weapon's max range (hexes) called out. Returns "" when range is unscored.
+ * Small-arms range row, in the DFA infantry-card style: the weapon name over a
+ * PB/S/M/L to-hit row (infantry have no Extreme bracket). Returns "" when the
+ * primary weapon's range is unscored.
  */
 function rangeTable(card: InfantryCard): string {
   if (!card.range) return "";
-  const reach =
-    card.primaryRangeHexes !== null
-      ? `<div class="ms-range-reach">Max range: ${esc(card.primaryRangeHexes)} hex${card.primaryRangeHexes === 1 ? "" : "es"}${
-          card.secondaryRangeHexes != null && card.secondaryRangeHexes !== card.primaryRangeHexes
-            ? ` (secondary ${esc(card.secondaryRangeHexes)})`
-            : ""
-        }</div>`
-      : "";
+  const r = card.range;
+  const cells = [r.pb, r.s, r.m, r.l].map((v) => `<td class="num rng">${esc(bracket(v))}</td>`).join("");
   return `<table class="mweapons">
     <thead><tr>
-      <th class="wname">Small Arms</th>
-      <th class="num">PB</th><th class="num">S</th><th class="num">M</th><th class="num">L</th><th class="num">X</th>
+      <th class="wname">${esc(card.primaryWeapon || "Small Arms")}</th>
+      <th class="num">PB</th><th class="num">S</th><th class="num">M</th><th class="num">L</th>
     </tr></thead>
-    <tbody><tr><td class="wname">To-hit by range</td>${rangeCells(card.range)}</tr></tbody>
-  </table>${reach}`;
+    <tbody><tr><td class="wname">To-hit by range</td>${cells}</tr></tbody>
+  </table>`;
 }
 
 /**
