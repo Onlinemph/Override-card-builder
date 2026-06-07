@@ -521,6 +521,15 @@ export interface VehicleCardArmor {
   turret?: number;
 }
 
+/** Notable vehicle equipment (ammo/gear) with its facing (e.g. "BD" body). */
+export interface VehicleEquipment {
+  label: string;
+  /** Short facing code: "BD" | "FR" | "TU" | "RS" | "LS" | "RR". */
+  facing: string;
+  category: "ammo" | "equipment";
+  count: number;
+}
+
 /** Converted Override record-card statistics for a combat vehicle. */
 export interface VehicleCard {
   kind: "vehicle";
@@ -530,19 +539,19 @@ export interface VehicleCard {
   techBase: TechBase;
   tonnage: number;
   motionType: string;
-  /** Printed move string, e.g. "8/12" (cruise/flank). */
+  /** Printed move string, e.g. "4 / 6t" (cruise/flank + motion letter). */
   move: string;
   cruiseMP: number;
   flankMP: number;
-  /** Base TMM (mirrored from the 'Mech flank-MP table — best-effort). */
+  /** Base TMM (mirrored from the 'Mech flank-MP table); card prints `tmm / tmm+1`. */
   tmm: number;
-  /** Per-facing Override armor (best-effort: mirrors 'Mech arm/leg = TW/3). */
+  /** Per-facing Override armor (best-effort: TW / 5). */
   armor: VehicleCardArmor;
-  /** Best-effort internal structure (single value, mirrored from tonnage). */
+  /** Internal structure per facing (uniform, best-effort from tonnage). */
   structure: number;
   hasTurret: boolean;
   weapons: VehicleWeaponRow[];
-  equipment: CardEquipment[];
+  equipment: VehicleEquipment[];
   warnings: string[];
   sourceFile?: string;
 }

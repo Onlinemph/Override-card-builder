@@ -4,8 +4,8 @@
  * `.mech-sheet` / `.vdoll` rules in style.css.
  *
  * Differences from the 'Mech card: armor is shown by FACING (front / sides /
- * rear / turret) instead of a humanoid doll, there is no Punch/Kick row, and
- * the weapons table's Loc column holds the firing facing.
+ * rear / turret) with armor (purple) over structure (red) hexes, there is no
+ * Punch/Kick row, and the weapons table's Loc column holds the firing facing.
  */
 
 import type { RangeBrackets, VehicleCard, VehicleCardArmor } from "../core/index.js";
@@ -27,31 +27,40 @@ function rangeCells(r: RangeBrackets | null): string {
   return vals.map((v) => `<td class="num rng">${esc(bracket(v))}</td>`).join("");
 }
 
-/** A row of purple armor hex pips. */
-function hexPips(n: number): string {
+/** A row of hex pips of a given class (armor = purple, struct = red). */
+function hexPips(n: number, cls: string): string {
   if (n <= 0) return "";
-  return `<span class="hexrow">${'<i class="hex armor"></i>'.repeat(n)}</span>`;
+  return `<span class="hexrow">${`<i class="hex ${cls}"></i>`.repeat(n)}</span>`;
 }
 
-/** One facing box in the armor diagram: label + value + hex pips. */
-function facingBox(area: string, label: string, value: number | undefined): string {
-  if (value === undefined) return `<div class="vloc ${area} vempty"></div>`;
+/** One facing box: label + hit numbers, armor hexes over structure hexes. */
+function facingBox(
+  area: string,
+  label: string,
+  hits: string,
+  armor: number | undefined,
+  structure: number,
+): string {
+  if (armor === undefined) return `<div class="vloc ${area} vempty"></div>`;
+  const hitTxt = hits ? ` <span class="loc-hits">(${esc(hits)})</span>` : "";
   return `<div class="vloc ${area}">
-    <div class="vloc-name">${esc(label)} <span class="loc-hits">${esc(value)}</span></div>
-    <div class="vloc-pips">${hexPips(value)}</div>
+    <div class="vloc-name">${esc(label)}${hitTxt}</div>
+    <div class="vloc-pips">${hexPips(armor, "armor")}${hexPips(structure, "struct")}</div>
   </div>`;
 }
 
 /** Facing armor diagram: Front on top, sides flanking the turret, Rear at bottom. */
-function armorDiagram(armor: VehicleCardArmor): string {
+function armorDiagram(card: VehicleCard): string {
+  const a = card.armor;
+  const s = card.structure;
   return `<div class="vdoll">
-    ${facingBox("vfront", "Front", armor.front)}
-    ${facingBox("vleft", "Left", armor.left)}
-    ${facingBox("vturret", "Turret", armor.turret)}
-    ${facingBox("vright", "Right", armor.right)}
-    ${facingBox("vrear", "Rear", armor.rear)}
+    ${facingBox("vfront", "Front", "6,7,8", a.front, s)}
+    ${facingBox("vleft", "Left Side", "10,11", a.left, s)}
+    ${facingBox("vturret", "Turret", "5,9", a.turret, s)}
+    ${facingBox("vright", "Right Side", "3,4", a.right, s)}
+    ${facingBox("vrear", "Rear", "", a.rear, s)}
   </div>
-  <p class="mdoll-legend"><i class="hex armor"></i> armor / facing</p>`;
+  <p class="mdoll-legend"><i class="hex armor"></i> armor &nbsp; <i class="hex struct"></i> structure</p>`;
 }
 
 /** The weapons table: one row per facing TIC (no Punch/Kick for vehicles). */
@@ -84,15 +93,15 @@ function weaponsTable(card: VehicleCard): string {
 function equipmentLine(card: VehicleCard): string {
   if (card.equipment.length === 0) return "—";
   return card.equipment
-    .map((e) => `${esc(e.label)}${e.count > 1 ? ` ×${e.count}` : ""}`)
+    .map((e) => `${esc(e.label)}${e.count > 1 ? ` ×${e.count}` : ""} <span class="eq-loc">(${esc(e.facing)})</span>`)
     .join(", ");
 }
 
 /**
  * Render a combat vehicle as an HTML string in the Override record-card layout:
- * title banner, UNIT DATA (type / mass / move / TMM / motive type / structure),
- * the per-facing weapons table, equipment, the OVERRIDE wordmark + skill boxes,
- * and the facing armor diagram.
+ * title banner, UNIT DATA (type / mass / move / TMM), the per-facing weapons
+ * table, equipment, the OVERRIDE wordmark + skill boxes, and the facing armor
+ * diagram (armor over structure hexes).
  */
 export function renderVehicleCard(card: VehicleCard): string {
   const warnings = card.warnings.length
@@ -105,9 +114,10 @@ export function renderVehicleCard(card: VehicleCard): string {
         <div class="ms-unitdata">
           <div class="ms-ud-h">UNIT DATA</div>
           <div class="ms-ud-stats">
-            <div><b>Type:</b> Combat Vehicle (${esc(card.motionType)})</div>
+            <div><b>Type:</b> Combat Vehicle</div>
             <div><b>Mass:</b> ${esc(card.tonnage)} Tons</div>
-            <div class="ms-ud-move"><b>Move:</b> ${esc(card.move)} <b>TMM:</b> ${esc(card.tmm)} <b>Struct:</b> ~${esc(card.structure)}</div>
+            <div class="ms-ud-move"><b>Move:</b> ${esc(card.move)}</div>
+            <div><b>TMM:</b> ${esc(card.tmm)} / ${esc(card.tmm + 1)}</div>
           </div>
         </div>
         ${weaponsTable(card)}
@@ -119,11 +129,11 @@ export function renderVehicleCard(card: VehicleCard): string {
         <div class="ms-brand">
           <div class="ms-skills">
             <div class="ms-skill"><span>Gunnery</span><div class="ms-skill-box"></div></div>
-            <div class="ms-skill"><span>Driving</span><div class="ms-skill-box"></div></div>
+            <div class="ms-skill"><span>Piloting</span><div class="ms-skill-box"></div></div>
           </div>
           <div class="ms-wordmark">B<span class="ms-wm-a">▲</span>TTLETECH<br><b>OVERRIDE</b></div>
         </div>
-        ${armorDiagram(card.armor)}
+        ${armorDiagram(card)}
       </div>
     </div>
   </article>`;

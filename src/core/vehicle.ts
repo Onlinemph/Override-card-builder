@@ -3,14 +3,24 @@
  *
  * PURE module. Reuses the 'Mech weapon engine: weapons are grouped into TICs
  * PER FACING (front/turret/sides/rear stay separate), then abbreviated and
- * heat-rated exactly like the 'Mech card. Armor/TMM mirror the 'Mech rules as a
- * best-effort starting point (TODO(vehicle-rules) — validate vs the DFA gen).
+ * heat-rated exactly like the 'Mech card.
+ *
+ * Numbers are tuned against the DFA Manticore Heavy Tank card (60t, armor
+ * 42/33/33/26/42): armor = TW/5, structure ~ tonnage/30, TMM = base/+1 on flank
+ * MP, move shows the motion letter ("4 / 6t"). Still marked best-effort -
+ * keep validating new vehicles against DFA.
  */
 
-import { ARM_LEG_ARMOR_DIVISOR, MIN_ARM_LEG_ARMOR, WEAPON_HINTS } from "./constants.js";
+import {
+  IMPORTANT_EQUIPMENT,
+  MOTION_TYPE_LETTER,
+  VEHICLE_ARMOR_DIVISOR,
+  VEHICLE_STRUCTURE_DIVISOR,
+  WEAPON_HINTS,
+} from "./constants.js";
 import {
   abbreviatedTicLabel,
-  buildEquipment,
+  ammoLabel,
   convertWeapon,
   groupIntoTics,
   lookupTmm,
@@ -20,10 +30,11 @@ import {
 } from "./convert.js";
 import type {
   CardWeapon,
-  CritSlot,
   VehicleCard,
   VehicleCardArmor,
+  VehicleEquipment,
   VehicleFacing,
+  VehicleMount,
   VehicleUnit,
   VehicleWeaponRow,
   Weapon,
@@ -32,14 +43,14 @@ import type {
 /** All vehicle weapons share one synthetic location; grouping is scoped per facing. */
 const VEHICLE_LOCATION = "CT" as const;
 
-/** Display label + card order for the weapon facings. */
-const FACING_LABEL: Readonly<Record<VehicleFacing, string>> = {
-  front: "Front",
-  turret: "Turret",
-  right: "Right",
-  left: "Left",
-  rear: "Rear",
-  body: "Body",
+/** Facing -> short code shown on the card (Loc column / equipment). */
+const FACING_CODE: Readonly<Record<VehicleFacing, string>> = {
+  front: "FR",
+  turret: "TU",
+  right: "RS",
+  left: "LS",
+  rear: "RR",
+  body: "BD",
 };
 const FACING_ORDER: ReadonlyArray<VehicleFacing> = [
   "front",
@@ -50,28 +61,57 @@ const FACING_ORDER: ReadonlyArray<VehicleFacing> = [
   "body",
 ];
 
-/** True if an item name looks like a weapon (so unknowns surface rather than drop). */
 function looksLikeWeapon(name: string): boolean {
   const lower = name.toLowerCase();
   return WEAPON_HINTS.some((hint) => lower.includes(hint));
 }
 
-/** Armor: mirror the 'Mech arm/leg rule (TW / 3, round nearest, min 1; 0 if absent). */
+/** Armor: TW / 5, round nearest, min 1 (0 if the facing is absent). */
 function convertArmor(tw: number): number {
-  return tw > 0 ? Math.max(MIN_ARM_LEG_ARMOR, roundNearest(tw / ARM_LEG_ARMOR_DIVISOR)) : 0;
+  return tw > 0 ? Math.max(1, roundNearest(tw / VEHICLE_ARMOR_DIVISOR)) : 0;
+}
+
+/** Notable equipment (ammo/gear) grouped by facing + label, with bin counts. */
+function buildVehicleEquipment(mounts: ReadonlyArray<VehicleMount>): VehicleEquipment[] {
+  const byKey = new Map<string, VehicleEquipment>();
+  for (const m of mounts) {
+    const lower = m.name.toLowerCase();
+    const facing = FACING_CODE[m.facing];
+    let label: string;
+    let category: "ammo" | "equipment";
+    let countable: boolean;
+    if (lower.includes("ammo")) {
+      label = ammoLabel(m.name);
+      category = "ammo";
+      countable = true;
+    } else {
+      const match = IMPORTANT_EQUIPMENT.find((e) => e.match.some((s) => lower.includes(s)));
+      if (!match) continue;
+      label = match.label;
+      category = "equipment";
+      countable = match.countable ?? false;
+    }
+    const key = `${facing}|${category}|${label}`;
+    const existing = byKey.get(key);
+    if (existing) {
+      if (countable) existing.count += 1;
+    } else {
+      byKey.set(key, { label, facing, category, count: 1 });
+    }
+  }
+  return [...byKey.values()].sort(
+    (a, b) =>
+      Number(a.category === "ammo") - Number(b.category === "ammo") || a.label.localeCompare(b.label),
+  );
 }
 
 /**
- * Convert a parsed combat vehicle into a Vehicle Override card.
- *
- * Each facing's weapons are converted and grouped into TICs independently, so
- * (for example) two identical autocannon in the turret group while a third in
- * the front stays separate. Ammo/gear route through the shared equipment
- * surfacing (shown without a location for now).
+ * Convert a parsed combat vehicle into a Vehicle Override card. Each facing's
+ * weapons are grouped into TICs independently; ammo/gear keep their facing.
  */
 export function convertVehicle(unit: VehicleUnit): VehicleCard {
   const warnings: string[] = [];
-  const otherSlots: CritSlot[] = [];
+  const otherMounts: VehicleMount[] = [];
   const weapons: VehicleWeaponRow[] = [];
   const unknownWeapons = new Set<string>();
 
@@ -90,14 +130,13 @@ export function convertVehicle(unit: VehicleUnit): VehicleCard {
         cardWeapons.push(convertWeapon(w, unit.techBase, 0));
         if (unknown) unknownWeapons.add(mount.name);
       } else {
-        otherSlots.push({ name: mount.name, location: VEHICLE_LOCATION, rawLocation: facing });
+        otherMounts.push(mount);
       }
     }
-    // Group identical weapons WITHIN this facing only.
     for (const tic of groupIntoTics(cardWeapons)) {
       weapons.push({
         label: abbreviatedTicLabel(tic, unit.techBase),
-        facing: FACING_LABEL[facing],
+        facing: FACING_CODE[facing],
         damageText: tic.damageText,
         heat: ticHeat(tic),
         range: tic.range,
@@ -120,12 +159,13 @@ export function convertVehicle(unit: VehicleUnit): VehicleCard {
     ...(unit.hasTurret ? { turret: convertArmor(a.turret ?? 0) } : {}),
   };
 
-  // Best-effort internal structure (single value) from tonnage.
+  // Internal structure per facing (uniform): ~ (tonnage/10 raw IS) / 3.
   // TODO(vehicle-rules): use the real combat-vehicle IS table once verified.
-  const structure = Math.max(1, roundNearest(unit.tonnage / 10));
+  const structure = Math.max(1, roundNearest(unit.tonnage / VEHICLE_STRUCTURE_DIVISOR));
 
-  // TMM: mirror the 'Mech run table on flank MP. TODO(vehicle-rules): validate.
+  // TMM mirrors the 'Mech run table on flank MP; card prints `tmm / tmm+1`.
   const tmm = lookupTmm(unit.flankMP);
+  const letter = MOTION_TYPE_LETTER[unit.motionType.toLowerCase()] ?? "";
 
   return {
     kind: "vehicle",
@@ -135,7 +175,7 @@ export function convertVehicle(unit: VehicleUnit): VehicleCard {
     techBase: unit.techBase,
     tonnage: unit.tonnage,
     motionType: unit.motionType,
-    move: `${unit.cruiseMP}/${unit.flankMP}`,
+    move: `${unit.cruiseMP} / ${unit.flankMP}${letter}`,
     cruiseMP: unit.cruiseMP,
     flankMP: unit.flankMP,
     tmm,
@@ -143,7 +183,7 @@ export function convertVehicle(unit: VehicleUnit): VehicleCard {
     structure,
     hasTurret: unit.hasTurret,
     weapons,
-    equipment: buildEquipment(otherSlots),
+    equipment: buildVehicleEquipment(otherMounts),
     warnings,
     sourceFile: unit.sourceFile,
   };

@@ -195,7 +195,7 @@ function printBASummary(card: BattleArmorCard): void {
 function printVehicleSummary(card: VehicleCard): void {
   const lines: string[] = [];
   lines.push(`${card.name}  (Combat Vehicle, ${card.motionType}, ${card.tonnage}t ${card.techBase})`);
-  lines.push(`  Move ${card.move}   TMM ${card.tmm}   Structure ~${card.structure}  [best-effort]`);
+  lines.push(`  Move ${card.move}   TMM ${card.tmm} / ${card.tmm + 1}   Structure ~${card.structure}  [best-effort]`);
   const a = card.armor;
   lines.push(
     `  Armor  front ${a.front}  right ${a.right}  left ${a.left}  rear ${a.rear}` +
@@ -214,7 +214,7 @@ function printVehicleSummary(card: VehicleCard): void {
     lines.push("  Equipment:");
     for (const e of card.equipment) {
       const qty = e.count > 1 ? ` x${e.count}` : "";
-      lines.push(`    - ${e.label}${qty}`);
+      lines.push(`    - ${e.label} (${e.facing})${qty}`);
     }
   }
   for (const warn of card.warnings) lines.push(`  ! ${warn}`);
