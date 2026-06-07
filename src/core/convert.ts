@@ -36,6 +36,7 @@ import {
   TIC_MAX_BASE,
   TIC_MAX_DAMAGE,
   WEAPON_BRACKET_OVERRIDE,
+  WEAPON_HEAT_DAMAGE,
   WEAPON_DAMAGE_BY_RANGE,
   WEAPON_RANGES,
   WEAPON_RANGES_CLAN,
@@ -134,9 +135,11 @@ export function normalizeWeaponName(raw: string): string {
   s = s.replace(/^(is|cl|clan)\s+/, ""); // drop spaced tech prefix
   s = s.replace(/^ba\s+/, ""); // drop spaced BA prefix ("ba er small laser" -> "er small laser")
   s = s.replace(/\berppc\b/g, "er ppc"); // glued all-caps "ERPPC" (from "ISERPPC"/"CLERPPC") -> "er ppc"
+  s = s.replace(/\bparticle cannon\b/g, "ppc"); // "(Light/Heavy/...) Particle Cannon" -> "(...) ppc"
   s = s.replace(/\bautocannon\//g, "ac/"); // Autocannon/20 -> ac/20
   s = s.replace(/\bhyper assault gauss\b/g, "hag"); // Hyper Assault Gauss/30 -> hag/30
   s = s.replace(/\b(ac|hag)\s+(\d+)/g, "$1/$2"); // "ac 20"/"hag 30" -> "ac/20"/"hag/30" (also Rotary/Ultra/Light AC)
+  s = s.replace(/\blb[\s-]?x[\s-]?ac[\s-]?(\d+)/g, "lb $1-x ac"); // glued "LBXAC10" -> "lb 10-x ac"
   s = s.replace(/\b(srm|lrm|mml|atm|iatm)\s*-\s*(\d+)/g, "$1 $2"); // srm-6/mml-5/atm-6 -> "srm 6" etc.
   s = s.replace(/\bx[\s-]?pulse\b/g, "xpulse"); // "X-Pulse"/"X Pulse" -> "xpulse"
   s = s.replace(/re-?engineered/g, "reengineered"); // "Re-engineered" -> "reengineered"
@@ -305,11 +308,12 @@ export function computeDamageProfile(
  *   - direct:    flat `max`
  */
 export function formatDamage(p: DamageProfile): string {
+  const h = p.heatDamage ? `+H${p.heatDamage}` : ""; // plasma heat dice (e.g. "0+H2")
   if (p.kind === "missile") return `${p.base}+M${p.mDice} (${p.max})`;
   if (p.kind === "rvmissile") return `${p.byRange.join("|")}+M${p.mDice} (${p.max})`;
   if (p.kind === "cluster" && p.cDice[0]! > 0) return `${p.base}+C${p.cDice.join("|")}`;
-  if (p.kind === "variable") return p.byRange.join("|");
-  return `${p.max}`;
+  if (p.kind === "variable") return `${p.byRange.join("|")}${h}`;
+  return `${p.max}${h}`;
 }
 
 /**
@@ -475,10 +479,11 @@ export function lookupWeaponHeat(name: string): number {
   return WEAPON_HEAT[normalizeWeaponName(name)] ?? 0;
 }
 
-/** Override Ht for a TIC: ceil(sum of member TW heat / 5), the heat-sink scale. */
+/** Override Ht for a TIC: round(sum of member TW heat / 5), the heat-sink scale
+ * (round-nearest, VERIFIED vs DFA card: SRM-2 heat 2 -> 0, cATM-12 heat 8 -> 2). */
 export function ticHeat(tic: Tic): number {
   const tw = tic.weapons.reduce((sum, w) => sum + lookupWeaponHeat(w.name), 0);
-  return Math.ceil(tw / HEAT_DISSIPATION_DIVISOR);
+  return roundNearest(tw / HEAT_DISSIPATION_DIVISOR);
 }
 
 /**
@@ -563,7 +568,7 @@ export function convertWeapon(w: Weapon, techBase: TechBase, mass: number): Card
   // v1: one weapon per TIC, so each weapon is its own group.
   // TODO(TIC grouping): replace per-weapon conversion with grouped sums.
   const byRange = WEAPON_DAMAGE_BY_RANGE[key];
-  const profile =
+  const baseProfile =
     !unknown && byRange
       ? computeVariableProfile(byRange)
       : computeDamageProfile(
@@ -572,6 +577,9 @@ export function convertWeapon(w: Weapon, techBase: TechBase, mass: number): Card
           isRangeVaryingCluster(key),
           isRocketLauncher(key),
         );
+  // Plasma weapons add heat dice to the target ("+H{n}") on top of their damage.
+  const heatDamage = WEAPON_HEAT_DAMAGE[key];
+  const profile = heatDamage ? { ...baseProfile, heatDamage } : baseProfile;
   // Range data is a separate, growing table; weapons absent from it have no row.
   // Clan ranges diverge for some weapons (ER lasers, RACs) — consult the Clan
   // override table first for Clan units, then fall back to the shared table. A

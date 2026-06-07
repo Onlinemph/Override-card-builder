@@ -171,6 +171,8 @@ export interface DamageProfile {
   byRange: number[];
   /** Maximum damage. For variable weapons this is the short-range value. */
   max: number;
+  /** Heat-causing dice applied to the TARGET (plasma weapons), printed "+H{n}". 0/undefined for normal weapons. */
+  heatDamage?: number;
 }
 
 /**

@@ -265,6 +265,7 @@ export const WEAPON_DAMAGE: Readonly<Record<string, number>> = {
   "small pulse laser": 3,
   "medium pulse laser": 6,
   "large pulse laser": 9,
+  "er medium pulse laser": 7, // VERIFIED vs DFA card (cerMPLas -> 3)
 
   // --- Energy: X-Pulse lasers (IS; same damage as the base laser, -2 to-hit) ---
   "small xpulse laser": 3, // VERIFIED vs DFA card (SXPLas -> 1)
@@ -341,8 +342,10 @@ export const WEAPON_DAMAGE: Readonly<Record<string, number>> = {
   "magshot gauss rifle": 2,
   magshot: 2,
 
-  // --- Ballistic: Plasma (IS Plasma Rifle deals damage; Clan cannon is heat-only) ---
+  // --- Ballistic: Plasma (IS Plasma Rifle deals damage; Clan Plasma Cannon is
+  // heat-only — 0 damage + 2 heat dice, see WEAPON_HEAT_DAMAGE). ---
   "plasma rifle": 10,
+  "plasma cannon": 0, // VERIFIED vs DFA card (cPlasCannon -> 0+H2)
 
   // --- Missiles: SRM (2 damage per missile, full rack) ---
   // Full 'Mech racks; BA also fields smaller racks (1/3/5 missiles).
@@ -442,6 +445,7 @@ export const WEAPON_RV_MISSILE: Readonly<Record<string, RangeVaryingMissileProfi
   "atm 3": { byRange: [1, 1, 0], mDice: 1, max: 3 },
   "atm 6": { byRange: [2, 1, 0], mDice: 1, max: 5 },
   "atm 9": { byRange: [3, 1, 0], mDice: 2, max: 8 },
+  "atm 12": { byRange: [5, 3, 1], mDice: 2, max: 11 }, // VERIFIED vs DFA card (cATM-12 -> 5|3|1+M2 (11))
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -554,6 +558,9 @@ export const WEAPON_RANGES: Readonly<Record<string, WeaponRange>> = {
   // --- Energy: Re-engineered laser (-1 to-hit; VERIFIED vs DFA card reMLas: -1/-1/+1/–/–) ---
   "medium reengineered laser": { min: 0, medium: 6, long: 9, toHitMod: -1 },
 
+  // --- Energy: ER Medium Pulse Laser (Clan; -1 to-hit; VERIFIED vs DFA card cerMPLas: -1/-1/+1/+3/–) ---
+  "er medium pulse laser": { min: 0, medium: 9, long: 14, toHitMod: -1 },
+
   // --- Missiles: MML (range-varying; VERIFIED vs DFA card: +0/+0/+2/+2/+4) ---
   "mml 3": { min: 0, medium: 6, long: 21 },
   "mml 5": { min: 0, medium: 6, long: 21 },
@@ -564,6 +571,7 @@ export const WEAPON_RANGES: Readonly<Record<string, WeaponRange>> = {
   "atm 3": { min: 0, medium: 12, long: 27 },
   "atm 6": { min: 0, medium: 12, long: 27 },
   "atm 9": { min: 0, medium: 12, long: 27 },
+  "atm 12": { min: 0, medium: 12, long: 27 },
 
   // --- Energy: IS ER lasers (Clan ranges differ; see WEAPON_RANGES_CLAN) ---
   "er small laser": { min: 0, medium: 4, long: 5 }, // VERIFIED (IS erSLas): +0/+0/+4/–/–
@@ -612,6 +620,7 @@ export const WEAPON_RANGES: Readonly<Record<string, WeaponRange>> = {
 
   // --- Energy/ballistic: plasma + flamers (canonical) ---
   "plasma rifle": { min: 0, medium: 10, long: 15 }, // CONFIRM
+  "plasma cannon": { min: 0, medium: 10, long: 15 }, // VERIFIED vs DFA card cPlasCannon: +0/+0/+2/+4/–
   "vehicle flamer": { min: 0, medium: 2, long: 3 }, // CONFIRM
   "er flamer": { min: 0, medium: 4, long: 5 }, // CONFIRM
 
@@ -687,10 +696,9 @@ export const WEAPON_DAMAGE_CLAN: Readonly<Record<string, number>> = {
 // ---------------------------------------------------------------------------
 // WEAPON HEAT — Total Warfare heat per weapon (single shot), keyed on the same
 // NORMALIZED name as WEAPON_DAMAGE. The Override card's `Ht` column is
-// ceil(sum of member heat / HEAT_DISSIPATION_DIVISOR), the same /5 scale as
-// heat-sink dissipation — so a heat-neutral 'Mech reads equal Ht and Sinks
-// (e.g. Alpha Wolf Prime: x2 cLRM-15 Ht 2 + 2x cRAC/5 Ht 1 = 4 = Sinks 4).
-// Weapons absent here contribute 0 heat. Extend as needed.
+// round(sum of member heat / HEAT_DISSIPATION_DIVISOR) — round-nearest on the
+// /5 scale (VERIFIED vs DFA card: SRM-2 heat 2 -> 0, ER Med Pulse 6 -> 1,
+// cATM-12 heat 8 -> 2). Weapons absent here contribute 0 heat. Extend as needed.
 // ---------------------------------------------------------------------------
 
 export const WEAPON_HEAT: Readonly<Record<string, number>> = {
@@ -706,11 +714,13 @@ export const WEAPON_HEAT: Readonly<Record<string, number>> = {
   "large pulse laser": 10,
   "small xpulse laser": 3,
   "medium xpulse laser": 6,
-  "heavy large laser": 18, // ceil(18/5) -> 4 (matches DFA card)
+  "er medium pulse laser": 6, // round(6/5) -> 1 (cerMPLas)
+  "heavy large laser": 18, // round(18/5) -> 4
   "improved heavy medium laser": 7,
   "improved heavy large laser": 18,
-  "medium vsp laser": 5, // tuned so Override Ht = 1 (DFA card)
-  "medium reengineered laser": 5, // tuned so Override Ht = 1 (DFA card)
+  "medium vsp laser": 7, // round(7/5) -> 1
+  "medium reengineered laser": 7, // round(7/5) -> 1
+  "plasma cannon": 7, // round(7/5) -> 1 (cPlasCannon)
   "micro pulse laser": 1,
   "er micro laser": 1,
   ppc: 10,
@@ -776,6 +786,7 @@ export const WEAPON_HEAT: Readonly<Record<string, number>> = {
   "atm 3": 2,
   "atm 6": 4,
   "atm 9": 6,
+  "atm 12": 8,
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -807,6 +818,17 @@ export const WEAPON_BRACKET_OVERRIDE: Readonly<Record<string, import("./types.js
   // Variable-Speed Pulse Laser: -3 at PB/S, fading to +0 by medium. VERIFIED vs
   // DFA card vsMPLas: -3/-3/+0/–/–.
   "medium vsp laser": { pb: -3, s: -3, m: 0, l: null, x: null },
+} as const;
+
+// ---------------------------------------------------------------------------
+// HEAT-CAUSING DAMAGE. Plasma weapons apply heat dice to the target on top of
+// (or instead of) their damage; the card prints it as "+H{n}" after the damage
+// (Plasma Rifle 4+H1, Clan Plasma Cannon 0+H2). Keyed on the normalized name.
+// ---------------------------------------------------------------------------
+
+export const WEAPON_HEAT_DAMAGE: Readonly<Record<string, number>> = {
+  "plasma rifle": 1, // VERIFIED vs DFA card (PlasRifle -> 4+H1)
+  "plasma cannon": 2, // VERIFIED vs DFA card (cPlasCannon -> 0+H2)
 } as const;
 
 // ---------------------------------------------------------------------------

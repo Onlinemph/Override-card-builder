@@ -115,7 +115,7 @@ describe("convertVehicle", () => {
 
     const srm = c.weapons.find((w) => /SRM/.test(w.label))!;
     expect(srm.damageText).toBe("2+M4 (8)"); // 2x SRM-6 scaled
-    expect(srm.heat).toBe(2); // ceil(8 / 5)
+    expect(srm.heat).toBe(2); // round(8 / 5)
   });
 
   it("surfaces turret ammo as equipment with its facing", () => {

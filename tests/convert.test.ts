@@ -27,6 +27,7 @@ import {
   parseMtf,
   roundNearest,
   roundUp,
+  ticHeat,
   WEAPON_DAMAGE_BY_RANGE,
   WEAPON_RANGES,
   WEAPON_RANGES_CLAN,
@@ -827,5 +828,42 @@ BeagleActiveProbe, Left Torso
     expect(labels).toContain("C3");
     expect(labels).toContain("Active Probe");
     expect(c.warnings.join(" ")).not.toMatch(/ECM|C3|Probe/);
+  });
+});
+
+describe("DFA card batch 4: ER Med Pulse, ATM-12, Plasma + heat round + aliases", () => {
+  const conv = (name: string, tech: TechBase = "Clan") =>
+    convertWeapon({ name, location: "CT", rawLocation: "CT", rearMounted: false }, tech, 20);
+  const dmg = (name: string, tech: TechBase = "Clan") => {
+    const c = conv(name, tech);
+    return { damageText: c.damageText, rangeText: c.rangeText, unknown: c.unknown };
+  };
+  const ht = (name: string, tech: TechBase = "Clan") => ticHeat({ weapons: [conv(name, tech)] } as never);
+
+  it("ER Medium Pulse Laser -> 3 (-1/-1/+1/+3/–)", () => {
+    expect(dmg("ER Medium Pulse Laser")).toEqual({ damageText: "3", rangeText: "-1 -1 +1 +3 –", unknown: false });
+  });
+
+  it("ATM-12 -> 5|3|1+M2 (11), +0/+0/+2/+2/+2", () => {
+    expect(dmg("ATM 12")).toEqual({ damageText: "5|3|1+M2 (11)", rangeText: "+0 +0 +2 +2 +2", unknown: false });
+    expect(dmg("CLATM12").damageText).toBe("5|3|1+M2 (11)");
+  });
+
+  it("Plasma Cannon -> 0+H2 and Plasma Rifle -> 4+H1 (heat dice on target)", () => {
+    expect(dmg("Plasma Cannon")).toEqual({ damageText: "0+H2", rangeText: "+0 +0 +2 +4 –", unknown: false });
+    expect(dmg("Plasma Rifle", "IS").damageText).toBe("4+H1");
+  });
+
+  it("heat is round-nearest on the /5 scale (SRM-2 -> 0, ATM-12 -> 2)", () => {
+    expect(ht("SRM 2")).toBe(0); // TW heat 2 -> round(0.4) = 0
+    expect(ht("ATM 12")).toBe(2); // TW heat 8 -> round(1.6) = 2
+    expect(ht("ER Medium Pulse Laser")).toBe(1); // TW heat 6 -> round(1.2) = 1
+  });
+
+  it("aliases Particle Cannon -> PPC and glued LB-X AC", () => {
+    expect(normalizeWeaponName("Particle Cannon")).toBe("ppc");
+    expect(normalizeWeaponName("Heavy Particle Cannon")).toBe("heavy ppc");
+    expect(normalizeWeaponName("1 ISLBXAC10")).toBe("lb 10-x ac");
+    expect(conv("ISLBXAC10").unknown).toBe(false);
   });
 });
