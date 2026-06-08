@@ -2,10 +2,10 @@
  * Conventional Infantry card renderer — PURE string builder (no DOM, no CSS
  * import), in the Override record-card style shared with the 'Mech card.
  *
- * Shows the platoon's facts (troopers, movement, anti-'Mech, primary/secondary
- * armament), the small-arms range brackets, a "bodies remaining" damage track
- * (cross off a trooper as it dies, read the degraded cluster damage) and a
- * FIELD GUNS table (towed standard weapons, real stats).
+ * Full-width layout: a title bar, a top band (UNIT DATA | armament + small-arms
+ * range | skills + OVERRIDE wordmark), then a wide TROOPERS & WEAPONS section
+ * with one column of trooper pips per squad and a per-squad damage legend, plus
+ * a FIELD GUNS table (towed standard weapons, real stats).
  */
 
 import type { InfantryCard, RangeBrackets } from "../core/index.js";
@@ -51,21 +51,25 @@ function rangeTable(card: InfantryCard): string {
 }
 
 /**
- * "Bodies remaining" damage track: trooper pips grouped into squads (full
- * strength on the left), with a degradation legend mapping surviving-SQUAD bands
- * to cluster damage. Damage recalculates as whole squads are eliminated — wipe a
- * squad's pips and read the new damage off the legend. Returns "" when unscored.
+ * TROOPERS & WEAPONS section: each squad is a column of trooper pips spread
+ * across the full width, with the small-arms range row and a per-squad damage
+ * legend on the right. Damage recalculates as whole squads are eliminated — wipe
+ * a squad's pips and read the new damage off the legend. "" when unscored.
  */
-function bodiesTrack(card: InfantryCard): string {
+function troopersSection(card: InfantryCard): string {
   if (!card.damageBySquads.length) return "";
-  const squads = Array.from({ length: card.squadCount }, (_, q) => {
+  const squadCols = Array.from({ length: card.squadCount }, (_, q) => {
     const surviving = card.squadCount - q; // leftmost squad is the last to fall
     const here = card.damageBySquads[surviving - 1] ?? [];
     const pips = Array.from(
       { length: card.squadSize },
-      () => `<span class="ms-body" title="${esc(surviving)} squad${surviving === 1 ? "" : "s"} left: ${esc(dmg(here))}"></span>`,
+      () => `<span class="ms-body"></span>`,
     ).join("");
-    return `<span class="ms-squad">${pips}</span>`;
+    return `<div class="inf-squad" title="${esc(surviving)} squad${surviving === 1 ? "" : "s"} left → ${esc(dmg(here))}">
+      <div class="inf-squad-h">Squad ${esc(surviving)}</div>
+      <div class="inf-pips">${pips}</div>
+      <div class="inf-squad-dmg">${esc(dmg(here))}</div>
+    </div>`;
   }).join("");
   const legend = card.damageBreaks
     .map((b) => {
@@ -73,13 +77,18 @@ function bodiesTrack(card: InfantryCard): string {
       return `<tr><td class="num">${esc(band)}</td><td class="wdmg">${esc(dmg(b.damage))}</td></tr>`;
     })
     .join("");
-  return `<div class="ms-bodies">
-    <div class="ms-bodies-h">BODIES REMAINING (${esc(card.squadCount)} squad${card.squadCount === 1 ? "" : "s"} × ${esc(card.squadSize)})</div>
-    <div class="ms-body-row">${squads}</div>
-    <table class="ms-degrade">
-      <thead><tr><th class="num">Squads</th><th>Damage</th></tr></thead>
-      <tbody>${legend}</tbody>
-    </table>
+  return `<div class="inf-troopers">
+    <div class="inf-sec-h">TROOPERS &amp; WEAPONS<span class="inf-sec-sub">${esc(card.squadCount)} squad${card.squadCount === 1 ? "" : "s"} × ${esc(card.squadSize)} = ${esc(card.troopers)}</span></div>
+    <div class="inf-tr-body">
+      <div class="inf-squads">${squadCols}</div>
+      <div class="inf-degrade">
+        <div class="inf-degrade-h">Damage by squads left</div>
+        <table class="ms-degrade">
+          <thead><tr><th class="num">Squads</th><th>Damage</th></tr></thead>
+          <tbody>${legend}</tbody>
+        </table>
+      </div>
+    </div>
   </div>`;
 }
 
@@ -107,9 +116,11 @@ function fieldGunsTable(card: InfantryCard): string {
 }
 
 /**
- * Render a conventional infantry platoon as an HTML string in the Override
- * record-card layout: title, UNIT DATA (type / troopers / move / anti-'Mech),
- * armament, the field-guns table, the OVERRIDE wordmark + skill boxes.
+ * Render a conventional infantry platoon as an Override record card. Full-width
+ * layout: a title bar, a top band (UNIT DATA | armament + small-arms range |
+ * skills + OVERRIDE wordmark), then a wide TROOPERS & WEAPONS section (squads
+ * spread across the row, per-squad damage legend on the right), field guns, and
+ * any warnings.
  */
 export function renderInfantryCard(card: InfantryCard): string {
   const warnings = card.warnings.length
@@ -118,45 +129,44 @@ export function renderInfantryCard(card: InfantryCard): string {
   const secondary = card.secondaryWeapon
     ? `<div><b>Secondary:</b> ${esc(card.secondaryWeapon)}${card.secondaryCount ? ` ×${esc(card.secondaryCount)}` : ""}</div>`
     : "";
-  return `<article class="card mech-sheet">
-    <div class="ms-grid">
-      <div class="ms-left">
-        <div class="ms-title">${esc(card.name)}</div>
-        <div class="ms-unitdata">
-          <div class="ms-ud-h">UNIT DATA</div>
-          <div class="ms-ud-stats">
-            <div><b>Type:</b> ${esc(card.motionLabel)}</div>
-            <div><b>Troopers:</b> ${esc(card.troopers)}</div>
-            <div class="ms-ud-move"><b>Move:</b> ${esc(card.move)}</div>
-            <div><b>TMM:</b> ${esc(card.tmmText)}</div>
-            <div><b>Anti-’Mech:</b> ${card.antiMek ? "Yes" : "No"}</div>
-            ${card.damage.length ? `<div><b>Damage:</b> ${dmg(card.damage)}</div>` : ""}
-          </div>
+  return `<article class="card mech-sheet inf-sheet">
+    <div class="ms-title">${esc(card.name)}</div>
+    <div class="inf-top">
+      <div class="ms-unitdata">
+        <div class="ms-ud-h">UNIT DATA</div>
+        <div class="ms-ud-stats">
+          <div><b>Type:</b> ${esc(card.motionLabel)} Infantry</div>
+          <div><b>Troopers:</b> ${esc(card.troopers)} <span class="inf-dim">(${esc(card.squadCount)}×${esc(card.squadSize)})</span></div>
+          <div class="ms-ud-move"><b>Move:</b> ${esc(card.move)}</div>
+          <div><b>TMM:</b> ${esc(card.tmmText)}</div>
+          <div><b>Anti-’Mech:</b> ${card.antiMek ? "Yes" : "No"}</div>
         </div>
+      </div>
+      <div class="inf-arm">
+        <div class="inf-arm-h">ARMAMENT</div>
         <div class="ms-armament">
           <div><b>Primary:</b> ${esc(card.primaryWeapon || "—")}</div>
           ${secondary}
+          ${card.damage.length ? `<div><b>Full damage:</b> ${dmg(card.damage)}</div>` : ""}
         </div>
         ${rangeTable(card)}
-        ${bodiesTrack(card)}
-        ${fieldGunsTable(card)}
-        ${
-          card.damage.length
-            ? ""
-            : `<p class="ba-note">Small-arms damage/range pending per-trooper values for this weapon.
-                Movement / TMM mirror the ’Mech rules (best-effort).</p>`
-        }
-        ${warnings}
       </div>
-      <div class="ms-right">
-        <div class="ms-brand">
-          <div class="ms-skills">
-            <div class="ms-skill"><span>Gunnery</span><div class="ms-skill-box"></div></div>
-            <div class="ms-skill"><span>Anti-’Mech</span><div class="ms-skill-box"></div></div>
-          </div>
-          <div class="ms-wordmark">B<span class="ms-wm-a">▲</span>TTLETECH<br><b>OVERRIDE</b></div>
+      <div class="ms-brand">
+        <div class="ms-skills">
+          <div class="ms-skill"><span>Gunnery</span><div class="ms-skill-box"></div></div>
+          <div class="ms-skill"><span>Anti-’Mech</span><div class="ms-skill-box"></div></div>
         </div>
+        <div class="ms-wordmark">B<span class="ms-wm-a">▲</span>TTLETECH<br><b>OVERRIDE</b></div>
       </div>
     </div>
+    ${troopersSection(card)}
+    ${fieldGunsTable(card)}
+    ${
+      card.damage.length
+        ? ""
+        : `<p class="ba-note">Small-arms damage/range pending per-trooper values for this weapon.
+            Movement / TMM mirror the ’Mech rules (best-effort).</p>`
+    }
+    ${warnings}
   </article>`;
 }

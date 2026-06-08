@@ -20,7 +20,7 @@
  * Movement/TMM mirror the 'Mech rules as a best-effort starting point.
  */
 
-import { INFANTRY_WEAPON_DAMAGE, TMM_JUMP_BONUS, WEAPON_DAMAGE_DIVISOR } from "./constants.js";
+import { INFANTRY_WEAPON_DAMAGE, TMM_JUMP_BONUS, TMM_SPRINT_BONUS, WEAPON_DAMAGE_DIVISOR } from "./constants.js";
 import {
   abbreviatedTicLabel,
   convertWeapon,
@@ -41,28 +41,29 @@ import type {
 } from "./types.js";
 
 /**
- * Motion type -> display label + base ("walk") ground MP + jump flag. The card
- * prints Move as `walk/run` where run = ceil(walk x 1.5); TMM is run-based with a
- * +1 sprint step (see convertInfantry).
+ * Motion type -> display label + ground ("walk") MP + optional jump MP. The card
+ * prints Move as `walk/run` (run = ceil(walk x 1.5)); TMM is run-based with a +1
+ * sprint step (see convertInfantry). Jump infantry KEEP the normal ground
+ * walk/sprint AND add a jump option (jump TMM = ground base + 2).
  *
- * VERIFIED vs DFA card: Motorized reads Move 3/5, TMM 1/2 -> walk 3. The other
- * walk values are best-effort pending an oracle for each motion type.
+ * VERIFIED vs DFA card: Motorized 3/5 TMM 1/2; Hover 5/8; Wheeled 4/6; Jump
+ * infantry jump 3 at TMM 2 while still walking 1/2 at TMM 0/1.
  */
 interface MotionSpec {
   label: string;
   move: number;
-  jump?: boolean;
+  jump?: number;
 }
 const MOTION: Readonly<Record<string, MotionSpec>> = {
   leg: { label: "Foot", move: 1 },
   foot: { label: "Foot", move: 1 },
-  jump: { label: "Jump", move: 3, jump: true }, // VERIFIED: jump 3
+  jump: { label: "Jump", move: 1, jump: 3 }, // VERIFIED: walk 1/2, jump 3 (TMM 2)
   motorized: { label: "Motorized", move: 3 }, // VERIFIED: Move 3/5, TMM 1/2
   mechanized: { label: "Mechanized", move: 2 },
   wheeled: { label: "Wheeled", move: 4 }, // VERIFIED: Move 4/6
   tracked: { label: "Tracked", move: 3 },
   hover: { label: "Hover", move: 5 }, // VERIFIED: Move 5/8
-  vtol: { label: "VTOL", move: 6, jump: true },
+  vtol: { label: "VTOL", move: 6 },
   submarine: { label: "Submarine", move: 2 },
   "motorized scuba": { label: "SCUBA", move: 2 },
 };
@@ -222,23 +223,23 @@ function buildFieldGuns(names: ReadonlyArray<string>, techBase: InfantryUnit["te
 export function convertInfantry(unit: InfantryUnit): InfantryCard {
   const warnings: string[] = [];
   const motion = motionSpec(unit.motionType);
-  // Ground units print Move walk/run (run = ceil(walk x 1.5)) and TMM base/(base+1)
-  // for the +1 sprint step (VERIFIED: motorized 3/5 -> 1/2). Jump infantry print
-  // their jump MP with (J) and a single TMM (jumping already grants the +1).
-  let move: string;
-  let tmm: number;
-  let tmmText: string;
-  if (motion.jump) {
-    const jump = motion.move;
-    tmm = lookupTmm(jump) + TMM_JUMP_BONUS;
-    move = `${jump} (J)`;
-    tmmText = `${tmm}`;
-  } else {
-    const walk = motion.move;
-    const run = Math.ceil(walk * 1.5);
-    tmm = lookupTmm(run);
-    move = `${walk}/${run}`;
-    tmmText = `${tmm}/${tmm + 1}`;
+  // Move prints walk/run (run = ceil(walk x 1.5)); TMM is run-based with a +1
+  // sprint step (VERIFIED: motorized 3/5 -> 1/2). Jump infantry KEEP the ground
+  // walk/sprint and ALSO list a jump option (jump TMM = ground base + 2, so a
+  // walk-1 jump-3 platoon reads Move "1/2 · Jump 3", TMM "0/1 · Jump 2").
+  const walk = motion.move;
+  const run = Math.ceil(walk * 1.5);
+  const baseTmm = lookupTmm(run);
+  let move = `${walk}/${run}`;
+  let tmmText = `${baseTmm}/${baseTmm + 1}`;
+  let tmm = baseTmm;
+  if (motion.jump !== undefined) {
+    // Jumping stacks the sprint step and the jump step over the base TMM, so a
+    // walk-1 (base 0) jump-3 platoon evades at TMM 2 (VERIFIED vs DFA card).
+    const jumpTmm = baseTmm + TMM_SPRINT_BONUS + TMM_JUMP_BONUS;
+    move += ` · Jump ${motion.jump}`;
+    tmmText += ` · Jump ${jumpTmm}`;
+    tmm = jumpTmm; // headline TMM (CSV) = the best evasion the platoon can get
   }
 
   const fieldGuns = buildFieldGuns(unit.fieldGuns, unit.techBase);

@@ -750,18 +750,41 @@ footer {
 .ms-equip b { font-weight: 700; }
 .ms-equip .eq-loc { color: #6b7079; }
 
-/* Infantry: small-arms range reach + "bodies remaining" degradation track */
-.ms-range-reach { font-size: 0.72rem; color: #6b7079; margin: 0.1rem 0 0.5rem; }
-.ms-bodies { margin: 0.5rem 0; }
-.ms-bodies-h { font-size: 0.62rem; font-weight: 800; letter-spacing: 1px; color: #6b7079; margin-bottom: 0.25rem; }
-.ms-body-row { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 0.35rem; }
-.ms-squad { display: inline-flex; gap: 3px; padding-right: 8px; border-right: 1px dotted #aeb4be; }
-.ms-squad:last-child { border-right: none; padding-right: 0; }
-.ms-body { width: 9px; height: 12px; border: 1.25px solid #15171c; border-radius: 2px; background: #fff; }
-.ms-degrade { border-collapse: collapse; font-size: 0.74rem; }
-.ms-degrade th { text-align: left; font-weight: 700; color: #6b7079; padding: 0.05rem 0.6rem 0.1rem 0; border-bottom: 1px solid #c7ccd4; }
-.ms-degrade td { padding: 0.05rem 0.6rem 0.05rem 0; }
+/* ---- Conventional Infantry card (full-width layout) ---------------------- */
+.inf-dim { color: #6b7079; font-weight: 400; }
+/* Top band: UNIT DATA | armament + range | skills/wordmark */
+.inf-top {
+  display: grid;
+  grid-template-columns: minmax(170px, 1fr) minmax(200px, 1.4fr) auto;
+  gap: 1rem;
+  align-items: start;
+  margin-bottom: 0.6rem;
+}
+@media (max-width: 760px) { .inf-top { grid-template-columns: 1fr; } }
+.inf-arm { border: 1.5px solid #15171c; border-radius: 10px; padding: 0.5rem 0.7rem; }
+.inf-arm-h { font-weight: 800; font-size: 0.9rem; letter-spacing: 0.04em; margin-bottom: 0.35rem; }
+.inf-arm .ms-armament { margin: 0 0 0.4rem; }
+.inf-arm .mweapons { margin-top: 0.2rem; }
+
+/* TROOPERS & WEAPONS: squads spread across the row, damage legend on the right */
+.inf-troopers { border-top: 2px solid #15171c; padding-top: 0.5rem; margin-top: 0.3rem; }
+.inf-sec-h { font-weight: 800; font-size: 0.95rem; letter-spacing: 0.04em; margin-bottom: 0.5rem; display: flex; align-items: baseline; gap: 0.6rem; }
+.inf-sec-sub { font-size: 0.72rem; font-weight: 500; color: #6b7079; letter-spacing: 0; }
+.inf-tr-body { display: flex; flex-wrap: wrap; gap: 1rem; align-items: flex-start; }
+.inf-squads { display: flex; flex-wrap: wrap; gap: 0.5rem; flex: 1 1 60%; }
+.inf-squad { border: 1.25px solid #15171c; border-radius: 8px; padding: 0.4rem 0.5rem 0.3rem; text-align: center; min-width: 76px; }
+.inf-squad-h { font-size: 0.66rem; font-weight: 700; color: #6b7079; margin-bottom: 0.3rem; }
+.inf-pips { display: flex; flex-wrap: wrap; gap: 3px; justify-content: center; max-width: 92px; }
+.ms-body { width: 10px; height: 13px; border: 1.25px solid #15171c; border-radius: 2px; background: #fff; }
+.inf-squad-dmg { margin-top: 0.35rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+
+.inf-degrade { flex: 0 1 auto; }
+.inf-degrade-h { font-size: 0.66rem; font-weight: 800; letter-spacing: 0.5px; color: #6b7079; margin-bottom: 0.2rem; }
+.ms-degrade { border-collapse: collapse; font-size: 0.78rem; }
+.ms-degrade th { text-align: left; font-weight: 700; color: #6b7079; padding: 0.1rem 0.8rem 0.15rem 0; border-bottom: 1px solid #c7ccd4; }
+.ms-degrade td { padding: 0.08rem 0.8rem 0.08rem 0; }
 .ms-degrade td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ms-degrade td.wdmg { font-weight: 700; }
 
 /* Condition monitor */
 .condmon { display: flex; flex-wrap: wrap; gap: 0.6rem 1rem; align-items: center; font-size: 0.72rem; margin-top: 0.5rem; padding-top: 0.45rem; border-top: 1.5px solid #15171c; }

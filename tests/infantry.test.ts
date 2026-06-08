@@ -45,7 +45,7 @@ describe("convertInfantry", () => {
   const c = convertInfantry(parseBlkInfantry(load("Test Infantry INF-1.blk"), "INF-1.blk"));
 
   it("derives move/anti-mech and cleans weapon names", () => {
-    expect(c.move).toBe("3 (J)"); // jump infantry: jump MP 3
+    expect(c.move).toBe("1/2 · Jump 3"); // jump infantry: walk 1/2 + jump 3
     expect(c.antiMek).toBe(true);
     expect(c.primaryWeapon).toBe("Assault Rifle"); // "Infantry" prefix stripped, split
     expect(c.troopers).toBe(28);
@@ -96,11 +96,12 @@ describe("infantry platoon damage (clustering + per-trooper keys)", () => {
     expect(c.damage).toEqual([2, 2, 1]);
   });
 
-  it("prints walk/run move and base/sprint TMM (jump shows jump MP + single TMM)", () => {
-    // Fixture is Jump -> jump MP 3, shown "3 (J)"; TMM = lookupTmm(3)=0 +1 jump = 1.
+  it("keeps walk/sprint for jump infantry and adds a jump option (TMM base+2)", () => {
+    // Fixture is Jump: ground walk 1 / run 2 (TMM 0/1) PLUS jump 3 at TMM 0+2=2.
     const c = convertInfantry(parseBlkInfantry(load("Test Infantry INF-1.blk"), "INF-1.blk"));
-    expect(c.move).toBe("3 (J)");
-    expect(c.tmmText).toBe("1");
+    expect(c.move).toBe("1/2 · Jump 3");
+    expect(c.tmmText).toBe("0/1 · Jump 2");
+    expect(c.tmm).toBe(2); // headline TMM = best evasion (jump)
   });
 
   it("derives small-arms range brackets from the primary weapon's hex range", () => {
