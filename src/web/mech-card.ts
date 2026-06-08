@@ -67,18 +67,29 @@ function paperDoll(card: OverrideCard): string {
   const a = card.armor;
   const s = card.structure;
   const hasCenterLeg = a.centerLeg !== undefined || s.centerLeg !== undefined;
-  const centerLeg = hasCenterLeg ? dollLoc("cl", "Center Leg", "", a.centerLeg ?? 0, s.centerLeg ?? 0) : "";
+  // Tripods keep the standard 2d6 hit table; a leg result (5 or 9) is followed
+  // by a d6 to pick the leg: 1-2 left, 3-4 center, 5-6 right. So the three leg
+  // boxes show that d6 sub-roll instead of the plain biped 5 / 9.
+  const llHits = hasCenterLeg ? "d6 1-2" : "9";
+  const rlHits = hasCenterLeg ? "d6 5-6" : "5";
+  const centerLeg = hasCenterLeg
+    ? dollLoc("cl", "Center Leg", "d6 3-4", a.centerLeg ?? 0, s.centerLeg ?? 0)
+    : "";
+  const tripodNote = hasCenterLeg
+    ? `<p class="mdoll-legend">Legs: on a leg hit (2d6 = 5 or 9), roll 1d6 — 1-2 left, 3-4 center, 5-6 right.</p>`
+    : "";
   return `<div class="mdoll${hasCenterLeg ? " has-cl" : ""}">
     ${dollLoc("hd", "Head", "12", a.head, s.head)}
     ${dollLoc("la", "Left Arm", "10,11", a.leftArm, s.leftArm)}
     ${dollLoc("ct", "Torso", "6,7,8", a.torso, s.torso)}
     ${dollLoc("ra", "Right Arm", "3,4", a.rightArm, s.rightArm)}
-    ${dollLoc("ll", "Left Leg", "9", a.leftLeg, s.leftLeg)}
-    ${dollLoc("rl", "Right Leg", "5", a.rightLeg, s.rightLeg)}
+    ${dollLoc("ll", "Left Leg", llHits, a.leftLeg, s.leftLeg)}
+    ${dollLoc("rl", "Right Leg", rlHits, a.rightLeg, s.rightLeg)}
     ${centerLeg}
     ${dollLoc("tr", "Torso Rear", "", a.rear, 0)}
   </div>
-  <p class="mdoll-legend"><i class="hex armor"></i> armor &nbsp; <i class="hex struct"></i> structure</p>`;
+  <p class="mdoll-legend"><i class="hex armor"></i> armor &nbsp; <i class="hex struct"></i> structure</p>
+  ${tripodNote}`;
 }
 
 /** Static heat-scale strip (fixed thresholds/effects, same on every card). */
