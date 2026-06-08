@@ -120,6 +120,10 @@ export interface Unit {
   heatSinks: HeatSinks;
   /** Armor type from the bare `Armor:` line (e.g. "Standard", "Stealth(...)"). */
   armorType?: string;
+  /** Internal-structure type from the `Structure:` line (e.g. "IS Reinforced", "Endo Steel"). */
+  structureType?: string;
+  /** Cockpit type from the `Cockpit:` line (e.g. "Torso-Mounted Cockpit", "Small Cockpit"). */
+  cockpitType?: string;
   /** Armor points per location, including rear torso locations. */
   armor: Partial<Record<MechLocation, number>>;
   /** Internal structure points per front location, derived from tonnage. */

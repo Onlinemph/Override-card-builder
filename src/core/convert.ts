@@ -32,6 +32,8 @@ import {
   PUNCH_TW_DIVISOR,
   RANGE_VARYING_CLUSTER_FAMILIES,
   REAR_ARMOR_DIVISOR,
+  SPECIAL_ARMOR,
+  SPECIAL_COCKPIT,
   STRUCTURE_DIVISOR,
   TIC_MAX_BASE,
   TIC_MAX_DAMAGE,
@@ -843,6 +845,32 @@ export function isWeaponBlockEquipment(name: string): boolean {
   return IMPORTANT_EQUIPMENT.some((e) => e.match.some((m) => lower.includes(m)));
 }
 
+/**
+ * Notable construction options carried on the header lines (Armor: / Structure:
+ * / Cockpit:) rather than as crit slots, surfaced as body-wide equipment so they
+ * reach the card: Hardened/Reflective/Reactive armor, Reinforced/Composite
+ * structure, Torso-Mounted/Command Console cockpits, etc. Efficiency choices
+ * (Endo Steel, Ferro-Fibrous, Standard) and Stealth (already shown from its crit
+ * slots) are skipped.
+ */
+export function constructionEquipment(unit: Unit): CardEquipment[] {
+  const items: string[] = [];
+
+  const armor = (unit.armorType ?? "").toLowerCase();
+  const armorHit = SPECIAL_ARMOR.find((e) => e.match.some((m) => armor.includes(m)));
+  if (armorHit) items.push(armorHit.label);
+
+  const struct = (unit.structureType ?? "").toLowerCase();
+  if (struct.includes("reinforced")) items.push("Reinforced Structure");
+  else if (struct.includes("composite") && !struct.includes("endo")) items.push("Composite Structure");
+
+  const cockpit = (unit.cockpitType ?? "").toLowerCase();
+  const cockpitHit = SPECIAL_COCKPIT.find((e) => e.match.some((m) => cockpit.includes(m)));
+  if (cockpitHit) items.push(cockpitHit.label);
+
+  return items.map((label) => ({ label, location: "CT" as const, category: "equipment" as const, count: 1, global: true }));
+}
+
 export function buildEquipment(critSlots: ReadonlyArray<CritSlot>): CardEquipment[] {
   const byKey = new Map<string, CardEquipment>();
   const bump = (
@@ -988,7 +1016,7 @@ export function convertUnit(unit: Unit): OverrideCard {
     heatDissipation,
     weapons,
     tics: groupIntoTics(weapons),
-    equipment: buildEquipment([...(unit.critSlots ?? []), ...divertedEquipment]),
+    equipment: [...constructionEquipment(unit), ...buildEquipment([...(unit.critSlots ?? []), ...divertedEquipment])],
     melee,
     warnings,
     sourceFile: unit.sourceFile,

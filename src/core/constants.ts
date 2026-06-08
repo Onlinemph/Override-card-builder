@@ -1039,6 +1039,7 @@ export interface ImportantEquipment {
 export const IMPORTANT_EQUIPMENT: ReadonlyArray<ImportantEquipment> = [
   { match: ["case ii", "caseii"], label: "CASE II" },
   { match: ["case"], label: "CASE" },
+  { match: ["nova cews", "novacews"], label: "Nova CEWS" },
   { match: ["angel ecm"], label: "Angel ECM" },
   { match: ["guardian ecm", "ecm suite", "ecm"], label: "ECM" },
   { match: ["bloodhound", "beagle", "active probe", "light active probe"], label: "Active Probe" },
@@ -1046,15 +1047,51 @@ export const IMPORTANT_EQUIPMENT: ReadonlyArray<ImportantEquipment> = [
   { match: ["artemis"], label: "Artemis FCS" },
   { match: ["laser ams", "laseram", "laser anti-missile", "laseranti"], label: "LAMS" },
   { match: ["antimissile", "anti-missile", "anti missile", "ams"], label: "AMS" },
+  // C3 family — keep specific variants distinct (order: most specific first).
+  { match: ["improved c3", "improvedc3", "c3i"], label: "C3i" },
+  { match: ["c3 master boosted", "c3masterboosted", "masterboostedsystem"], label: "C3 Boosted (Master)" },
+  { match: ["c3 boosted", "boostedsystemslave", "c3boostedsystem", "c3boosted"], label: "C3 Boosted (Slave)" },
+  { match: ["c3 emergency master", "emergencymaster", "c3em"], label: "C3 Emergency Master" },
   { match: ["c3 master", "c3master"], label: "C3 Master" },
-  { match: ["c3 slave", "c3slave", "c3 boosted", "c3i", "c3"], label: "C3" },
+  { match: ["c3 slave", "c3slave"], label: "C3 Slave" },
+  { match: ["c3"], label: "C3" },
   { match: ["supercharger"], label: "Supercharger" },
   { match: ["masc"], label: "MASC" },
+  { match: ["triple strength myomer", "triple-strength myomer", "tsm"], label: "TSM" },
+  { match: ["coolant pod"], label: "Coolant Pod" },
   { match: ["stealth"], label: "Stealth Armor", unique: true },
   { match: ["null signature"], label: "Null Sig System", unique: true },
   { match: ["void signature"], label: "Void Sig System", unique: true },
   { match: ["tag"], label: "TAG" },
   { match: ["improved jump jet", "jump jet"], label: "Jump Jet", countable: true },
+];
+
+/**
+ * Construction options carried on the header lines (Armor: / Structure: /
+ * Cockpit:) rather than as crit slots. Only the game-affecting / notable types
+ * are surfaced on the card; "efficiency" choices (Endo Steel, Ferro-Fibrous,
+ * Standard) and Stealth (already surfaced from its crit slots) are skipped.
+ * Matched as a lowercase substring of the header value; first match wins.
+ */
+export const SPECIAL_ARMOR: ReadonlyArray<{ match: ReadonlyArray<string>; label: string }> = [
+  { match: ["hardened"], label: "Hardened Armor" },
+  { match: ["ferro-lamellor", "ferro-lamellar"], label: "Ferro-Lamellor Armor" },
+  { match: ["ballistic-reinforced"], label: "Ballistic-Reinforced Armor" },
+  { match: ["reflective"], label: "Reflective Armor" },
+  { match: ["reactive"], label: "Reactive Armor" },
+  { match: ["impact-resistant"], label: "Impact-Resistant Armor" },
+  { match: ["anti-penetrative"], label: "Anti-Penetrative Ablation" },
+  { match: ["heat-dissipating"], label: "Heat-Dissipating Armor" },
+];
+
+export const SPECIAL_COCKPIT: ReadonlyArray<{ match: ReadonlyArray<string>; label: string }> = [
+  { match: ["torso-mounted", "torso mounted"], label: "Torso-Mounted Cockpit" },
+  { match: ["command console"], label: "Command Console" },
+  { match: ["interface"], label: "Interface Cockpit" },
+  { match: ["small"], label: "Small Cockpit" },
+  { match: ["primitive"], label: "Primitive Cockpit" },
+  { match: ["superheavy"], label: "Superheavy Cockpit" },
+  { match: ["quadvee"], label: "QuadVee Cockpit" },
 ];
 
 /** 'Mech location print order for grouping equipment and similar lists. */

@@ -825,9 +825,48 @@ BeagleActiveProbe, Left Torso
     expect(c.weapons.map((w) => w.name)).toEqual(["Medium Laser"]);
     const labels = c.equipment.map((e) => e.label);
     expect(labels).toContain("ECM");
-    expect(labels).toContain("C3");
+    expect(labels).toContain("C3 Slave"); // distinct C3 variant label
     expect(labels).toContain("Active Probe");
     expect(c.warnings.join(" ")).not.toMatch(/ECM|C3|Probe/);
+  });
+});
+
+describe("construction options + C3 variants surface on the card", () => {
+  const head =
+    "chassis:Test\nmodel:EQ\nConfig:Biped\nTechBase:Inner Sphere\nMass:50\nEngine:200 Fusion Engine\n" +
+    "Heat Sinks:10 Single\nWalk MP:4\n";
+  const armorBlock = "LT Armor:8\nRT Armor:8\nCT Armor:10\nHD Armor:8\nLA Armor:6\nRA Armor:6\nLL Armor:8\nRL Armor:8\n";
+  const labelsFor = (lines: string) => {
+    const mtf = head + lines + "Armor:Standard\n" + armorBlock + "Weapons:0\n";
+    return convertUnit(parseMtf(mtf, "EQ.mtf")).equipment.map((e) => e.label);
+  };
+
+  it("surfaces Hardened armor, Reinforced structure, and a Torso-Mounted cockpit", () => {
+    const mtf =
+      head + "Armor:Hardened(Inner Sphere)\nStructure:IS Reinforced\nCockpit:Torso-Mounted Cockpit\n" + armorBlock + "Weapons:0\n";
+    const labels = convertUnit(parseMtf(mtf, "EQ.mtf")).equipment.map((e) => e.label);
+    expect(labels).toContain("Hardened Armor");
+    expect(labels).toContain("Reinforced Structure");
+    expect(labels).toContain("Torso-Mounted Cockpit");
+  });
+
+  it("does not surface efficiency construction (Endo Steel / Ferro-Fibrous / Standard)", () => {
+    expect(labelsFor("Structure:Clan Endo Steel\n")).not.toContain("Reinforced Structure");
+    expect(labelsFor("Structure:IS Endo-Composite\n")).not.toContain("Composite Structure");
+  });
+
+  it("keeps C3 variants distinct (C3i, Boosted, Master, Slave) and recognises Nova CEWS", () => {
+    const crit = (name: string) =>
+      convertUnit(parseMtf(head + "Armor:Standard\n" + armorBlock + `Weapons:0\nLeft Torso:\n${name}\n`, "C.mtf")).equipment.map(
+        (e) => e.label,
+      );
+    expect(crit("ISC3iUnit")).toContain("C3i");
+    expect(crit("ISImprovedC3CPU")).toContain("C3i");
+    expect(crit("ISC3MasterBoostedSystemUnit")).toContain("C3 Boosted (Master)");
+    expect(crit("ISC3BoostedSystemSlaveUnit")).toContain("C3 Boosted (Slave)");
+    expect(crit("ISC3MasterUnit")).toContain("C3 Master");
+    expect(crit("ISC3SlaveUnit")).toContain("C3 Slave");
+    expect(crit("NovaCEWS")).toContain("Nova CEWS");
   });
 });
 

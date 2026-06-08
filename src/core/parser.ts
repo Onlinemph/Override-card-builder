@@ -66,6 +66,8 @@ export function parseMtf(text: string, file = "<unknown>"): Unit {
   const movement = parseMovement(lines, file);
   const heatSinks = parseHeatSinks(lines, file);
   const armorType = getValue(lines, "armor"); // bare "Armor:" line (type, not a location)
+  const structureType = getValue(lines, "structure"); // e.g. "IS Reinforced", "Endo Steel"
+  const cockpitType = getValue(lines, "cockpit"); // e.g. "Torso-Mounted Cockpit"
   const armor = parseArmor(lines, file);
   const structure = deriveStructure(mass, file, /quad/i.test(config), /tripod/i.test(config));
   const weapons = parseWeapons(lines, file);
@@ -81,6 +83,8 @@ export function parseMtf(text: string, file = "<unknown>"): Unit {
     movement,
     heatSinks,
     armorType,
+    structureType,
+    cockpitType,
     armor,
     structure,
     weapons,
