@@ -260,7 +260,7 @@ function printInfantrySummary(card: InfantryCard): void {
   const lines: string[] = [];
   lines.push(`${card.name}  (Infantry, ${card.motionLabel}, ${card.techBase})`);
   lines.push(
-    `  Troopers ${card.troopers}   Move ${card.move}   TMM ${card.tmm}` +
+    `  Troopers ${card.troopers}   Move ${card.move}   TMM ${card.tmm}/${card.tmm + 1}` +
       `   Anti-'Mech: ${card.antiMek ? "yes" : "no"}  [best-effort]`,
   );
   lines.push(

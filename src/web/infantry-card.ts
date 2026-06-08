@@ -119,10 +119,10 @@ export function renderInfantryCard(card: InfantryCard): string {
         <div class="ms-unitdata">
           <div class="ms-ud-h">UNIT DATA</div>
           <div class="ms-ud-stats">
-            <div><b>Type:</b> Infantry (${esc(card.motionLabel)})</div>
+            <div><b>Type:</b> ${esc(card.motionLabel)}</div>
             <div><b>Troopers:</b> ${esc(card.troopers)}</div>
             <div class="ms-ud-move"><b>Move:</b> ${esc(card.move)}</div>
-            <div><b>TMM:</b> ${esc(card.tmm)}</div>
+            <div><b>TMM:</b> ${esc(card.tmm)}/${esc(card.tmm + 1)}</div>
             <div><b>Anti-’Mech:</b> ${card.antiMek ? "Yes" : "No"}</div>
             ${card.damage.length ? `<div><b>Damage:</b> ${dmg(card.damage)}</div>` : ""}
           </div>

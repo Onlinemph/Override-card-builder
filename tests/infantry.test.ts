@@ -45,7 +45,7 @@ describe("convertInfantry", () => {
   const c = convertInfantry(parseBlkInfantry(load("Test Infantry INF-1.blk"), "INF-1.blk"));
 
   it("derives move/anti-mech and cleans weapon names", () => {
-    expect(c.move).toBe("1 (J)"); // jump
+    expect(c.move).toBe("1/2 (J)"); // jump: walk 1 / run ceil(1.5)=2
     expect(c.antiMek).toBe(true);
     expect(c.primaryWeapon).toBe("Assault Rifle"); // "Infantry" prefix stripped, split
     expect(c.troopers).toBe(28);

@@ -40,7 +40,14 @@ import type {
   Weapon,
 } from "./types.js";
 
-/** Motion type -> display label + best-effort ground move + jump flag. */
+/**
+ * Motion type -> display label + base ("walk") ground MP + jump flag. The card
+ * prints Move as `walk/run` where run = ceil(walk x 1.5); TMM is run-based with a
+ * +1 sprint step (see convertInfantry).
+ *
+ * VERIFIED vs DFA card: Motorized reads Move 3/5, TMM 1/2 -> walk 3. The other
+ * walk values are best-effort pending an oracle for each motion type.
+ */
 interface MotionSpec {
   label: string;
   move: number;
@@ -50,7 +57,7 @@ const MOTION: Readonly<Record<string, MotionSpec>> = {
   leg: { label: "Foot", move: 1 },
   foot: { label: "Foot", move: 1 },
   jump: { label: "Jump", move: 1, jump: true },
-  motorized: { label: "Motorized", move: 2 },
+  motorized: { label: "Motorized", move: 3 }, // VERIFIED: Move 3/5, TMM 1/2
   mechanized: { label: "Mechanized", move: 2 },
   wheeled: { label: "Wheeled", move: 3 },
   tracked: { label: "Tracked", move: 3 },
@@ -215,8 +222,12 @@ function buildFieldGuns(names: ReadonlyArray<string>, techBase: InfantryUnit["te
 export function convertInfantry(unit: InfantryUnit): InfantryCard {
   const warnings: string[] = [];
   const motion = motionSpec(unit.motionType);
-  const move = `${motion.move}${motion.jump ? " (J)" : ""}`;
-  const tmm = lookupTmm(motion.move);
+  // Move prints walk/run (run = ceil(walk x 1.5)); TMM is run-based and the card
+  // shows base/(base+1) for the +1 sprint step (VERIFIED: motorized 3/5 -> 1/2).
+  const walk = motion.move;
+  const run = Math.ceil(walk * 1.5);
+  const move = `${walk}/${run}${motion.jump ? " (J)" : ""}`;
+  const tmm = lookupTmm(run);
 
   const fieldGuns = buildFieldGuns(unit.fieldGuns, unit.techBase);
   for (const g of fieldGuns) {
