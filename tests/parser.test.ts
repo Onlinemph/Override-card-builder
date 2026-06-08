@@ -4,7 +4,7 @@ import { dirname, join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { parseMtf, ParseError } from "../src/core/index.js";
+import { convertUnit, parseMtf, ParseError } from "../src/core/index.js";
 
 const FIXTURES = join(dirname(fileURLToPath(import.meta.url)), "fixtures");
 const load = (name: string) => readFileSync(join(FIXTURES, name), "utf8");
@@ -136,5 +136,33 @@ ER Large Laser, Right Arm
       expect(err.field).toBe("mass");
       expect(err.message).toContain("broken.mtf");
     }
+  });
+
+  it("parses a Quad: front legs -> arms, rear legs -> legs, leg structure on all four", () => {
+    const u = parseMtf(load("Test Quad QD-1.mtf"), "Test Quad QD-1.mtf");
+    expect(u.config).toBe("Quad");
+    // Front-leg weapons/armor map onto the arm slots, rear legs onto the legs.
+    expect(u.weapons.map((w) => w.location)).toEqual(["LA", "RA", "LL"]);
+    expect(u.armor.LA).toBe(24); // FLL
+    expect(u.armor.RA).toBe(24); // FRL
+    expect(u.armor.LL).toBe(24); // RLL
+    // 80t row: arm structure 13, leg 17 — a quad's "arms" (front legs) use leg.
+    expect(u.structure.LA).toBe(17);
+    expect(u.structure.LL).toBe(17);
+  });
+
+  it("derives structure for ultralight (15t) and superheavy (135t) tonnages", () => {
+    const ul = "chassis:U\nmodel:L\nConfig:Biped\nTechBase:Inner Sphere\nMass:15\nEngine:45 Fusion Engine\nHeat Sinks:10 Single\nWalk MP:3\nArmor:Standard\nCT Armor:5\nWeapons:0\n";
+    expect(parseMtf(ul, "u.mtf").structure.CT).toBe(5);
+    const sh = "chassis:S\nmodel:H\nConfig:Biped\nTechBase:Inner Sphere\nMass:135\nEngine:270 Fusion Engine\nHeat Sinks:10 Single\nWalk MP:2\nArmor:Standard\nCT Armor:10\nWeapons:0\n";
+    expect(parseMtf(sh, "s.mtf").structure.CT).toBe(42);
+  });
+});
+
+describe("quad melee", () => {
+  it("suppresses Punch for quads (no arms) but keeps Kick", () => {
+    const card = convertUnit(parseMtf(load("Test Quad QD-1.mtf"), "Test Quad QD-1.mtf"));
+    expect(card.melee.punch).toBe(0);
+    expect(card.melee.kick).toBeGreaterThan(0);
   });
 });

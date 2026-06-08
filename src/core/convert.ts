@@ -949,10 +949,11 @@ export function convertUnit(unit: Unit): OverrideCard {
   }
 
   // Universal Punch/Kick: Override damage = ceil(classic TW / 3), classic TW =
-  // ceil(mass/10) punch, ceil(mass/5) kick. VERIFIED 100t -> 4 / 7.
-  // TODO(quads): quad 'Mechs cannot punch — suppress punch when config is Quad.
+  // ceil(mass/10) punch, ceil(mass/5) kick. VERIFIED 100t -> 4 / 7. Quad 'Mechs
+  // have no arms and cannot punch, so their punch is suppressed (0).
+  const isQuad = /quad/i.test(unit.config);
   const melee = {
-    punch: roundUp(roundUp(unit.mass / PUNCH_TW_DIVISOR) / WEAPON_DAMAGE_DIVISOR),
+    punch: isQuad ? 0 : roundUp(roundUp(unit.mass / PUNCH_TW_DIVISOR) / WEAPON_DAMAGE_DIVISOR),
     kick: roundUp(roundUp(unit.mass / KICK_TW_DIVISOR) / WEAPON_DAMAGE_DIVISOR),
   };
 

@@ -67,7 +67,7 @@ export function parseMtf(text: string, file = "<unknown>"): Unit {
   const heatSinks = parseHeatSinks(lines, file);
   const armorType = getValue(lines, "armor"); // bare "Armor:" line (type, not a location)
   const armor = parseArmor(lines, file);
-  const structure = deriveStructure(mass, file);
+  const structure = deriveStructure(mass, file, /quad/i.test(config));
   const weapons = parseWeapons(lines, file);
   const critSlots = parseCritSlots(lines);
 
@@ -303,7 +303,7 @@ function parseCritSlots(lines: RawLine[]): CritSlot[] {
  * Internal structure is NOT in MTF text — derive it from tonnage via the
  * standard table. Throws if the tonnage is not a standard 'Mech weight.
  */
-function deriveStructure(mass: number, file: string) {
+function deriveStructure(mass: number, file: string, isQuad = false) {
   const row = INTERNAL_STRUCTURE_BY_TONNAGE[mass];
   if (!row) {
     throw new ParseError(
@@ -312,7 +312,7 @@ function deriveStructure(mass: number, file: string) {
       "mass/structure",
     );
   }
-  return structureRowToLocations(row);
+  return structureRowToLocations(row, isQuad);
 }
 
 /**

@@ -1084,6 +1084,9 @@ export interface InternalStructureRow {
 }
 
 export const INTERNAL_STRUCTURE_BY_TONNAGE: Readonly<Record<number, InternalStructureRow>> = {
+  // Ultralight (TacOps). Head stays 3.
+  10: { HD: 3, CT: 4, sideTorso: 3, arm: 1, leg: 2 },
+  15: { HD: 3, CT: 5, sideTorso: 4, arm: 2, leg: 3 },
   20: { HD: 3, CT: 6, sideTorso: 5, arm: 3, leg: 4 },
   25: { HD: 3, CT: 8, sideTorso: 6, arm: 4, leg: 6 },
   30: { HD: 3, CT: 10, sideTorso: 7, arm: 5, leg: 7 },
@@ -1101,6 +1104,29 @@ export const INTERNAL_STRUCTURE_BY_TONNAGE: Readonly<Record<number, InternalStru
   90: { HD: 3, CT: 29, sideTorso: 19, arm: 15, leg: 19 },
   95: { HD: 3, CT: 30, sideTorso: 20, arm: 16, leg: 20 },
   100: { HD: 3, CT: 31, sideTorso: 21, arm: 17, leg: 21 },
+  // Superheavy 'Mechs (TacOps, over 100t). Head structure is 4. BEST-EFFORT —
+  // VERIFY these against the DFA builder; the card prints structure/3 (round
+  // nearest), so a ±1 error shifts at most one pip.
+  105: { HD: 4, CT: 33, sideTorso: 22, arm: 18, leg: 22 },
+  110: { HD: 4, CT: 35, sideTorso: 23, arm: 18, leg: 23 },
+  115: { HD: 4, CT: 36, sideTorso: 24, arm: 19, leg: 24 },
+  120: { HD: 4, CT: 38, sideTorso: 25, arm: 20, leg: 25 },
+  125: { HD: 4, CT: 39, sideTorso: 26, arm: 21, leg: 26 },
+  130: { HD: 4, CT: 41, sideTorso: 27, arm: 21, leg: 27 },
+  135: { HD: 4, CT: 42, sideTorso: 28, arm: 22, leg: 28 },
+  140: { HD: 4, CT: 44, sideTorso: 29, arm: 23, leg: 29 },
+  145: { HD: 4, CT: 45, sideTorso: 30, arm: 24, leg: 30 },
+  150: { HD: 4, CT: 47, sideTorso: 31, arm: 24, leg: 31 },
+  155: { HD: 4, CT: 48, sideTorso: 32, arm: 25, leg: 32 },
+  160: { HD: 4, CT: 50, sideTorso: 33, arm: 26, leg: 33 },
+  165: { HD: 4, CT: 51, sideTorso: 34, arm: 27, leg: 34 },
+  170: { HD: 4, CT: 53, sideTorso: 35, arm: 27, leg: 35 },
+  175: { HD: 4, CT: 54, sideTorso: 36, arm: 28, leg: 36 },
+  180: { HD: 4, CT: 56, sideTorso: 37, arm: 29, leg: 37 },
+  185: { HD: 4, CT: 57, sideTorso: 38, arm: 30, leg: 38 },
+  190: { HD: 4, CT: 59, sideTorso: 39, arm: 30, leg: 39 },
+  195: { HD: 4, CT: 60, sideTorso: 40, arm: 31, leg: 40 },
+  200: { HD: 4, CT: 62, sideTorso: 41, arm: 32, leg: 41 },
 } as const;
 
 /**
@@ -1269,6 +1295,11 @@ export const ARMOR_KEY_MAP: Readonly<Record<string, "HD" | "CT" | "LT" | "RT" | 
   RA: "RA",
   LL: "LL",
   RL: "RL",
+  // Quad legs: front legs read as arms on the biped paper-doll, rear legs as legs.
+  FLL: "LA",
+  FRL: "RA",
+  RLL: "LL",
+  RRL: "RL",
   // rear torso, both naming conventions
   CTR: "CTR",
   RTC: "CTR", // "Rear Torso Center"
@@ -1287,19 +1318,31 @@ export const WEAPON_LOCATION_MAP: Readonly<Record<string, "HD" | "CT" | "LT" | "
   "right arm": "RA",
   "left leg": "LL",
   "right leg": "RL",
+  // Quad legs map onto the biped paper-doll (front legs -> arms, rear -> legs);
+  // the tripod's center leg folds into the center torso (no dedicated slot).
+  "front left leg": "LA",
+  "front right leg": "RA",
+  "rear left leg": "LL",
+  "rear right leg": "RL",
+  "center leg": "CT",
 } as const;
 
-/** Maps an internal-structure row onto per-location structure entries. */
+/**
+ * Maps an internal-structure row onto per-location structure entries. For QUADS
+ * the LA/RA slots hold the FRONT legs, so they take leg structure (all four legs
+ * are legs); bipeds/tripods use the arm value for their actual arms.
+ */
 export function structureRowToLocations(
   row: InternalStructureRow,
+  isQuad = false,
 ): Record<StructureLocation, number> {
   return {
     HD: row.HD,
     CT: row.CT,
     LT: row.sideTorso,
     RT: row.sideTorso,
-    LA: row.arm,
-    RA: row.arm,
+    LA: isQuad ? row.leg : row.arm,
+    RA: isQuad ? row.leg : row.arm,
     LL: row.leg,
     RL: row.leg,
   };
