@@ -695,11 +695,11 @@ export interface InfantryUnit {
 
 /** One band of the infantry damage-degradation track (a run of equal damage). */
 export interface InfantryDamageBreak {
-  /** Highest surviving-trooper count in this band. */
+  /** Highest surviving-SQUAD count in this band. */
   from: number;
-  /** Lowest surviving-trooper count in this band. */
+  /** Lowest surviving-SQUAD count in this band. */
   to: number;
-  /** Cluster damage while the platoon's survivors fall within [to, from]. */
+  /** Cluster damage while the number of surviving squads falls within [to, from]. */
   damage: number[];
 }
 
@@ -713,28 +713,34 @@ export interface InfantryCard {
   troopers: number;
   /** Display movement label (e.g. "Foot", "Jump", "Motorized", "Beast"). */
   motionLabel: string;
-  /** Printed move string (best-effort by motion type, e.g. "1" or "1 (J)"). */
+  /** Printed move string, e.g. "3/5" (walk/run) or "3 (J)" (jump MP). */
   move: string;
-  /** Base TMM (best-effort from move). */
+  /** Base TMM (numeric, for CSV); see `tmmText` for the printed value. */
   tmm: number;
+  /** Printed TMM, e.g. "1/2" (base/sprint) for ground or "1" for jump. */
+  tmmText: string;
   antiMek: boolean;
+  /** Troopers per squad (BLK `squad_size`). */
+  squadSize: number;
+  /** Number of squads in the platoon (BLK `squadn`). */
+  squadCount: number;
   /**
    * Small-arms platoon damage at FULL strength as 2-point clusters (e.g.
    * [2,2,2,1] = 7). Empty when the primary weapon is not yet in the per-trooper
-   * damage table. Equal to the last entry of `damageByTroopers`.
+   * damage table. Equal to the last entry of `damageBySquads`.
    */
   damage: number[];
   /**
-   * Damage degradation track: index i = the platoon's small-arms damage when
-   * (i+1) troopers survive (full strength last). The card renders this as a
-   * "bodies remaining" marker — cross off a trooper as it dies and read the new
-   * cluster damage. Empty when the primary weapon is unscored.
+   * Per-squad damage-degradation track: index i = the platoon's small-arms
+   * damage when (i+1) squads survive (full strength last). The official system
+   * recalculates as whole squads are eliminated; the card renders this as a
+   * "bodies remaining" marker grouped by squad. Empty when unscored.
    */
-  damageByTroopers: number[][];
+  damageBySquads: number[][];
   /**
    * Compressed degradation breakpoints (full strength first): each segment is a
-   * surviving-trooper band that yields the same damage. Derived from
-   * `damageByTroopers`; convenient for printing a legend.
+   * surviving-SQUAD band that yields the same damage. Derived from
+   * `damageBySquads`; convenient for printing a legend.
    */
   damageBreaks: InfantryDamageBreak[];
   /** Primary small-arms range brackets (PB/S/M/L/X to-hit mods), or null when unscored. */

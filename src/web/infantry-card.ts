@@ -51,16 +51,22 @@ function rangeTable(card: InfantryCard): string {
 }
 
 /**
- * "Bodies remaining" damage track: one pip per trooper (full strength on the
- * left), with a degradation legend mapping surviving-trooper bands to cluster
- * damage. Cross off a pip as a trooper dies and read the new damage off the
- * legend. Returns "" when the platoon's small arms are unscored.
+ * "Bodies remaining" damage track: trooper pips grouped into squads (full
+ * strength on the left), with a degradation legend mapping surviving-SQUAD bands
+ * to cluster damage. Damage recalculates as whole squads are eliminated — wipe a
+ * squad's pips and read the new damage off the legend. Returns "" when unscored.
  */
 function bodiesTrack(card: InfantryCard): string {
-  if (!card.damageByTroopers.length) return "";
-  const pips = card.damageByTroopers
-    .map((_, i) => `<span class="ms-body" title="${esc(i + 1)} left: ${esc(dmg(card.damageByTroopers[i]!))}"></span>`)
-    .join("");
+  if (!card.damageBySquads.length) return "";
+  const squads = Array.from({ length: card.squadCount }, (_, q) => {
+    const surviving = card.squadCount - q; // leftmost squad is the last to fall
+    const here = card.damageBySquads[surviving - 1] ?? [];
+    const pips = Array.from(
+      { length: card.squadSize },
+      () => `<span class="ms-body" title="${esc(surviving)} squad${surviving === 1 ? "" : "s"} left: ${esc(dmg(here))}"></span>`,
+    ).join("");
+    return `<span class="ms-squad">${pips}</span>`;
+  }).join("");
   const legend = card.damageBreaks
     .map((b) => {
       const band = b.from === b.to ? `${b.from}` : `${b.from}–${b.to}`;
@@ -68,10 +74,10 @@ function bodiesTrack(card: InfantryCard): string {
     })
     .join("");
   return `<div class="ms-bodies">
-    <div class="ms-bodies-h">BODIES REMAINING</div>
-    <div class="ms-body-row">${pips}</div>
+    <div class="ms-bodies-h">BODIES REMAINING (${esc(card.squadCount)} squad${card.squadCount === 1 ? "" : "s"} × ${esc(card.squadSize)})</div>
+    <div class="ms-body-row">${squads}</div>
     <table class="ms-degrade">
-      <thead><tr><th class="num">Troopers</th><th>Damage</th></tr></thead>
+      <thead><tr><th class="num">Squads</th><th>Damage</th></tr></thead>
       <tbody>${legend}</tbody>
     </table>
   </div>`;
@@ -122,7 +128,7 @@ export function renderInfantryCard(card: InfantryCard): string {
             <div><b>Type:</b> ${esc(card.motionLabel)}</div>
             <div><b>Troopers:</b> ${esc(card.troopers)}</div>
             <div class="ms-ud-move"><b>Move:</b> ${esc(card.move)}</div>
-            <div><b>TMM:</b> ${esc(card.tmm)}/${esc(card.tmm + 1)}</div>
+            <div><b>TMM:</b> ${esc(card.tmmText)}</div>
             <div><b>Anti-’Mech:</b> ${card.antiMek ? "Yes" : "No"}</div>
             ${card.damage.length ? `<div><b>Damage:</b> ${dmg(card.damage)}</div>` : ""}
           </div>

@@ -45,7 +45,7 @@ describe("convertInfantry", () => {
   const c = convertInfantry(parseBlkInfantry(load("Test Infantry INF-1.blk"), "INF-1.blk"));
 
   it("derives move/anti-mech and cleans weapon names", () => {
-    expect(c.move).toBe("1/2 (J)"); // jump: walk 1 / run ceil(1.5)=2
+    expect(c.move).toBe("3 (J)"); // jump infantry: jump MP 3
     expect(c.antiMek).toBe(true);
     expect(c.primaryWeapon).toBe("Assault Rifle"); // "Infantry" prefix stripped, split
     expect(c.troopers).toBe(28);
@@ -88,12 +88,19 @@ describe("infantry platoon damage (clustering + per-trooper keys)", () => {
     expect(infantryWeaponKey("Machine Gun (Support)")).toBe("machine gun support");
   });
 
-  it("scores platoon damage from the per-trooper table (primary x troopers / 3)", () => {
-    // Fixture: 28 troopers, primary InfantryAssaultRifle (0.52/trooper); secondary
-    // "SRM Launcher" has no per-trooper value, so only the primary counts.
-    // 28 x 0.52 = 14.56 -> /3 = 4.85 -> round up 5 -> [2,2,1].
+  it("scores full-strength platoon damage from the per-trooper table (troopers x dmg / 3)", () => {
+    // Fixture: 4 squads x 7 = 28 troopers, primary InfantryAssaultRifle (0.52);
+    // secondary "SRM Launcher" has no per-trooper value, so only the primary counts.
+    // 28 x 0.52 = 14.56 -> floor 14 -> /3 = 4.67 -> round up 5 -> [2,2,1].
     const c = convertInfantry(parseBlkInfantry(load("Test Infantry INF-1.blk"), "INF-1.blk"));
     expect(c.damage).toEqual([2, 2, 1]);
+  });
+
+  it("prints walk/run move and base/sprint TMM (jump shows jump MP + single TMM)", () => {
+    // Fixture is Jump -> jump MP 3, shown "3 (J)"; TMM = lookupTmm(3)=0 +1 jump = 1.
+    const c = convertInfantry(parseBlkInfantry(load("Test Infantry INF-1.blk"), "INF-1.blk"));
+    expect(c.move).toBe("3 (J)");
+    expect(c.tmmText).toBe("1");
   });
 
   it("derives small-arms range brackets from the primary weapon's hex range", () => {
@@ -110,15 +117,16 @@ describe("infantry platoon damage (clustering + per-trooper keys)", () => {
     expect(infantryRangeBrackets(3)).toEqual({ pb: 0, s: 2, m: 4, l: 6, x: null });
   });
 
-  it("builds a degradation track + breakpoints that fall as troopers die", () => {
+  it("builds a per-squad degradation track that falls as whole squads die", () => {
     const c = convertInfantry(parseBlkInfantry(load("Test Infantry INF-1.blk"), "INF-1.blk"));
-    // One entry per trooper; full strength is the last entry and equals .damage.
-    expect(c.damageByTroopers).toHaveLength(28);
-    expect(c.damageByTroopers[27]).toEqual([2, 2, 1]);
-    // 1 survivor: floor(1 x 0.52) = 0 -> 0 damage -> no clusters.
-    expect(c.damageByTroopers[0]).toEqual([]);
-    // Breakpoints are full-strength-first and monotonically weaken.
-    expect(c.damageBreaks[0]!.from).toBe(28);
+    // One entry per squad (4 squads x 7); full strength is the last entry.
+    // 4 squads floor(28x.52)=14 -> [2,2,1]; 3: floor(21x.52)=10 -> [2,2];
+    // 2: floor(14x.52)=7 -> [2,1]; 1: floor(7x.52)=3 -> [1].
+    expect(c.squadCount).toBe(4);
+    expect(c.damageBySquads).toEqual([[1], [2, 1], [2, 2], [2, 2, 1]]);
+    expect(c.damage).toEqual([2, 2, 1]);
+    // Breakpoints are full-strength-first, in surviving-squad counts, weakening.
+    expect(c.damageBreaks[0]!.from).toBe(4);
     expect(c.damageBreaks[0]!.damage).toEqual([2, 2, 1]);
     expect(c.damageBreaks.at(-1)!.to).toBe(1);
     const totals = c.damageBreaks.map((b) => b.damage.reduce((a, v) => a + v, 0));
@@ -129,7 +137,7 @@ describe("infantry platoon damage (clustering + per-trooper keys)", () => {
     const blk = load("Test Infantry INF-1.blk").replace("InfantryAssaultRifle", "Frobnicator 9000");
     const c = convertInfantry(parseBlkInfantry(blk, "INF-1.blk"));
     expect(c.damage).toEqual([]);
-    expect(c.damageByTroopers).toEqual([]);
+    expect(c.damageBySquads).toEqual([]);
     expect(c.range).toBeNull();
     expect(c.primaryRangeHexes).toBeNull();
   });

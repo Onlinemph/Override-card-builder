@@ -260,7 +260,7 @@ function printInfantrySummary(card: InfantryCard): void {
   const lines: string[] = [];
   lines.push(`${card.name}  (Infantry, ${card.motionLabel}, ${card.techBase})`);
   lines.push(
-    `  Troopers ${card.troopers}   Move ${card.move}   TMM ${card.tmm}/${card.tmm + 1}` +
+    `  Troopers ${card.troopers} (${card.squadCount}×${card.squadSize})   Move ${card.move}   TMM ${card.tmmText}` +
       `   Anti-'Mech: ${card.antiMek ? "yes" : "no"}  [best-effort]`,
   );
   lines.push(
@@ -271,12 +271,12 @@ function printInfantrySummary(card: InfantryCard): void {
     `  Primary: ${card.primaryWeapon || "—"}` +
       (card.secondaryWeapon ? `   Secondary: ${card.secondaryWeapon}${card.secondaryCount ? ` x${card.secondaryCount}` : ""}` : ""),
   );
-  // Damage degradation as the platoon takes casualties (bodies remaining).
+  // Damage recalculates as whole squads are eliminated.
   if (card.damageBreaks.length > 1) {
     const bands = card.damageBreaks
       .map((b) => `${b.from === b.to ? b.from : `${b.from}-${b.to}`}:${b.damage.join("·") || "—"}`)
       .join("   ");
-    lines.push(`  By troopers left: ${bands}`);
+    lines.push(`  By squads left: ${bands}`);
   }
   if (card.fieldGuns.length > 0) {
     lines.push("  Field Guns:");

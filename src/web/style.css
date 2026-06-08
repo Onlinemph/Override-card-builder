@@ -754,7 +754,9 @@ footer {
 .ms-range-reach { font-size: 0.72rem; color: #6b7079; margin: 0.1rem 0 0.5rem; }
 .ms-bodies { margin: 0.5rem 0; }
 .ms-bodies-h { font-size: 0.62rem; font-weight: 800; letter-spacing: 1px; color: #6b7079; margin-bottom: 0.25rem; }
-.ms-body-row { display: flex; flex-wrap: wrap; gap: 3px; margin-bottom: 0.35rem; }
+.ms-body-row { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 0.35rem; }
+.ms-squad { display: inline-flex; gap: 3px; padding-right: 8px; border-right: 1px dotted #aeb4be; }
+.ms-squad:last-child { border-right: none; padding-right: 0; }
 .ms-body { width: 9px; height: 12px; border: 1.25px solid #15171c; border-radius: 2px; background: #fff; }
 .ms-degrade { border-collapse: collapse; font-size: 0.74rem; }
 .ms-degrade th { text-align: left; font-weight: 700; color: #6b7079; padding: 0.05rem 0.6rem 0.1rem 0; border-bottom: 1px solid #c7ccd4; }

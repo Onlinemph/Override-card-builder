@@ -11,16 +11,16 @@
  * INFANTRY_WEAPON_DAMAGE; weapons not yet in that table leave the damage and
  * range unscored (empty).
  *
- * Damage DEGRADES as troopers die: `damageByTroopers` recomputes the clusters at
- * every surviving-trooper count (the card's "bodies remaining" marker), and
- * `damageBreaks` compresses that into bands. RANGE is the primary weapon's TW
- * hex range mapped to Override PB/S/M/L/X brackets (thirds model — best-effort,
- * no DFA infantry oracle exists for the bracket boundaries).
+ * Damage DEGRADES as whole SQUADS are eliminated: `damageBySquads` recomputes the
+ * clusters at every surviving-squad count (the card's "bodies remaining" marker,
+ * grouped by squad), and `damageBreaks` compresses that into bands. RANGE is the
+ * primary weapon's TW hex range mapped to Override PB/S/M/L brackets (each band
+ * +2, weapon range = highest reachable band; VERIFIED vs DFA Laser Rifle card).
  *
  * Movement/TMM mirror the 'Mech rules as a best-effort starting point.
  */
 
-import { INFANTRY_WEAPON_DAMAGE, WEAPON_DAMAGE_DIVISOR } from "./constants.js";
+import { INFANTRY_WEAPON_DAMAGE, TMM_JUMP_BONUS, WEAPON_DAMAGE_DIVISOR } from "./constants.js";
 import {
   abbreviatedTicLabel,
   convertWeapon,
@@ -56,12 +56,12 @@ interface MotionSpec {
 const MOTION: Readonly<Record<string, MotionSpec>> = {
   leg: { label: "Foot", move: 1 },
   foot: { label: "Foot", move: 1 },
-  jump: { label: "Jump", move: 1, jump: true },
+  jump: { label: "Jump", move: 3, jump: true }, // VERIFIED: jump 3
   motorized: { label: "Motorized", move: 3 }, // VERIFIED: Move 3/5, TMM 1/2
   mechanized: { label: "Mechanized", move: 2 },
-  wheeled: { label: "Wheeled", move: 3 },
+  wheeled: { label: "Wheeled", move: 4 }, // VERIFIED: Move 4/6
   tracked: { label: "Tracked", move: 3 },
-  hover: { label: "Hover", move: 4 },
+  hover: { label: "Hover", move: 5 }, // VERIFIED: Move 5/8
   vtol: { label: "VTOL", move: 6, jump: true },
   submarine: { label: "Submarine", move: 2 },
   "motorized scuba": { label: "SCUBA", move: 2 },
@@ -126,53 +126,53 @@ function lookupSmallArm(name: string | undefined): { damage: number; range: numb
 }
 
 /**
- * Platoon small-arms damage at a given surviving-trooper count `s`, as 2-point
- * clusters. Every survivor fires the primary; the secondary is carried by a
- * fraction of the platoon and thins out proportionally as troopers die
- * (expected secondary survivors = floor(secondaryCarriers x s / troopers)). The
- * summed TW damage is divided by 3 (round up) before clustering.
+ * Small-arms damage with `squads` squads still standing, as 2-point clusters.
+ * Each surviving squad contributes its squadSize primary carriers plus its
+ * secondaryPerSquad secondary carriers; the summed TW damage is divided by 3
+ * (round up) before clustering. The official system recalculates damage as whole
+ * squads are eliminated, so this is the per-squad step.
  */
-function platoonDamageAt(unit: InfantryUnit, s: number, primaryDmg: number, secondaryDmg: number | undefined): number[] {
-  let totalTw = Math.floor(s * primaryDmg);
-  if (secondaryDmg !== undefined && unit.troopers > 0) {
-    const secondaryCarriers = unit.secondaryPerSquad * unit.squadCount;
-    const surviving = Math.floor((secondaryCarriers * s) / unit.troopers);
-    totalTw += Math.floor(surviving * secondaryDmg);
+function squadDamageAt(unit: InfantryUnit, squads: number, primaryDmg: number, secondaryDmg: number | undefined): number[] {
+  const troopers = squads * unit.squadSize;
+  let totalTw = Math.floor(troopers * primaryDmg);
+  if (secondaryDmg !== undefined) {
+    totalTw += Math.floor(squads * unit.secondaryPerSquad * secondaryDmg);
   }
   return clusterDamageInto2s(roundUp(totalTw / WEAPON_DAMAGE_DIVISOR));
 }
 
 /**
- * Full damage-degradation track: index i = platoon damage with (i+1) survivors,
- * so the last entry is full strength. Empty when the primary weapon is unscored.
+ * Per-squad damage-degradation track: index i = platoon damage with (i+1) squads
+ * surviving, so the last entry is full strength. Empty when the primary weapon
+ * is unscored.
  */
 function platoonDamageTrack(unit: InfantryUnit): number[][] {
   const primary = lookupSmallArm(unit.primaryWeapon);
-  if (primary === undefined) return [];
+  if (primary === undefined || unit.squadCount <= 0) return [];
   const secondary = lookupSmallArm(unit.secondaryWeapon)?.damage;
   const track: number[][] = [];
-  for (let s = 1; s <= unit.troopers; s++) {
-    track.push(platoonDamageAt(unit, s, primary.damage, secondary));
+  for (let s = 1; s <= unit.squadCount; s++) {
+    track.push(squadDamageAt(unit, s, primary.damage, secondary));
   }
   return track;
 }
 
 /**
- * Compress a degradation track into breakpoints (full strength first): runs of
- * equal damage collapse into a single {from, to, damage} band. So a 28-trooper
- * platoon that does 2·2·2 down to 20 survivors, then 2·2 down to 13, etc. prints
- * as a handful of rows instead of 28.
+ * Compress a per-squad track into breakpoints (full strength first): runs of
+ * equal damage collapse into a single {from, to, damage} band, where from/to are
+ * surviving-SQUAD counts. So a 4-squad platoon that does 2·2 at 4–3 squads then
+ * 2 at 2–1 prints as two rows.
  */
 export function damageBreakpoints(track: number[][]): InfantryDamageBreak[] {
   const breaks: InfantryDamageBreak[] = [];
   for (let i = track.length - 1; i >= 0; i--) {
-    const survivors = i + 1;
+    const squads = i + 1;
     const dmg = track[i]!;
     const last = breaks[breaks.length - 1];
     if (last && arraysEqual(last.damage, dmg)) {
-      last.to = survivors;
+      last.to = squads;
     } else {
-      breaks.push({ from: survivors, to: survivors, damage: dmg });
+      breaks.push({ from: squads, to: squads, damage: dmg });
     }
   }
   return breaks;
@@ -222,12 +222,24 @@ function buildFieldGuns(names: ReadonlyArray<string>, techBase: InfantryUnit["te
 export function convertInfantry(unit: InfantryUnit): InfantryCard {
   const warnings: string[] = [];
   const motion = motionSpec(unit.motionType);
-  // Move prints walk/run (run = ceil(walk x 1.5)); TMM is run-based and the card
-  // shows base/(base+1) for the +1 sprint step (VERIFIED: motorized 3/5 -> 1/2).
-  const walk = motion.move;
-  const run = Math.ceil(walk * 1.5);
-  const move = `${walk}/${run}${motion.jump ? " (J)" : ""}`;
-  const tmm = lookupTmm(run);
+  // Ground units print Move walk/run (run = ceil(walk x 1.5)) and TMM base/(base+1)
+  // for the +1 sprint step (VERIFIED: motorized 3/5 -> 1/2). Jump infantry print
+  // their jump MP with (J) and a single TMM (jumping already grants the +1).
+  let move: string;
+  let tmm: number;
+  let tmmText: string;
+  if (motion.jump) {
+    const jump = motion.move;
+    tmm = lookupTmm(jump) + TMM_JUMP_BONUS;
+    move = `${jump} (J)`;
+    tmmText = `${tmm}`;
+  } else {
+    const walk = motion.move;
+    const run = Math.ceil(walk * 1.5);
+    tmm = lookupTmm(run);
+    move = `${walk}/${run}`;
+    tmmText = `${tmm}/${tmm + 1}`;
+  }
 
   const fieldGuns = buildFieldGuns(unit.fieldGuns, unit.techBase);
   for (const g of fieldGuns) {
@@ -252,9 +264,12 @@ export function convertInfantry(unit: InfantryUnit): InfantryCard {
     motionLabel: motion.label,
     move,
     tmm,
+    tmmText,
     antiMek: unit.antiMek,
+    squadSize: unit.squadSize,
+    squadCount: unit.squadCount,
     damage: track.length ? track[track.length - 1]! : [],
-    damageByTroopers: track,
+    damageBySquads: track,
     damageBreaks: damageBreakpoints(track),
     range,
     // Infantry use only PB/S/M/L (no Extreme column) — match the DFA card.
