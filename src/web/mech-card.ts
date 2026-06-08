@@ -66,13 +66,16 @@ function dollLoc(
 function paperDoll(card: OverrideCard): string {
   const a = card.armor;
   const s = card.structure;
-  return `<div class="mdoll">
+  const hasCenterLeg = a.centerLeg !== undefined || s.centerLeg !== undefined;
+  const centerLeg = hasCenterLeg ? dollLoc("cl", "Center Leg", "", a.centerLeg ?? 0, s.centerLeg ?? 0) : "";
+  return `<div class="mdoll${hasCenterLeg ? " has-cl" : ""}">
     ${dollLoc("hd", "Head", "12", a.head, s.head)}
     ${dollLoc("la", "Left Arm", "10,11", a.leftArm, s.leftArm)}
     ${dollLoc("ct", "Torso", "6,7,8", a.torso, s.torso)}
     ${dollLoc("ra", "Right Arm", "3,4", a.rightArm, s.rightArm)}
     ${dollLoc("ll", "Left Leg", "9", a.leftLeg, s.leftLeg)}
     ${dollLoc("rl", "Right Leg", "5", a.rightLeg, s.rightLeg)}
+    ${centerLeg}
     ${dollLoc("tr", "Torso Rear", "", a.rear, 0)}
   </div>
   <p class="mdoll-legend"><i class="hex armor"></i> armor &nbsp; <i class="hex struct"></i> structure</p>`;

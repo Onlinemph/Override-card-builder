@@ -1286,7 +1286,7 @@ export const TECH_BASE_MAP: Readonly<Record<string, TechBase>> = {
  *   front: LA RA LT RT CT HD LL RL
  *   rear:  RTL/LTR -> LTR, RTR -> RTR, RTC/CTR -> CTR
  */
-export const ARMOR_KEY_MAP: Readonly<Record<string, "HD" | "CT" | "LT" | "RT" | "LA" | "RA" | "LL" | "RL" | "CTR" | "LTR" | "RTR">> = {
+export const ARMOR_KEY_MAP: Readonly<Record<string, "HD" | "CT" | "LT" | "RT" | "LA" | "RA" | "LL" | "RL" | "CL" | "CTR" | "LTR" | "RTR">> = {
   HD: "HD",
   CT: "CT",
   LT: "LT",
@@ -1300,6 +1300,8 @@ export const ARMOR_KEY_MAP: Readonly<Record<string, "HD" | "CT" | "LT" | "RT" | 
   FRL: "RA",
   RLL: "LL",
   RRL: "RL",
+  // Tripod center leg gets its own location.
+  CL: "CL",
   // rear torso, both naming conventions
   CTR: "CTR",
   RTC: "CTR", // "Rear Torso Center"
@@ -1309,7 +1311,7 @@ export const ARMOR_KEY_MAP: Readonly<Record<string, "HD" | "CT" | "LT" | "RT" | 
 } as const;
 
 /** Full weapon-location names (lower-cased) -> canonical location code. */
-export const WEAPON_LOCATION_MAP: Readonly<Record<string, "HD" | "CT" | "LT" | "RT" | "LA" | "RA" | "LL" | "RL">> = {
+export const WEAPON_LOCATION_MAP: Readonly<Record<string, "HD" | "CT" | "LT" | "RT" | "LA" | "RA" | "LL" | "RL" | "CL">> = {
   head: "HD",
   "center torso": "CT",
   "left torso": "LT",
@@ -1319,23 +1321,25 @@ export const WEAPON_LOCATION_MAP: Readonly<Record<string, "HD" | "CT" | "LT" | "
   "left leg": "LL",
   "right leg": "RL",
   // Quad legs map onto the biped paper-doll (front legs -> arms, rear -> legs);
-  // the tripod's center leg folds into the center torso (no dedicated slot).
+  // the tripod's center leg gets its own location.
   "front left leg": "LA",
   "front right leg": "RA",
   "rear left leg": "LL",
   "rear right leg": "RL",
-  "center leg": "CT",
+  "center leg": "CL",
 } as const;
 
 /**
  * Maps an internal-structure row onto per-location structure entries. For QUADS
  * the LA/RA slots hold the FRONT legs, so they take leg structure (all four legs
- * are legs); bipeds/tripods use the arm value for their actual arms.
+ * are legs); bipeds/tripods use the arm value for their actual arms. TRIPODS add
+ * a center leg (CL) carrying leg structure.
  */
 export function structureRowToLocations(
   row: InternalStructureRow,
   isQuad = false,
-): Record<StructureLocation, number> {
+  isTripod = false,
+): Partial<Record<StructureLocation, number>> {
   return {
     HD: row.HD,
     CT: row.CT,
@@ -1345,5 +1349,6 @@ export function structureRowToLocations(
     RA: isQuad ? row.leg : row.arm,
     LL: row.leg,
     RL: row.leg,
+    ...(isTripod ? { CL: row.leg } : {}),
   };
 }

@@ -919,6 +919,8 @@ export function convertUnit(unit: Unit): OverrideCard {
     rightArm: convertStructure(s.RA),
     leftLeg: convertStructure(s.LL),
     rightLeg: convertStructure(s.RL),
+    // Tripod center leg only (omitted otherwise).
+    ...(s.CL !== undefined ? { centerLeg: convertStructure(s.CL) } : {}),
   };
 
   // Stealth/signature systems burn heat every round; the card pre-pays it out
@@ -979,6 +981,8 @@ export function convertUnit(unit: Unit): OverrideCard {
       rightArm: convertArmLegArmor(a.RA),
       leftLeg: convertArmLegArmor(a.LL),
       rightLeg: convertArmLegArmor(a.RL),
+      // Tripod center leg only (omitted otherwise).
+      ...(a.CL !== undefined ? { centerLeg: convertArmLegArmor(a.CL) } : {}),
     },
     structure,
     heatDissipation,

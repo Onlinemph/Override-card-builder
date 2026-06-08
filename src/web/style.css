@@ -812,6 +812,16 @@ footer {
     ".  tr  .";
   gap: 0.4rem;
 }
+/* Tripod: insert a center-leg row between the legs and the torso rear. */
+.mdoll.has-cl {
+  grid-template-areas:
+    ".  hd  ."
+    "la ct ra"
+    "ll ct rl"
+    ".  cl  ."
+    ".  tr  .";
+}
+.mloc.cl { grid-area: cl; }
 .mloc { background: #e3e3dd; border: 1.5px solid #9a9a92; border-radius: 8px; padding: 0.35rem 0.3rem; text-align: center; }
 .mloc.hd { grid-area: hd; }
 .mloc.la { grid-area: la; }

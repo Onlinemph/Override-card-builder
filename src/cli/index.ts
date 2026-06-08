@@ -128,14 +128,16 @@ function printSummary(card: OverrideCard): void {
   const lines: string[] = [];
   lines.push(`${card.name}  (${card.mass}t ${card.techBase})`);
   lines.push(`  Move ${card.move}   TMM ${card.tmm} (sprint ${card.tmmSprint}, jump ${card.tmmJump})`);
+  const aCL = card.armor.centerLeg !== undefined ? `  center-leg ${card.armor.centerLeg}` : "";
+  const sCL = card.structure.centerLeg !== undefined ? `  center-leg ${card.structure.centerLeg}` : "";
   lines.push(
     `  Armor  torso ${card.armor.torso}  rear ${card.armor.rear}  head ${card.armor.head}` +
-      `  arms ${card.armor.leftArm}/${card.armor.rightArm}  legs ${card.armor.leftLeg}/${card.armor.rightLeg}`,
+      `  arms ${card.armor.leftArm}/${card.armor.rightArm}  legs ${card.armor.leftLeg}/${card.armor.rightLeg}${aCL}`,
   );
   lines.push(
     `  Structure  torso ${card.structure.torso}  head ${card.structure.head}` +
       `  arms ${card.structure.leftArm}/${card.structure.rightArm}` +
-      `  legs ${card.structure.leftLeg}/${card.structure.rightLeg}`,
+      `  legs ${card.structure.leftLeg}/${card.structure.rightLeg}${sCL}`,
   );
   lines.push(`  Heat dissipation ${card.heatDissipation}`);
   if (card.tics.length > 0) {

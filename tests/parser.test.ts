@@ -151,6 +151,24 @@ ER Large Laser, Right Arm
     expect(u.structure.LL).toBe(17);
   });
 
+  it("parses a Tripod: center leg gets its own armor, structure, and weapon mount", () => {
+    const u = parseMtf(load("Test Tripod TR-1.mtf"), "Test Tripod TR-1.mtf");
+    expect(u.config).toBe("Tripod");
+    expect(u.armor.CL).toBe(24);
+    expect(u.structure.CL).toBe(16); // 75t leg structure
+    // The center-leg weapon mounts on CL (not folded into the torso).
+    expect(u.weapons.find((w) => w.name === "SRM 6")?.location).toBe("CL");
+  });
+
+  it("surfaces the tripod center leg on the card; bipeds omit it", () => {
+    const tri = convertUnit(parseMtf(load("Test Tripod TR-1.mtf"), "Test Tripod TR-1.mtf"));
+    expect(tri.armor.centerLeg).toBe(8); // 24 / 3, round nearest
+    expect(tri.structure.centerLeg).toBe(5); // 16 / 3, round nearest
+    const biped = convertUnit(parseMtf(load("Locust LCT-1V.mtf"), "Locust LCT-1V.mtf"));
+    expect(biped.armor.centerLeg).toBeUndefined();
+    expect(biped.structure.centerLeg).toBeUndefined();
+  });
+
   it("derives structure for ultralight (15t) and superheavy (135t) tonnages", () => {
     const ul = "chassis:U\nmodel:L\nConfig:Biped\nTechBase:Inner Sphere\nMass:15\nEngine:45 Fusion Engine\nHeat Sinks:10 Single\nWalk MP:3\nArmor:Standard\nCT Armor:5\nWeapons:0\n";
     expect(parseMtf(ul, "u.mtf").structure.CT).toBe(5);

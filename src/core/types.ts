@@ -37,12 +37,13 @@ export type MechLocation =
   | "RA"
   | "LL"
   | "RL"
+  | "CL" // center leg (Tripod only)
   | "CTR"
   | "LTR"
   | "RTR";
 
-/** Front locations that carry internal structure. */
-export type StructureLocation = "HD" | "CT" | "LT" | "RT" | "LA" | "RA" | "LL" | "RL";
+/** Front locations that carry internal structure. CL is Tripod-only. */
+export type StructureLocation = "HD" | "CT" | "LT" | "RT" | "LA" | "RA" | "LL" | "RL" | "CL";
 
 /** A single mounted weapon as listed in the MTF weapons block. */
 export interface Weapon {
@@ -288,6 +289,8 @@ export interface CardArmor {
   rightArm: number;
   leftLeg: number;
   rightLeg: number;
+  /** Center-leg armor (Tripod 'Mechs only); omitted otherwise. */
+  centerLeg?: number;
 }
 
 /**
@@ -308,6 +311,8 @@ export interface CardStructure {
   rightArm: number;
   leftLeg: number;
   rightLeg: number;
+  /** Center-leg structure (Tripod 'Mechs only); omitted otherwise. */
+  centerLeg?: number;
 }
 
 // ---------------------------------------------------------------------------
