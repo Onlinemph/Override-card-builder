@@ -34,6 +34,8 @@ import {
   REAR_ARMOR_DIVISOR,
   SPECIAL_ARMOR,
   SPECIAL_COCKPIT,
+  SPECIAL_ENGINE,
+  SPECIAL_GYRO,
   STRUCTURE_DIVISOR,
   TIC_MAX_BASE,
   TIC_MAX_DAMAGE,
@@ -846,15 +848,25 @@ export function isWeaponBlockEquipment(name: string): boolean {
 }
 
 /**
- * Notable construction options carried on the header lines (Armor: / Structure:
- * / Cockpit:) rather than as crit slots, surfaced as body-wide equipment so they
- * reach the card: Hardened/Reflective/Reactive armor, Reinforced/Composite
- * structure, Torso-Mounted/Command Console cockpits, etc. Efficiency choices
- * (Endo Steel, Ferro-Fibrous, Standard) and Stealth (already shown from its crit
- * slots) are skipped.
+ * Notable construction options carried on the header lines (Engine: / Gyro: /
+ * Armor: / Structure: / Cockpit:) rather than as crit slots, surfaced as
+ * body-wide equipment so they reach the card: XL/XXL/Light/Compact engines (with
+ * IS/Clan tech for XL/XXL), XL/Compact/Heavy-Duty gyros, Hardened/Reflective/
+ * Reactive armor, Reinforced/Composite structure, Torso-Mounted/Command Console
+ * cockpits, etc. Efficiency choices (Endo Steel, Ferro-Fibrous, Standard fusion,
+ * Standard gyro) and Stealth (already shown from its crit slots) are skipped.
  */
 export function constructionEquipment(unit: Unit): CardEquipment[] {
   const items: string[] = [];
+
+  // Engine: skip standard fusion; XL/XXL carry their IS/Clan tech (survivability differs).
+  const engType = unit.engine.type.toLowerCase();
+  const engHit = SPECIAL_ENGINE.find((e) => e.match.some((m) => engType.includes(m)));
+  if (engHit) items.push(engHit.tech ? `${engHit.label} (${unit.engine.clan ? "Clan" : "IS"})` : engHit.label);
+
+  const gyro = (unit.gyroType ?? "").toLowerCase();
+  const gyroHit = SPECIAL_GYRO.find((e) => e.match.some((m) => gyro.includes(m)));
+  if (gyroHit) items.push(gyroHit.label);
 
   const armor = (unit.armorType ?? "").toLowerCase();
   const armorHit = SPECIAL_ARMOR.find((e) => e.match.some((m) => armor.includes(m)));

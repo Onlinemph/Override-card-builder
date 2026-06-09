@@ -97,6 +97,8 @@ export interface Engine {
   rating: number;
   /** Engine type label, e.g. "Fusion", "XL", "Light", "XXL". */
   type: string;
+  /** True for Clan-tech engines (XL/XXL survivability differs from IS). */
+  clan?: boolean;
 }
 
 /**
@@ -124,6 +126,8 @@ export interface Unit {
   structureType?: string;
   /** Cockpit type from the `Cockpit:` line (e.g. "Torso-Mounted Cockpit", "Small Cockpit"). */
   cockpitType?: string;
+  /** Gyro type from the `Gyro:` line (e.g. "Compact Gyro", "XL Gyro", "Heavy Duty Gyro"). */
+  gyroType?: string;
   /** Armor points per location, including rear torso locations. */
   armor: Partial<Record<MechLocation, number>>;
   /** Internal structure points per front location, derived from tonnage. */

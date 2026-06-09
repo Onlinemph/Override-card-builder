@@ -17,7 +17,7 @@ describe("parseMtf", () => {
     expect(u.model).toBe("LCT-1V");
     expect(u.mass).toBe(20);
     expect(u.techBase).toBe("IS");
-    expect(u.engine).toEqual({ rating: 160, type: "Fusion" });
+    expect(u.engine).toEqual({ rating: 160, type: "Fusion", clan: false });
     expect(u.heatSinks).toEqual({ count: 10, type: "single" });
 
     // Run MP not in file -> ceil(8 * 1.5) = 12, flagged derived.

@@ -1084,14 +1084,30 @@ export const SPECIAL_ARMOR: ReadonlyArray<{ match: ReadonlyArray<string>; label:
   { match: ["heat-dissipating"], label: "Heat-Dissipating Armor" },
 ];
 
+// Cockpits with gameplay rules; cosmetic / inherent ones (Standard, Industrial,
+// Primitive, Superheavy, QuadVee) are intentionally skipped.
 export const SPECIAL_COCKPIT: ReadonlyArray<{ match: ReadonlyArray<string>; label: string }> = [
   { match: ["torso-mounted", "torso mounted"], label: "Torso-Mounted Cockpit" },
   { match: ["command console"], label: "Command Console" },
   { match: ["interface"], label: "Interface Cockpit" },
   { match: ["small"], label: "Small Cockpit" },
-  { match: ["primitive"], label: "Primitive Cockpit" },
-  { match: ["superheavy"], label: "Superheavy Cockpit" },
-  { match: ["quadvee"], label: "QuadVee Cockpit" },
+];
+
+// Non-standard GYROS (from the `Gyro:` line). Standard / Superheavy are skipped.
+export const SPECIAL_GYRO: ReadonlyArray<{ match: ReadonlyArray<string>; label: string }> = [
+  { match: ["heavy duty", "heavy-duty"], label: "Heavy-Duty Gyro" },
+  { match: ["compact"], label: "Compact Gyro" },
+  { match: ["xl"], label: "XL Gyro" },
+];
+
+/** Notable ENGINE types (from the `Engine:` line). Standard fusion is skipped. */
+export const SPECIAL_ENGINE: ReadonlyArray<{ match: ReadonlyArray<string>; label: string; tech?: boolean }> = [
+  { match: ["xxl"], label: "XXL Engine", tech: true },
+  { match: ["xl"], label: "XL Engine", tech: true },
+  { match: ["light fusion", "light"], label: "Light Engine" },
+  { match: ["compact"], label: "Compact Engine" },
+  { match: ["i.c.e.", "ice"], label: "I.C.E." },
+  { match: ["fuel cell", "fuel-cell"], label: "Fuel Cell" },
 ];
 
 /** 'Mech location print order for grouping equipment and similar lists. */

@@ -68,6 +68,7 @@ export function parseMtf(text: string, file = "<unknown>"): Unit {
   const armorType = getValue(lines, "armor"); // bare "Armor:" line (type, not a location)
   const structureType = getValue(lines, "structure"); // e.g. "IS Reinforced", "Endo Steel"
   const cockpitType = getValue(lines, "cockpit"); // e.g. "Torso-Mounted Cockpit"
+  const gyroType = getValue(lines, "gyro"); // e.g. "Compact Gyro", "XL Gyro"
   const armor = parseArmor(lines, file);
   const structure = deriveStructure(mass, file, /quad/i.test(config), /tripod/i.test(config));
   const weapons = parseWeapons(lines, file);
@@ -85,6 +86,7 @@ export function parseMtf(text: string, file = "<unknown>"): Unit {
     armorType,
     structureType,
     cockpitType,
+    gyroType,
     armor,
     structure,
     weapons,
@@ -194,17 +196,16 @@ function parseTechBase(lines: RawLine[], file: string): TechBase {
   throw new ParseError(`unrecognized tech base "${raw}"`, file, "TechBase");
 }
 
-/** Engine line, e.g. "160 Fusion Engine", "300 XL Engine(Clan)". */
+/** Engine line, e.g. "160 Fusion Engine", "300 XL (Clan) Engine(IS)". */
 function parseEngine(lines: RawLine[], file: string): Engine {
   const raw = requireValue(lines, "engine", file);
   const rating = parseIntStrict(raw, "engine", file);
-  // Type = words after the rating, with "Engine" and any parenthetical removed.
-  const type = raw
-    .replace(/^\s*\d+\s*/, "")
-    .replace(/\bengine\b/i, "")
-    .replace(/\(.*?\)/g, "")
-    .trim();
-  return { rating, type: type || "Fusion" };
+  // The portion before "Engine" holds the type and a "(Clan)" tech marker.
+  const head = raw.replace(/^\s*\d+\s*/, "").split(/\bengine\b/i)[0] ?? "";
+  const clan = /clan/i.test(head);
+  // Type = the head with the "(Clan)" / "(IS)" markers and any parenthetical removed.
+  const type = head.replace(/\(.*?\)/g, "").trim();
+  return { rating, type: type || "Fusion", clan };
 }
 
 /**

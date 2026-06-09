@@ -855,6 +855,22 @@ describe("construction options + C3 variants surface on the card", () => {
     expect(labelsFor("Structure:IS Endo-Composite\n")).not.toContain("Composite Structure");
   });
 
+  it("surfaces engine (with IS/Clan for XL/XXL) and gyro, skipping standard fusion", () => {
+    const noEngHead = "chassis:Test\nmodel:EQ\nConfig:Biped\nTechBase:Inner Sphere\nMass:50\nHeat Sinks:10 Single\nWalk MP:4\n";
+    const eng = (engine: string, gyro = "") => {
+      const mtf = noEngHead + `Engine:${engine}\n` + (gyro ? `Gyro:${gyro}\n` : "") + "Armor:Standard\n" + armorBlock + "Weapons:0\n";
+      return convertUnit(parseMtf(mtf, "E.mtf")).equipment.map((e) => e.label);
+    };
+    expect(eng("200 XL (Clan) Engine(IS)")).toContain("XL Engine (Clan)");
+    expect(eng("200 XL Engine(IS)")).toContain("XL Engine (IS)");
+    expect(eng("200 XXL Engine(IS)")).toContain("XXL Engine (IS)");
+    expect(eng("200 Light Engine(IS)")).toContain("Light Engine");
+    expect(eng("200 Fusion Engine(IS)")).not.toContain("XL Engine (IS)"); // standard fusion: nothing
+    expect(eng("200 Fusion Engine", "Compact Gyro")).toContain("Compact Gyro");
+    expect(eng("200 Fusion Engine", "Heavy Duty Gyro")).toContain("Heavy-Duty Gyro");
+    expect(eng("200 Fusion Engine", "Standard Gyro")).not.toContain("XL Gyro");
+  });
+
   it("keeps C3 variants distinct (C3i, Boosted, Master, Slave) and recognises Nova CEWS", () => {
     const crit = (name: string) =>
       convertUnit(parseMtf(head + "Armor:Standard\n" + armorBlock + `Weapons:0\nLeft Torso:\n${name}\n`, "C.mtf")).equipment.map(
