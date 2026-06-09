@@ -11,6 +11,7 @@ import { renderBACard } from "./ba-card.js";
 import { renderFighterCard } from "./fighter-card.js";
 import { renderInfantryCard } from "./infantry-card.js";
 import { renderMechCard } from "./mech-card.js";
+import { renderProtoCard } from "./proto-card.js";
 import { renderVehicleCard } from "./vehicle-card.js";
 
 // ---------------------------------------------------------------------------
@@ -488,6 +489,7 @@ function cardHtml(result: AnyCard): string {
   if (result.kind === "vehicle") return renderVehicleCard(result.card);
   if (result.kind === "fighter") return renderFighterCard(result.card);
   if (result.kind === "infantry") return renderInfantryCard(result.card);
+  if (result.kind === "protomech") return renderProtoCard(result.card);
   return renderMechCard(result.card);
 }
 

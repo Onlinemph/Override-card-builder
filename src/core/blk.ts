@@ -32,6 +32,10 @@ import type {
   FighterMount,
   FighterUnit,
   InfantryUnit,
+  ProtoArmorRaw,
+  ProtoLoc,
+  ProtoMechUnit,
+  ProtoMount,
   TechBase,
   VehicleArmorRaw,
   VehicleFacing,
@@ -479,5 +483,91 @@ export function parseBlkInfantry(text: string, file = "<unknown>"): InfantryUnit
     secondaryPerSquad,
     antiMek,
     fieldGuns: parseFieldGuns(blocks),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// ProtoMech (BLK ProtoMech).
+// ---------------------------------------------------------------------------
+
+/** Per-location equipment blocks -> ProtoMech location. */
+const PROTO_LOC_BLOCKS: Readonly<Record<string, ProtoLoc>> = {
+  "head equipment": "head",
+  "torso equipment": "torso",
+  "right arm equipment": "rightArm",
+  "left arm equipment": "leftArm",
+  "legs equipment": "legs",
+  "leg equipment": "legs",
+  "main gun equipment": "mainGun",
+};
+
+/** Armor block order: Head, Torso, R-Arm, L-Arm, Legs, [Main Gun]. */
+function parseProtoArmor(blocks: Block[]): ProtoArmorRaw {
+  const block = blocks.find((b) => b.key === "armor");
+  const v = (block?.lines ?? []).map((l) => Number.parseInt(l, 10)).filter((n) => Number.isFinite(n));
+  const at = (i: number) => v[i] ?? 0;
+  return { head: at(0), torso: at(1), rightArm: at(2), leftArm: at(3), legs: at(4), mainGun: at(5) };
+}
+
+/** Count of numeric armor values (6 = a Main Gun is present). */
+function protoArmorCount(blocks: Block[]): number {
+  const block = blocks.find((b) => b.key === "armor");
+  return (block?.lines ?? []).map((l) => Number.parseInt(l, 10)).filter((n) => Number.isFinite(n)).length;
+}
+
+/** Collect weapon/equipment mounts from the per-location equipment blocks. */
+function parseProtoMounts(blocks: Block[]): ProtoMount[] {
+  const mounts: ProtoMount[] = [];
+  for (const block of blocks) {
+    const loc = PROTO_LOC_BLOCKS[block.key] ?? (block.key === "body equipment" ? "torso" : undefined);
+    if (!loc) continue;
+    for (const line of block.lines) {
+      const name = line.trim();
+      if (name) mounts.push({ name, loc });
+    }
+  }
+  return mounts;
+}
+
+/**
+ * Parse BLK ProtoMech text into a `ProtoMechUnit`. Throws if the file is not a
+ * ProtoMech.
+ */
+export function parseBlkProto(text: string, file = "<unknown>"): ProtoMechUnit {
+  const blocks = readBlocks(text);
+
+  const unitType = scalar(blocks, "unittype");
+  if (unitType && unitType.toLowerCase().replace(/\s+/g, "") !== "protomech") {
+    throw new ParseError(`expected a ProtoMech BLK but got unit type "${unitType}"`, file, "UnitType");
+  }
+
+  const chassis = scalarAny(blocks, ["name", "chassis_name"]);
+  if (!chassis) throw new ParseError("missing unit name", file, "Name");
+  const model = scalarAny(blocks, ["model"]) ?? "";
+
+  const tonnage = Number.parseFloat(scalarAny(blocks, ["tonnage", "weight"]) ?? "0") || 0;
+  const motionType = scalarAny(blocks, ["motion_type"]) ?? "Biped";
+  const walkMP = intOr(scalarAny(blocks, ["cruisemp", "walkmp"]), 0);
+  const jumpMP = intOr(scalarAny(blocks, ["jumpingmp", "jumpmp"]), 0);
+
+  const armor = parseProtoArmor(blocks);
+  const mounts = parseProtoMounts(blocks);
+  const hasMainGun = protoArmorCount(blocks) >= 6;
+  const hasArms =
+    armor.rightArm > 0 || armor.leftArm > 0 || mounts.some((m) => m.loc === "rightArm" || m.loc === "leftArm");
+
+  return {
+    kind: "protomech",
+    chassis,
+    model,
+    techBase: resolveTechBase(blocks),
+    tonnage,
+    motionType,
+    walkMP,
+    jumpMP,
+    hasArms,
+    hasMainGun,
+    armor,
+    mounts,
   };
 }

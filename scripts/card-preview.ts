@@ -15,6 +15,7 @@ import { renderBACard } from "../src/web/ba-card.js";
 import { renderFighterCard } from "../src/web/fighter-card.js";
 import { renderInfantryCard } from "../src/web/infantry-card.js";
 import { renderMechCard } from "../src/web/mech-card.js";
+import { renderProtoCard } from "../src/web/proto-card.js";
 import { renderVehicleCard } from "../src/web/vehicle-card.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -34,7 +35,9 @@ const cardHtml =
         ? renderFighterCard(result.card)
         : result.kind === "infantry"
           ? renderInfantryCard(result.card)
-          : renderMechCard(result.card);
+          : result.kind === "protomech"
+            ? renderProtoCard(result.card)
+            : renderMechCard(result.card);
 
 const css = readFileSync(join(root, "src/web/style.css"), "utf8");
 const html = `<!doctype html>

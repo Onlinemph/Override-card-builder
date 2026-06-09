@@ -7,13 +7,14 @@
  */
 
 import { convertBattleArmor } from "./battlearmor.js";
-import { blkUnitType, isBlk, parseBlkBattleArmor, parseBlkFighter, parseBlkInfantry, parseBlkVehicle } from "./blk.js";
+import { blkUnitType, isBlk, parseBlkBattleArmor, parseBlkFighter, parseBlkInfantry, parseBlkProto, parseBlkVehicle } from "./blk.js";
 import { convertUnit } from "./convert.js";
 import { convertFighter } from "./fighter.js";
 import { convertInfantry } from "./infantry.js";
 import { ParseError, parseMtf } from "./parser.js";
+import { convertProto } from "./proto.js";
 import { convertVehicle } from "./vehicle.js";
-import type { BattleArmorCard, FighterCard, InfantryCard, OverrideCard, VehicleCard } from "./types.js";
+import type { BattleArmorCard, FighterCard, InfantryCard, OverrideCard, ProtoMechCard, VehicleCard } from "./types.js";
 
 /** A converted card, tagged by which unit family produced it. */
 export type AnyCard =
@@ -21,7 +22,8 @@ export type AnyCard =
   | { kind: "battlearmor"; card: BattleArmorCard }
   | { kind: "vehicle"; card: VehicleCard }
   | { kind: "fighter"; card: FighterCard }
-  | { kind: "infantry"; card: InfantryCard };
+  | { kind: "infantry"; card: InfantryCard }
+  | { kind: "protomech"; card: ProtoMechCard };
 
 /** BLK `<UnitType>` values (whitespace-stripped) routed to the fighter path. */
 const FIGHTER_TYPES = new Set(["aero", "aerospacefighter", "convfighter", "fixedwingsupport"]);
@@ -57,8 +59,11 @@ export function convertAny(text: string, file = "<unknown>"): AnyCard {
   if (type === "infantry") {
     return { kind: "infantry", card: convertInfantry(parseBlkInfantry(text, file)) };
   }
+  if (type === "protomech") {
+    return { kind: "protomech", card: convertProto(parseBlkProto(text, file)) };
+  }
   throw new ParseError(
-    `unsupported BLK unit type "${blkUnitType(text) ?? "?"}" (supported: BattleArmor, Tank, VTOL, Aerospace/Conventional Fighter, Infantry)`,
+    `unsupported BLK unit type "${blkUnitType(text) ?? "?"}" (supported: BattleArmor, Tank, VTOL, Aerospace/Conventional Fighter, Infantry, ProtoMech)`,
     file,
     "UnitType",
   );

@@ -832,6 +832,25 @@ footer {
 .mloc.tr { grid-area: tr; }
 .mloc-name { font-weight: 700; font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.02em; }
 .loc-hits { color: #6b7079; font-weight: 600; }
+.loc-miss { color: #b03020; text-decoration: line-through; }
+
+/* ProtoMech paper doll: single Legs block, optional Main Gun beside the head. */
+.pdoll {
+  display: grid;
+  grid-template-columns: 1fr 1.5fr 1fr;
+  grid-template-areas:
+    ".  hd  ."
+    "la ct ra"
+    ".  lg  .";
+  gap: 0.4rem;
+}
+.pdoll.has-mg { grid-template-areas: ".  hd  mg" "la ct ra" ".  lg  ."; }
+.pdoll .mloc.hd { grid-area: hd; }
+.pdoll .mloc.mg { grid-area: mg; }
+.pdoll .mloc.la { grid-area: la; }
+.pdoll .mloc.ra { grid-area: ra; }
+.pdoll .mloc.ct { grid-area: ct; }
+.pdoll .mloc.lg { grid-area: lg; }
 .mloc-pips { display: flex; flex-wrap: wrap; gap: 2px; justify-content: center; margin-top: 0.3rem; }
 .hexrow { display: inline-flex; flex-wrap: wrap; gap: 2px; justify-content: center; }
 .hex {

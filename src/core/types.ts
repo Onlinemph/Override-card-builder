@@ -814,3 +814,93 @@ export interface OverrideCard {
   warnings: string[];
   sourceFile?: string;
 }
+
+// ---------------------------------------------------------------------------
+// ProtoMech (BLK). 'Mech-like but small (2-15t): a single Legs location (no
+// separate L/R), a "Main Gun" location on some designs, and a Frenzy melee
+// attack in place of Punch/Kick. Hit locations mirror the 'Mech table except a
+// 3 or 11 is a MISS. Conversion mirrors the 'Mech rules (÷3).
+// ---------------------------------------------------------------------------
+
+/** ProtoMech locations (Legs is a single combined block; Main Gun is optional). */
+export type ProtoLoc = "head" | "torso" | "rightArm" | "leftArm" | "legs" | "mainGun";
+
+/** One mounted weapon/equipment item and the ProtoMech location it sits in. */
+export interface ProtoMount {
+  name: string;
+  loc: ProtoLoc;
+}
+
+/** Raw per-location armor points from the BLK `<armor>` block. */
+export interface ProtoArmorRaw {
+  head: number;
+  torso: number;
+  rightArm: number;
+  leftArm: number;
+  legs: number;
+  mainGun: number;
+}
+
+/** A fully-parsed ProtoMech — physical facts only. */
+export interface ProtoMechUnit {
+  kind: "protomech";
+  chassis: string;
+  model: string;
+  techBase: TechBase;
+  /** Tonnage (2-15). */
+  tonnage: number;
+  /** Raw `motion_type` ("Biped", "Quad", "WiGE"/Glider). */
+  motionType: string;
+  /** Walk/cruise MP. */
+  walkMP: number;
+  /** Jump MP (0 if none). */
+  jumpMP: number;
+  /** True when the design has arms (arm armor or arm-mounted gear). */
+  hasArms: boolean;
+  /** True when the design carries a torso-mounted Main Gun (6th armor value). */
+  hasMainGun: boolean;
+  armor: ProtoArmorRaw;
+  mounts: ProtoMount[];
+  sourceFile?: string;
+}
+
+/** Per-location armor/structure on the ProtoMech card (Main Gun optional). */
+export interface ProtoCardArmor {
+  head: number;
+  torso: number;
+  rightArm: number;
+  leftArm: number;
+  legs: number;
+  mainGun?: number;
+}
+
+/** Converted Override record-card statistics for a ProtoMech. */
+export interface ProtoMechCard {
+  kind: "protomech";
+  name: string;
+  chassis: string;
+  model: string;
+  techBase: TechBase;
+  tonnage: number;
+  /** Display motion label ("Biped", "Quad", "Glider"). */
+  motionLabel: string;
+  /** Printed move string, e.g. "5 / 8 / 5j" (walk / run / jump). */
+  move: string;
+  /** Base TMM (numeric); see `tmmText` for the printed value. */
+  tmm: number;
+  /** Printed TMM, e.g. "2 / 3 / 3" (walk / sprint / jump). */
+  tmmText: string;
+  hasArms: boolean;
+  hasMainGun: boolean;
+  /** Per-location armor (TW / 3, round nearest, min 1; 0 if absent). */
+  armor: ProtoCardArmor;
+  /** Per-location internal structure (IS / 3, round nearest, min 1). */
+  structure: ProtoCardArmor;
+  /** Weapon rows (TICs grouped per location; `facing` holds the Loc code). */
+  weapons: VehicleWeaponRow[];
+  /** Frenzy melee damage by tonnage (1 / 2 / 3); replaces Punch/Kick. */
+  frenzy: number;
+  equipment: VehicleEquipment[];
+  warnings: string[];
+  sourceFile?: string;
+}

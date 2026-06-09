@@ -23,7 +23,7 @@ import { readdirSync, readFileSync, statSync, writeFileSync, mkdirSync } from "n
 import { basename, extname, join, resolve } from "node:path";
 
 import { convertAny, ParseError } from "../core/index.js";
-import type { BattleArmorCard, FighterCard, InfantryCard, OverrideCard, VehicleCard } from "../core/index.js";
+import type { BattleArmorCard, FighterCard, InfantryCard, OverrideCard, ProtoMechCard, VehicleCard } from "../core/index.js";
 
 /** Input file extensions the tool understands. */
 const SUPPORTED_EXTS = new Set([".mtf", ".blk"]);
@@ -293,6 +293,32 @@ function printInfantrySummary(card: InfantryCard): void {
   process.stdout.write(lines.join("\n") + "\n\n");
 }
 
+/** Print a ProtoMech card summary. */
+function printProtoSummary(card: ProtoMechCard): void {
+  const lines: string[] = [];
+  lines.push(`${card.name}  (ProtoMech, ${card.motionLabel}, ${card.tonnage}t ${card.techBase})`);
+  lines.push(`  Move ${card.move}   TMM ${card.tmmText}`);
+  const a = card.armor;
+  const s = card.structure;
+  const mg = (v: ProtoMechCard["armor"]) => (v.mainGun !== undefined ? `  main-gun ${v.mainGun}` : "");
+  lines.push(`  Armor  head ${a.head}  torso ${a.torso}  arms ${a.leftArm}/${a.rightArm}  legs ${a.legs}${mg(a)}`);
+  lines.push(`  Structure  head ${s.head}  torso ${s.torso}  arms ${s.leftArm}/${s.rightArm}  legs ${s.legs}${mg(s)}`);
+  if (card.weapons.length > 0) {
+    lines.push("  Weapons:");
+    for (const w of card.weapons) {
+      const flag = w.unknown ? "  [!] unknown weapon" : "";
+      const rng = w.rangeText ? ` [${w.rangeText}]` : "";
+      lines.push(`    - ${w.label} @ ${w.facing}: dmg ${w.damageText}  ht${w.heat}${rng}${flag}`);
+    }
+  }
+  lines.push(`  Frenzy: ${card.frenzy}`);
+  if (card.equipment.length > 0) {
+    lines.push(`  Equipment: ${card.equipment.map((e) => `${e.label}${e.count > 1 ? ` x${e.count}` : ""}`).join(", ")}`);
+  }
+  for (const warn of card.warnings) lines.push(`  ! ${warn}`);
+  process.stdout.write(lines.join("\n") + "\n\n");
+}
+
 /** Build a flat CSV (one row per unit) covering the scalar card fields. */
 function toCsv(cards: OverrideCard[]): string {
   const header = [
@@ -400,6 +426,8 @@ function main(): void {
         printFighterSummary(result.card);
       } else if (result.kind === "infantry") {
         printInfantrySummary(result.card);
+      } else if (result.kind === "protomech") {
+        printProtoSummary(result.card);
       } else {
         cards.push(result.card);
         printSummary(result.card);
