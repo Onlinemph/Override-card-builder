@@ -36,4 +36,10 @@ html = html.replace(
 
 writeFileSync(indexPath, html);
 rmSync(join(dir, "assets"), { recursive: true, force: true });
-console.log("inlined CSS + JS into a single dist-web/index.html");
+
+// GitHub Pages runs Jekyll, which silently drops files/dirs beginning with "_"
+// (e.g. units/Mechs/.../_Gestalt_ D2X-G.mtf -> 404). An empty .nojekyll marker
+// disables Jekyll so every unit file is served verbatim.
+writeFileSync(join(dir, ".nojekyll"), "");
+
+console.log("inlined CSS + JS into a single dist-web/index.html (+ .nojekyll)");
