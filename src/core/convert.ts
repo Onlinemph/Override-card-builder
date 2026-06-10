@@ -152,6 +152,7 @@ export function normalizeWeaponName(raw: string): string {
   s = s.replace(/^arrow ?iv\b.*/, "arrow iv"); // "Arrow IV System"/"ArrowIV" -> "arrow iv"
   s = s.replace(/^tsemp\b.*/, "tsemp cannon"); // any TSEMP variant -> "tsemp cannon"
   s = s.replace(/\bimproved atm\b/g, "atm").replace(/\bi\s*atm\b/g, "atm"); // iATM shares the ATM stat block (streak)
+  s = s.replace(/\bmagshot gr\b/g, "magshot gauss rifle"); // BA "MagshotGR" -> full name
   s = s.replace(/\bmg\b/g, "machine gun"); // MG abbreviation -> full name
   s = s.replace(/\bos\s*$/, "").trimEnd(); // trailing "os" (one-shot variant without parens)
   return s.replace(/\s+/g, " ").trim();

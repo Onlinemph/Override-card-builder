@@ -58,7 +58,18 @@ function looksLikeWeapon(name: string): boolean {
  * @param mountTag  the BLK `:LOC` mount tag ("RA", "APM", …)
  */
 function isAntiPersonnel(name: string, mountTag: string): boolean {
-  return mountTag.toUpperCase() === "APM" || /infantry|mauser/i.test(name);
+  // The mount tag can be the last `:LOC` segment, but some BLKs put the APM flag
+  // in a MIDDLE segment ("Auto-Rifle:APM:RA"), so also look for it in the name.
+  return mountTag.toUpperCase() === "APM" || /:\s*apm\b/i.test(name) || /infantry|mauser/i.test(name);
+}
+
+/**
+ * BA armor TYPES (Reflective, Reactive, Mimetic, Fire-Resistant, Stealth) are
+ * sometimes listed in the equipment blocks. They are not weapons — skip them so
+ * they don't show as zero-damage "unknown weapons".
+ */
+function isBaArmorType(name: string): boolean {
+  return /\b(reflective|reactive|mimetic)\b|fire[\s-]?resist|\bstealth\b/i.test(name);
 }
 
 /** Expand a mount into `copies` identical names (the squad's total of that item). */
@@ -130,6 +141,8 @@ export function convertBattleArmor(unit: BattleArmorUnit): BattleArmorCard {
     // Anti-personnel infantry small arms are flavor in BattleTech (abstracted by
     // the anti-infantry column), so drop them entirely — no weapon, no warning.
     if (isAntiPersonnel(mount.name, mount.mount)) continue;
+    // BA armor types (Reflective/Reactive/Mimetic/Stealth) are not weapons.
+    if (isBaArmorType(mount.name)) continue;
     // Ammo and gear go through the equipment filter, never the weapon path —
     // even though an ammo line ("SRM 2 Ammo") contains a weapon-looking word.
     const isAmmo = /\bammo\b/i.test(mount.name);

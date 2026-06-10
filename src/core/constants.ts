@@ -342,6 +342,13 @@ export const WEAPON_DAMAGE: Readonly<Record<string, number>> = {
   "heavy gauss rifle": 25, // range-varying damage; see WEAPON_DAMAGE_BY_RANGE (nominal short value here)
   "magshot gauss rifle": 2,
   magshot: 2,
+  // Battle Armor support guns (TW per-trooper; squad damage scales by survivors).
+  // VERIFIED vs DFA BA mockup: David/King David/Tsunami Gauss -> 2|2|1|1|1 (TW 1);
+  // Light Recoilless -> 4|3|2|2|1 (TW 2).
+  "david light gauss rifle": 1,
+  "king david light gauss rifle": 1,
+  "tsunami heavy gauss rifle": 1,
+  "light recoilless rifle": 2,
 
   // --- Ballistic: Plasma (IS Plasma Rifle deals damage; Clan Plasma Cannon is
   // heat-only — 0 damage + 2 heat dice, see WEAPON_HEAT_DAMAGE). ---
@@ -622,6 +629,11 @@ export const WEAPON_RANGES: Readonly<Record<string, WeaponRange>> = {
   "light gauss rifle": { min: 3, medium: 17, long: 25 }, // CONFIRM
   magshot: { min: 0, medium: 6, long: 9 }, // CONFIRM
   "magshot gauss rifle": { min: 0, medium: 6, long: 9 }, // CONFIRM
+  // Battle Armor support guns. Ranges chosen to match the DFA BA mockup brackets.
+  "david light gauss rifle": { min: 0, medium: 5, long: 7 }, // +0/+0/+4/–
+  "king david light gauss rifle": { min: 0, medium: 8, long: 12 }, // +0/+0/+2/–
+  "tsunami heavy gauss rifle": { min: 0, medium: 5, long: 9 }, // +0/+0/+4/–
+  "light recoilless rifle": { min: 0, medium: 5, long: 9 }, // +0/+0/+4/–
 
   // --- Energy/ballistic: plasma + flamers (canonical) ---
   "plasma rifle": { min: 0, medium: 10, long: 15 }, // CONFIRM
@@ -1291,6 +1303,11 @@ export const WEAPON_ABBREV: Readonly<Record<string, string>> = {
   "light gauss rifle": "LGauss",
   "heavy gauss rifle": "HGauss",
   "ap gauss rifle": "APGauss",
+  "magshot gauss rifle": "MGauss",
+  "david light gauss rifle": "DLGauss",
+  "king david light gauss rifle": "KDLGauss",
+  "tsunami heavy gauss rifle": "T Gauss",
+  "light recoilless rifle": "LRecoilless",
   magshot: "Magshot",
   "srm 2": "SRM-2",
   "srm 4": "SRM-4",

@@ -157,6 +157,16 @@ describe("lookupWeaponDamage (TW values, tech-base aware)", () => {
   it("flags unknown weapons", () => {
     expect(lookupWeaponDamage("Death Ray")).toEqual({ twDamage: 0, unknown: true });
   });
+
+  it("scores Battle Armor support guns from their BLK names (VERIFIED vs DFA mockup)", () => {
+    expect(lookupWeaponDamage("ISBADavidLightGaussRifle").twDamage).toBe(1);
+    expect(lookupWeaponDamage("ISBAKingDavidLightGaussRifle").twDamage).toBe(1);
+    expect(lookupWeaponDamage("ISBATsunamiHeavyGaussRifle").twDamage).toBe(1);
+    expect(lookupWeaponDamage("ISBALightRecoillessRifle").twDamage).toBe(2);
+    // "MagshotGR" now normalizes to the existing magshot entry (was unknown).
+    expect(lookupWeaponDamage("ISBAMagshotGR").twDamage).toBe(2);
+    expect(normalizeWeaponName("ISBAMagshotGR")).toBe("magshot gauss rifle");
+  });
 });
 
 describe("missile damage profile (M dice, VERIFIED vs DFA cards)", () => {
