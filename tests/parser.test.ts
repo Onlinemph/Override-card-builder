@@ -93,6 +93,18 @@ Medium Laser, Center Torso (R)
     ]);
   });
 
+  it("keeps weapon names with internal commas, and maps a 'None' location to CT", () => {
+    const mtf =
+      "chassis:T\nmodel:1\nConfig:Biped\nTechBase:Inner Sphere\nMass:65\nEngine:260 Fusion Engine\n" +
+      "Heat Sinks:10 Single\nWalk MP:4\nArmor:Standard\nCT armor:10\nWeapons:2\n" +
+      "Rifle (Cannon, Heavy), Left Torso\nThumper, None\n";
+    const u = parseMtf(mtf, "commas.mtf");
+    expect(u.weapons.map((w) => [w.name, w.location])).toEqual([
+      ["Rifle (Cannon, Heavy)", "LT"], // comma inside parens does NOT split the name
+      ["Thumper", "CT"], // "None" location -> CT (body/turret-mounted artillery)
+    ]);
+  });
+
   it("parses per-location crit-slot blocks (ammo, CASE, electronics), skipping -Empty-", () => {
     const u = parseMtf(load("Atlas AS7-D (crits).mtf"), "Atlas AS7-D (crits).mtf");
     const slots = u.critSlots ?? [];

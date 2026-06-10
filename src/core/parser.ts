@@ -328,6 +328,28 @@ function deriveStructure(mass: number, file: string, isQuad = false, isTripod = 
  * first field and the LOCATION is the SECOND; any further fields are ignored.
  * A "(R)" marker on the name or location marks a rear-mounted weapon.
  */
+/**
+ * Split a weapon line on commas that are NOT inside parentheses or brackets, so
+ * weapon names with internal commas survive intact, e.g.
+ * "Rifle (Cannon, Heavy), Left Torso" -> ["Rifle (Cannon, Heavy)", "Left Torso"].
+ */
+function splitWeaponFields(text: string): string[] {
+  const fields: string[] = [];
+  let depth = 0;
+  let start = 0;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i]!;
+    if (ch === "(" || ch === "[") depth++;
+    else if (ch === ")" || ch === "]") depth = Math.max(0, depth - 1);
+    else if (ch === "," && depth === 0) {
+      fields.push(text.slice(start, i).trim());
+      start = i + 1;
+    }
+  }
+  fields.push(text.slice(start).trim());
+  return fields;
+}
+
 function parseWeapons(lines: RawLine[], file: string): Weapon[] {
   const idx = lines.findIndex((l) => /^weapons\s*:/i.test(l.text));
   if (idx < 0) {
@@ -343,7 +365,7 @@ function parseWeapons(lines: RawLine[], file: string): Weapon[] {
     cursor++;
     if (line.text === "") continue;
 
-    const fields = line.text.split(",").map((f) => f.trim());
+    const fields = splitWeaponFields(line.text);
     if (fields.length < 2 || fields[0] === "") {
       throw new ParseError(
         `malformed weapon line "${line.text}" (expected "Name, Location")`,

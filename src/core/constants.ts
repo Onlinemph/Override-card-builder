@@ -1385,6 +1385,8 @@ export const WEAPON_LOCATION_MAP: Readonly<Record<string, "HD" | "CT" | "LT" | "
   "rear left leg": "LL",
   "rear right leg": "RL",
   "center leg": "CL",
+  // Body/turret-mounted with no specific location (e.g. some ArtilleryMechs) -> CT.
+  none: "CT",
 } as const;
 
 /**
