@@ -5,11 +5,12 @@
  * PER FACING (nose / wings / aft stay separate), then abbreviated and heat-rated
  * exactly like the 'Mech and vehicle cards.
  *
- * Numbers mirror the combat-vehicle rules as a best-effort starting point: armor
- * = TW/4, Structural Integrity by tonnage bracket, TMM = base/+1 on max thrust,
- * move shows "safe / max" thrust. Hit locations use the Override fighter table
- * (Nose 6-8, R-Wing 3-5, L-Wing 9-11, Aft 2 & 12). Still best-effort — keep
- * validating against the DFA generator's aerospace output.
+ * Armor = TW/4 (VERIFIED); SI is a single airframe-wide value by tonnage
+ * bracket; move shows "safe / max" thrust; TMM is a SINGLE number (the higher
+ * sprint value on max thrust); Sinks = dissipation/5 (aerospace only — conv.
+ * fighters do not track heat); DThr = (nose + aft + one wing) TW / 30. Sinks /
+ * DThr / TMM VERIFIED vs the DFA Aeshna mockup. Hit locations use the Override
+ * fighter table (Nose 6-8, R-Wing 3-5, L-Wing 9-11, Aft 2 & 12).
  */
 
 import { IMPORTANT_EQUIPMENT, VEHICLE_ARMOR_DIVISOR, WEAPON_HINTS, vehicleStructure } from "./constants.js";
@@ -160,8 +161,19 @@ export function convertFighter(unit: FighterUnit): FighterCard {
   // Structural Integrity: a single airframe-wide value, by tonnage bracket (best-effort).
   const structure = vehicleStructure(unit.tonnage);
 
-  // TMM mirrors the 'Mech run table on max thrust; card prints `tmm / tmm+1`.
-  const tmm = lookupTmm(unit.maxThrust);
+  // TMM is a SINGLE number: the higher (sprint) value of the 'Mech pair on max
+  // thrust. VERIFIED vs DFA mockup: Aeshna safe 5 -> max 8 -> base 2 -> TMM 3.
+  const tmm = lookupTmm(unit.maxThrust) + 1;
+
+  // Override heat sinks: dissipation / 5 round nearest, like the 'Mech card.
+  // VERIFIED: Aeshna 21 doubles -> 42 -> Sinks 8. Conventional fighters do not
+  // track heat, so their sinks are 0 (the card omits the field + heat scale).
+  const dissipation = unit.heatSinkCount * (unit.heatSinkType === "double" ? 2 : 1);
+  const sinks = unit.conventional ? 0 : roundNearest(dissipation / 5);
+
+  // Damage Threshold: (nose + aft + one wing) TW armor / 30, round nearest.
+  // VERIFIED: Aeshna (85 + 54 + 64) / 30 = 6.77 -> DThr 7.
+  const dthr = roundNearest((a.nose + a.aft + Math.max(a.leftWing, a.rightWing)) / 30);
 
   return {
     kind: "fighter",
@@ -176,6 +188,8 @@ export function convertFighter(unit: FighterUnit): FighterCard {
     safeThrust: unit.safeThrust,
     maxThrust: unit.maxThrust,
     tmm,
+    sinks,
+    dthr,
     armor,
     structure,
     weapons,

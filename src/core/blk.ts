@@ -31,6 +31,7 @@ import type {
   FighterFacing,
   FighterMount,
   FighterUnit,
+  HeatSinkType,
   InfantryUnit,
   ProtoArmorRaw,
   ProtoLoc,
@@ -406,6 +407,8 @@ export function parseBlkFighter(text: string, file = "<unknown>"): FighterUnit {
   const safeThrust = intOr(scalarAny(blocks, ["safethrust", "cruisemp", "walkmp"]), 0);
   const maxRaw = scalarAny(blocks, ["maxthrust", "flankmp", "runmp"]);
   const maxThrust = maxRaw !== undefined ? intOr(maxRaw, 0) : Math.ceil(safeThrust * RUN_MP_MULTIPLIER);
+  const heatSinkCount = intOr(scalar(blocks, "heatsinks"), 0);
+  const heatSinkType: HeatSinkType = intOr(scalar(blocks, "sink_type"), 0) === 1 ? "double" : "single";
 
   return {
     kind: "fighter",
@@ -417,6 +420,8 @@ export function parseBlkFighter(text: string, file = "<unknown>"): FighterUnit {
     motionType,
     safeThrust,
     maxThrust,
+    heatSinkCount,
+    heatSinkType,
     armor: parseFighterArmor(blocks),
     mounts: parseFighterMounts(blocks),
   };

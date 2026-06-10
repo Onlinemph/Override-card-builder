@@ -232,8 +232,9 @@ function printFighterSummary(card: FighterCard): void {
   const lines: string[] = [];
   const kind = card.conventional ? "Conventional Fighter" : "Aerospace Fighter";
   lines.push(`${card.name}  (${kind}, ${card.motionType}, ${card.tonnage}t ${card.techBase})`);
+  const sinks = card.conventional ? "" : `   Sinks ${card.sinks}`;
   lines.push(
-    `  Thrust ${card.move}   TMM ${card.tmm} / ${card.tmm + 1}   SI ~${card.structure}  [best-effort]`,
+    `  Thrust ${card.move}   TMM ${card.tmm}   DThr ${card.dthr}${sinks}   SI ~${card.structure}`,
   );
   const a = card.armor;
   lines.push(`  Armor  nose ${a.nose}  R-wing ${a.rightWing}  L-wing ${a.leftWing}  aft ${a.aft}`);

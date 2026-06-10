@@ -633,6 +633,10 @@ export interface FighterUnit {
   safeThrust: number;
   /** Max Thrust (≈ run): explicit if present, else ceil(safe * 1.5). */
   maxThrust: number;
+  /** Heat-sink count from `<heatsinks>` (0 if absent). */
+  heatSinkCount: number;
+  /** Heat-sink tech from `<sink_type>`: 1 = double, 0 = single. */
+  heatSinkType: HeatSinkType;
   armor: FighterArmorRaw;
   mounts: FighterMount[];
   sourceFile?: string;
@@ -661,8 +665,16 @@ export interface FighterCard {
   move: string;
   safeThrust: number;
   maxThrust: number;
-  /** Base TMM (mirrored from the 'Mech run table on max thrust); card prints `tmm / tmm+1`. */
+  /** Printed TMM: a SINGLE number, the higher (sprint) value of the 'Mech pair. */
   tmm: number;
+  /**
+   * Override heat sinks: dissipation / 5, round nearest (doubles sink 2 each) —
+   * the same scale as the 'Mech card. 0 for conventional fighters, which do not
+   * track heat (the card omits the Sinks field and heat scale).
+   */
+  sinks: number;
+  /** Damage Threshold: (nose + aft + one wing) TW armor / 30, round nearest. */
+  dthr: number;
   /** Per-facing Override armor (TW / 4). */
   armor: FighterCardArmor;
   /** Single airframe-wide Structural Integrity (best-effort from tonnage). */

@@ -98,33 +98,65 @@ function equipmentLine(card: FighterCard): string {
     .join(", ");
 }
 
+/** Aerospace heat scale: the 'Mech strip with a thrust-flavored level 1. */
+const AERO_HEAT_SCALE = [
+  { n: 5, cls: "h5", txt: "Automatic Shutdown" },
+  { n: 4, cls: "h4", txt: "Ammo Explosion (avoid 8+)" },
+  { n: 3, cls: "h3", txt: "Shutdown (avoid 8+)" },
+  { n: 2, cls: "h2", txt: "+1 Ranged Attack Mod" },
+  { n: 1, cls: "h1", txt: "-2 Safe Thrust / -1 TMM" },
+  { n: 0, cls: "h0", txt: "No Effects" },
+];
+
+function heatScale(): string {
+  const rows = AERO_HEAT_SCALE.map(
+    (r) => `<div class="hs-row"><span class="hs-n ${r.cls}">${r.n}</span><span class="hs-t">${esc(r.txt)}</span></div>`,
+  ).join("");
+  return `<div class="heatscale"><div class="hs-label">Heat Scale</div><div class="hs-rows">${rows}</div></div>`;
+}
+
+/** Pilot condition monitor (consciousness track), as on the 'Mech card. */
+function conditionMonitor(): string {
+  const track = ["3+", "5+", "7+", "9+", "11+"]
+    .map((t) => `<span class="cm-pip">${t}</span>`)
+    .join("");
+  return `<div class="condmon">
+    <span class="cm-grp">Condition ${track}<span class="cm-pip kia">KIA</span></span>
+  </div>`;
+}
+
 /**
  * Render an aerospace/conventional fighter as an HTML string in the Override
- * record-card layout: title banner, UNIT DATA (type / mass / thrust / TMM), the
- * per-facing weapons table, equipment, the OVERRIDE wordmark + skill boxes, and
- * the facing armor diagram (armor over structure hexes).
+ * record-card layout: title banner, UNIT DATA (type / mass / thrust + sinks /
+ * TMM + DThr, with the heat scale for aerospace — conventional fighters do not
+ * track heat), the per-facing weapons table, equipment, a pilot condition
+ * monitor, the OVERRIDE wordmark + skill boxes, and the facing armor diagram.
  */
 export function renderFighterCard(card: FighterCard): string {
   const warnings = card.warnings.length
     ? `<ul class="warnings">${card.warnings.map((w) => `<li>${esc(w)}</li>`).join("")}</ul>`
     : "";
   const type = card.conventional ? "Conventional Fighter" : "Aerospace Fighter";
+  const sinks = card.conventional ? "" : ` <b>Sinks:</b> ${esc(card.sinks)}`;
   return `<article class="card mech-sheet">
     <div class="ms-grid">
       <div class="ms-left">
         <div class="ms-title">${esc(card.name)}</div>
         <div class="ms-unitdata">
           <div class="ms-ud-h">UNIT DATA</div>
-          <div class="ms-ud-stats">
-            <div><b>Type:</b> ${type}</div>
-            <div><b>Mass:</b> ${esc(card.tonnage)} Tons</div>
-            <div class="ms-ud-move"><b>Thrust:</b> ${esc(card.move)}</div>
-            <div><b>TMM:</b> ${esc(card.tmm)} / ${esc(card.tmm + 1)}</div>
+          <div class="ms-ud-cols">
+            <div class="ms-ud-stats">
+              <div><b>Type:</b> ${type}</div>
+              <div><b>Mass:</b> ${esc(card.tonnage)} Tons</div>
+              <div class="ms-ud-move"><b>Thrust:</b> ${esc(card.move)}${sinks}</div>
+              <div><b>TMM:</b> ${esc(card.tmm)} <b>DThr:</b> ${esc(card.dthr)}</div>
+            </div>
+            ${card.conventional ? "" : heatScale()}
           </div>
         </div>
         ${weaponsTable(card)}
         <p class="ms-equip"><b>Equipment:</b> ${equipmentLine(card)}</p>
-        <p class="ba-note">Armor / TMM / SI mirror the ’Mech &amp; vehicle rules (best-effort) — validate against the DFA generator.</p>
+        ${conditionMonitor()}
         ${warnings}
       </div>
       <div class="ms-right">

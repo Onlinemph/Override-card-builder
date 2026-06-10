@@ -54,11 +54,33 @@ describe("parseBlkFighter", () => {
 describe("convertFighter", () => {
   const c = convertFighter(parseBlkFighter(load("Test Fighter TF-1.blk"), "TF-1.blk"));
 
-  it("mirrors thrust, TMM, and per-facing armor (TW / 4)", () => {
+  it("mirrors thrust, single TMM, and per-facing armor (TW / 4)", () => {
     expect(c.move).toBe("5 / 8"); // safe / max
+    // TMM is the single HIGHER value: max thrust 8 -> base 2 -> 3.
+    expect(c.tmm).toBe(3);
     // armor = TW / 4, round nearest (nose 40 -> 10, wings 24 -> 6, aft 16 -> 4).
     expect(c.armor).toEqual({ nose: 10, rightWing: 6, leftWing: 6, aft: 4 });
     expect(c.structure).toBe(2); // 50t -> 2 (45–70t bracket)
+  });
+
+  it("computes DThr = (nose + aft + one wing) / 30, round nearest", () => {
+    // TF-1: (40 + 16 + 24) / 30 = 2.67 -> 3.
+    expect(c.dthr).toBe(3);
+  });
+
+  it("matches the DFA Aeshna mockup: 21 doubles -> Sinks 8, DThr 7, TMM 3", () => {
+    const blk = `<UnitType>\nAero\n</UnitType>\n<Name>\nAeshna\n</Name>\n<SafeThrust>\n5\n</SafeThrust>\n<heatsinks>\n21\n</heatsinks>\n<sink_type>\n1\n</sink_type>\n<tonnage>\n100.0\n</tonnage>\n<armor>\n85\n64\n64\n54\n</armor>\n`;
+    const a = convertFighter(parseBlkFighter(blk, "aeshna.blk"));
+    expect(a.sinks).toBe(8); // 21 x 2 = 42 -> /5 = 8.4 -> 8
+    expect(a.dthr).toBe(7); // (85 + 54 + 64) / 30 = 6.77 -> 7
+    expect(a.tmm).toBe(3); // max 8 -> base 2 -> higher value 3
+  });
+
+  it("zeroes sinks for conventional fighters (they do not track heat)", () => {
+    const blk = `<UnitType>\nConvFighter\n</UnitType>\n<Name>\nX\n</Name>\n<SafeThrust>\n4\n</SafeThrust>\n<heatsinks>\n10\n</heatsinks>\n<sink_type>\n0\n</sink_type>\n<armor>\n20\n10\n10\n10\n</armor>\n`;
+    const conv = convertFighter(parseBlkFighter(blk, "cf.blk"));
+    expect(conv.sinks).toBe(0);
+    expect(conv.dthr).toBe(1); // (20 + 10 + 10) / 30 = 1.33 -> 1
   });
 
   it("groups identical weapons WITHIN a facing only, tagged by facing code", () => {

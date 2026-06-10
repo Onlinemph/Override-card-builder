@@ -278,6 +278,7 @@ export const WEAPON_DAMAGE: Readonly<Record<string, number>> = {
 
   // --- Energy: Variable Speed Pulse + Re-engineered lasers ---
   "medium vsp laser": 9, // range-varying; see WEAPON_DAMAGE_BY_RANGE (nominal short value)
+  "large vsp laser": 11, // range-varying; see WEAPON_DAMAGE_BY_RANGE (nominal short value)
   "medium reengineered laser": 6, // VERIFIED vs DFA card (reMLas -> 2)
 
   // --- Energy: PPCs ---
@@ -724,6 +725,7 @@ export const WEAPON_HEAT: Readonly<Record<string, number>> = {
   "improved heavy medium laser": 7,
   "improved heavy large laser": 18,
   "medium vsp laser": 7, // round(7/5) -> 1
+  "large vsp laser": 10, // 10/5 -> 2 (VERIFIED vs DFA Aeshna mockup: Ht 2)
   "medium reengineered laser": 7, // round(7/5) -> 1
   "plasma cannon": 7, // round(7/5) -> 1 (cPlasCannon)
   "micro pulse laser": 1,
@@ -811,6 +813,7 @@ export const WEAPON_DAMAGE_BY_RANGE: Readonly<Record<string, readonly [number, n
   "snub-nose ppc": [10, 8, 5], // VERIFIED -> 4|3|2
   "heavy gauss rifle": [25, 20, 10], // VERIFIED -> 9|7|4
   "medium vsp laser": [9, 7, 5], // VERIFIED vs DFA card vsMPLas -> 3|3|2
+  "large vsp laser": [11, 9, 7], // VERIFIED vs DFA Aeshna mockup vsLPLas -> 4|3|3
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -825,6 +828,8 @@ export const WEAPON_BRACKET_OVERRIDE: Readonly<Record<string, import("./types.js
   // Variable-Speed Pulse Laser: -3 at PB/S, fading to +0 by medium. VERIFIED vs
   // DFA card vsMPLas: -3/-3/+0/–/–.
   "medium vsp laser": { pb: -3, s: -3, m: 0, l: null, x: null },
+  // VERIFIED vs DFA Aeshna mockup vsLPLas: -3/-3/+0/+3/–.
+  "large vsp laser": { pb: -3, s: -3, m: 0, l: 3, x: null },
   // Arrow IV artillery: no point-blank fire; flat +4 from short out. VERIFIED vs
   // DFA card: –/+4/+4/+4/+4.
   "arrow iv": { pb: null, s: 4, m: 4, l: 4, x: 4 },
