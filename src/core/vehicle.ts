@@ -191,6 +191,7 @@ export function convertVehicle(unit: VehicleUnit): VehicleCard {
     structure,
     hasTurret: unit.hasTurret,
     hasRotor: unit.hasRotor,
+    ...(unit.support ? { support: true } : {}),
     weapons,
     equipment: buildVehicleEquipment(otherMounts),
     warnings,

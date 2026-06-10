@@ -294,14 +294,17 @@ export function parseBlkVehicle(text: string, file = "<unknown>"): VehicleUnit {
   const blocks = readBlocks(text);
 
   const unitType = scalar(blocks, "unittype");
-  const normalizedType = unitType?.toLowerCase();
-  if (unitType && normalizedType !== "tank" && normalizedType !== "vtol") {
+  const normalizedType = unitType?.toLowerCase().replace(/\s+/g, "");
+  // Combat vehicles (Tank/VTOL) and Support vehicles share the BLK structure.
+  const VEHICLE_TYPES = new Set(["tank", "vtol", "supporttank", "largesupporttank", "supportvtol"]);
+  if (unitType && !VEHICLE_TYPES.has(normalizedType ?? "")) {
     throw new ParseError(
-      `expected a Tank or VTOL BLK but got unit type "${unitType}"`,
+      `expected a Tank/VTOL or Support vehicle BLK but got unit type "${unitType}"`,
       file,
       "UnitType",
     );
   }
+  const support = (normalizedType ?? "").startsWith("support") || normalizedType === "largesupporttank";
 
   const chassis = scalarAny(blocks, ["name", "chassis_name"]);
   if (!chassis) throw new ParseError("missing unit name", file, "Name");
@@ -309,7 +312,7 @@ export function parseBlkVehicle(text: string, file = "<unknown>"): VehicleUnit {
 
   const tonnage = Number.parseFloat(scalarAny(blocks, ["tonnage", "weight"]) ?? "0") || 0;
   const motionType = scalarAny(blocks, ["motion_type"]) ?? "Tracked";
-  const isVtol = normalizedType === "vtol" || motionType.toLowerCase() === "vtol";
+  const isVtol = normalizedType === "vtol" || normalizedType === "supportvtol" || motionType.toLowerCase() === "vtol";
   const cruiseMP = intOr(scalarAny(blocks, ["cruisemp", "walkmp"]), 0);
   const flankRaw = scalarAny(blocks, ["flankmp", "runmp"]);
   const flankMP = flankRaw !== undefined ? intOr(flankRaw, 0) : Math.ceil(cruiseMP * RUN_MP_MULTIPLIER);
@@ -328,6 +331,7 @@ export function parseBlkVehicle(text: string, file = "<unknown>"): VehicleUnit {
     armor,
     hasTurret,
     hasRotor: isVtol,
+    ...(support ? { support: true } : {}),
     mounts: parseVehicleMounts(blocks),
   };
 }

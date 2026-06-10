@@ -128,7 +128,7 @@ export function renderVehicleCard(card: VehicleCard): string {
         <div class="ms-unitdata">
           <div class="ms-ud-h">UNIT DATA</div>
           <div class="ms-ud-stats">
-            <div><b>Type:</b> ${card.hasRotor ? "VTOL" : "Combat Vehicle"}</div>
+            <div><b>Type:</b> ${card.support ? "Support " : "Combat "}${card.hasRotor ? "VTOL" : "Vehicle"}</div>
             <div><b>Mass:</b> ${esc(card.tonnage)} Tons</div>
             <div class="ms-ud-move"><b>Move:</b> ${esc(card.move)}</div>
             <div><b>TMM:</b> ${esc(card.tmm)} / ${esc(card.tmm + 1)}</div>

@@ -52,7 +52,7 @@ export function convertAny(text: string, file = "<unknown>"): AnyCard {
   if (type === "battlearmor") {
     return { kind: "battlearmor", card: convertBattleArmor(parseBlkBattleArmor(text, file)) };
   }
-  if (type === "tank" || type === "vtol") {
+  if (type === "tank" || type === "vtol" || type === "supporttank" || type === "largesupporttank" || type === "supportvtol") {
     return { kind: "vehicle", card: convertVehicle(parseBlkVehicle(text, file)) };
   }
   if (FIGHTER_TYPES.has(type)) {

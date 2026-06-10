@@ -199,7 +199,7 @@ function printBASummary(card: BattleArmorCard): void {
 /** Print a Combat Vehicle card summary. Armor/TMM/structure are best-effort. */
 function printVehicleSummary(card: VehicleCard): void {
   const lines: string[] = [];
-  const kind = card.hasRotor ? "VTOL" : "Combat Vehicle";
+  const kind = `${card.support ? "Support" : "Combat"} ${card.hasRotor ? "VTOL" : "Vehicle"}`;
   lines.push(`${card.name}  (${kind}, ${card.motionType}, ${card.tonnage}t ${card.techBase})`);
   lines.push(`  Move ${card.move}   TMM ${card.tmm} / ${card.tmm + 1}   Structure ~${card.structure}  [best-effort]`);
   const a = card.armor;

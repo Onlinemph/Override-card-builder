@@ -131,3 +131,34 @@ describe("convertAny dispatch", () => {
     expect(r.card.name).toBe("Test Tank TT-1");
   });
 });
+
+describe("Support vehicles (SupportTank / LargeSupportTank / SupportVTOL)", () => {
+  const blk = (type: string, motion: string, rotor = "") =>
+    `<UnitType>\n${type}\n</UnitType>\n<Name>\nSup\n</Name>\n<motion_type>\n${motion}\n</motion_type>\n` +
+    `<cruiseMP>\n4\n</cruiseMP>\n<armor>\n20\n16\n16\n12${rotor}\n</armor>\n` +
+    `<Front Equipment>\nMedium Laser\n</Front Equipment>\n<tonnage>\n50.0\n</tonnage>\n`;
+
+  it("routes a SupportTank through the vehicle path and flags it support", () => {
+    const u = parseBlkVehicle(blk("SupportTank", "Wheeled"), "s.blk");
+    expect(u.kind).toBe("vehicle");
+    expect(u.support).toBe(true);
+    expect(u.hasRotor).toBe(false);
+    const c = convertVehicle(u);
+    expect(c.support).toBe(true);
+    expect(c.armor.front).toBe(5); // 20 / 4
+  });
+
+  it("treats a SupportVTOL as a rotored support vehicle", () => {
+    const r = convertAny(blk("SupportVTOL", "VTOL", "\n8"), "v.blk");
+    expect(r.kind).toBe("vehicle");
+    if (r.kind === "vehicle") {
+      expect(r.card.support).toBe(true);
+      expect(r.card.hasRotor).toBe(true);
+      expect(r.card.armor.rotor).toBe(2); // 8 / 4
+    }
+  });
+
+  it("LargeSupportTank is accepted too", () => {
+    expect(parseBlkVehicle(blk("LargeSupportTank", "Tracked"), "l.blk").support).toBe(true);
+  });
+});

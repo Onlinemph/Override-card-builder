@@ -517,6 +517,8 @@ export interface VehicleUnit {
   hasTurret: boolean;
   /** True for VTOLs — adds the rotor location. */
   hasRotor: boolean;
+  /** True for Support vehicles (SupportTank/LargeSupportTank/SupportVTOL). */
+  support?: boolean;
   mounts: VehicleMount[];
   sourceFile?: string;
 }
@@ -578,6 +580,8 @@ export interface VehicleCard {
   hasTurret: boolean;
   /** True for VTOLs — the card shows a rotor location. */
   hasRotor: boolean;
+  /** True for Support vehicles — the card labels them "Support …". */
+  support?: boolean;
   weapons: VehicleWeaponRow[];
   equipment: VehicleEquipment[];
   warnings: string[];
