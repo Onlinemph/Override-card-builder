@@ -72,6 +72,7 @@ export const M_DICE_DIVISOR = 10;
  * TW values are wired in.
  */
 export const MISSILE_WEAPON_FAMILIES: ReadonlyArray<string> = [
+  "extended lrm", // Extended LRM = normal LRM damage, longer range
   "lrm",
   "srm",
   "streak srm",
@@ -414,6 +415,19 @@ export const WEAPON_DAMAGE: Readonly<Record<string, number>> = {
   "large xpulse laser": 9, // VERIFIED vs DFA mockup (LXPLas -> 3)
   "large reengineered laser": 9, // VERIFIED vs DFA mockup (reLLas -> 3)
   "thunderbolt 5": 5, // VERIFIED vs DFA mockup (TBolt-5 -> 2); direct (single missile)
+  "thunderbolt 10": 10, // TBolt-10 -> 4 (same profile as 5)
+  "thunderbolt 15": 15, // TBolt-15 -> 5
+  "thunderbolt 20": 20, // TBolt-20 -> 7
+  // Extended LRM = normal LRM damage, just longer range (per the user).
+  "extended lrm 5": 5,
+  "extended lrm 10": 10,
+  "extended lrm 15": 15,
+  "extended lrm 20": 20,
+  // Clan ER Large Pulse Laser. VERIFIED vs DFA mockup (cerLPLas -> 4, Ht 3).
+  "er large pulse laser": 12,
+  // BA recoilless rifles (anti-infantry). VERIFIED vs DFA mockup (M/HRecoilless -> 1).
+  "medium recoilless rifle": 1,
+  "heavy recoilless rifle": 1,
   "er micro laser": 2, // IS TW 2 (Clan override in WEAPON_DAMAGE_CLAN)
   "micro pulse laser": 3, // IS TW 3 (Clan override in WEAPON_DAMAGE_CLAN)
   "support ppc": 2, // BA/support scale PPC
@@ -462,9 +476,6 @@ export const WEAPON_RV_MISSILE: Readonly<Record<string, RangeVaryingMissileProfi
   // Arrow IV artillery: flat base across ranges, so byRange is uniform and the
   // formatter collapses it to "4+M1 (7)". VERIFIED vs DFA card.
   "arrow iv": { byRange: [4, 4, 4], mDice: 1, max: 7 },
-  // Extended LRM — longer range, minimum-range penalty. VERIFIED vs DFA mockup:
-  // eLRM-20 -> 1|1|2+M2 (7).
-  "extended lrm 20": { byRange: [1, 1, 2], mDice: 2, max: 7 },
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -658,7 +669,16 @@ export const WEAPON_RANGES: Readonly<Record<string, WeaponRange>> = {
   "heavy small laser": { min: 0, medium: 2, long: 3, toHitMod: 1 }, // +1/+1/–/–/– (heavy-laser to-hit penalty)
   "heavy medium laser": { min: 0, medium: 6, long: 9, toHitMod: 1 }, // VERIFIED vs DFA mockup cHMLas: +1/+1/+3/–/–
   "thunderbolt 5": { min: 5, medium: 12, long: 18 }, // TBolt-5: +4/+2/+2/+4/–
-  "extended lrm 20": { min: 10, medium: 23, long: 38 }, // eLRM-20: +4/+2/+0/+0/+2
+  "thunderbolt 10": { min: 5, medium: 12, long: 18 },
+  "thunderbolt 15": { min: 5, medium: 12, long: 18 },
+  "thunderbolt 20": { min: 5, medium: 12, long: 18 },
+  "extended lrm 5": { min: 10, medium: 23, long: 38 },
+  "extended lrm 10": { min: 10, medium: 23, long: 38 },
+  "extended lrm 15": { min: 10, medium: 23, long: 38 },
+  "extended lrm 20": { min: 10, medium: 23, long: 38 }, // eLRM: +4/+2/+0/+0/+2
+  "er large pulse laser": { min: 0, medium: 15, long: 23, toHitMod: -1 }, // cerLPLas: -1/-1/-1/+1/+3
+  "medium recoilless rifle": { min: 0, medium: 5, long: 9 }, // +0/+0/+4/–/–
+  "heavy recoilless rifle": { min: 0, medium: 5, long: 9 }, // +0/+0/+4/–/–
   "large xpulse laser": { min: 0, medium: 10, long: 15, toHitMod: -2 }, // LXPLas: -2/-2/+0/+2/–
   "large reengineered laser": { min: 0, medium: 10, long: 15, toHitMod: -1 }, // reLLas: -1/-1/+1/+3/–
   "improved heavy small laser": { min: 0, medium: 2, long: 3 }, // ciHSLas: +0/+0/–/–/– (improved = no penalty)
@@ -752,7 +772,14 @@ export const WEAPON_HEAT: Readonly<Record<string, number>> = {
   "large xpulse laser": 14, // round(14/5) -> 3 (LXPLas)
   "large reengineered laser": 10, // round(10/5) -> 2 (reLLas)
   "thunderbolt 5": 3, // round(3/5) -> 1
+  "thunderbolt 10": 5, // round(5/5) -> 1
+  "thunderbolt 15": 7, // round(7/5) -> 1
+  "thunderbolt 20": 8, // round(8/5) -> 2 (TBolt-20)
+  "extended lrm 5": 3, // round(3/5) -> 1
+  "extended lrm 10": 6, // round(6/5) -> 1
+  "extended lrm 15": 8, // round(8/5) -> 2
   "extended lrm 20": 10, // round(10/5) -> 2 (eLRM-20)
+  "er large pulse laser": 13, // round(13/5) -> 3 (cerLPLas)
   "improved heavy medium laser": 7,
   "improved heavy large laser": 18,
   "medium vsp laser": 7, // round(7/5) -> 1
@@ -1093,6 +1120,7 @@ export const IMPORTANT_EQUIPMENT: ReadonlyArray<ImportantEquipment> = [
   { match: ["c3"], label: "C3" },
   { match: ["supercharger"], label: "Supercharger" },
   { match: ["masc"], label: "MASC" },
+  { match: ["machine gun array"], label: "MG Array" },
   { match: ["triple strength myomer", "triple-strength myomer", "tsm"], label: "TSM" },
   { match: ["coolant pod"], label: "Coolant Pod" },
   { match: ["stealth"], label: "Stealth Armor", unique: true },
@@ -1338,6 +1366,17 @@ export const WEAPON_ABBREV: Readonly<Record<string, string>> = {
   "lrm 10": "LRM-10",
   "lrm 15": "LRM-15",
   "lrm 20": "LRM-20",
+  "extended lrm 5": "eLRM-5",
+  "extended lrm 10": "eLRM-10",
+  "extended lrm 15": "eLRM-15",
+  "extended lrm 20": "eLRM-20",
+  "thunderbolt 5": "TBolt-5",
+  "thunderbolt 10": "TBolt-10",
+  "thunderbolt 15": "TBolt-15",
+  "thunderbolt 20": "TBolt-20",
+  "er large pulse laser": "erLPLas",
+  "medium recoilless rifle": "MRecoilless",
+  "heavy recoilless rifle": "HRecoilless",
   "ac/2": "AC/2",
   "ac/5": "AC/5",
   "ac/10": "AC/10",

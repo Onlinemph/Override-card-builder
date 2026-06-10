@@ -21,6 +21,7 @@ import {
   isMissileWeapon,
   isRangeVaryingCluster,
   isRocketLauncher,
+  isWeaponBlockEquipment,
   lookupHeadArmor,
   lookupTmm,
   lookupWeaponDamage,
@@ -958,8 +959,8 @@ describe("DFA card batch 5: Thunderbolt, Extended LRM, X-Pulse/Re-eng/Heavy lase
     expect(ht("Thunderbolt 5")).toBe(1);
   });
 
-  it("Extended LRM 20 -> 1|1|2+M2 (7), Ht 2 (+4/+2/+0/+0/+2)", () => {
-    expect(dr("Extended LRM 20")).toEqual({ damageText: "1|1|2+M2 (7)", rangeText: "+4 +2 +0 +0 +2", unknown: false });
+  it("Extended LRM 20 -> normal LRM-20 damage at the longer range, Ht 2", () => {
+    expect(dr("Extended LRM 20")).toEqual({ damageText: "2+M2 (7)", rangeText: "+4 +2 +0 +0 +2", unknown: false });
     expect(ht("Extended LRM 20")).toBe(2);
   });
 
@@ -978,6 +979,48 @@ describe("DFA card batch 5: Thunderbolt, Extended LRM, X-Pulse/Re-eng/Heavy lase
     // Was +0/+0/+2 (wrong); now +1/+1/+3 like the heavy large laser.
     expect(dr("Heavy Medium Laser", "Clan")).toEqual({ damageText: "4", rangeText: "+1 +1 +3 – –", unknown: false });
     expect(ht("Heavy Medium Laser", "Clan")).toBe(1);
+  });
+});
+
+describe("DFA card batch 6: Thunderbolt family, Extended LRM, ER Large Pulse, Recoilless, MG Array", () => {
+  const conv = (name: string, tech: TechBase = "IS") =>
+    convertWeapon({ name, location: "CT", rawLocation: "CT", rearMounted: false }, tech, 20);
+  const dr = (name: string, tech: TechBase = "IS") => {
+    const c = conv(name, tech);
+    return { damageText: c.damageText, rangeText: c.rangeText, unknown: c.unknown };
+  };
+  const ht = (name: string, tech: TechBase = "IS") => ticHeat({ weapons: [conv(name, tech)] } as never);
+
+  it("Thunderbolt 5/10/15/20 share the T5 profile, scaling damage (2/4/5/7)", () => {
+    expect(conv("Thunderbolt 5").damageText).toBe("2");
+    expect(conv("Thunderbolt 10").damageText).toBe("4");
+    expect(conv("Thunderbolt 15").damageText).toBe("5");
+    expect(conv("Thunderbolt 20").damageText).toBe("7");
+    expect(conv("Thunderbolt 20").rangeText).toBe("+4 +2 +2 +4 –");
+    expect(ht("Thunderbolt 20")).toBe(2); // the others are Ht 1
+  });
+
+  it("Extended LRM = normal LRM damage at the longer range", () => {
+    expect(dr("Extended LRM 5")).toEqual({ damageText: "1+M1 (2)", rangeText: "+4 +2 +0 +0 +2", unknown: false });
+    expect(dr("Extended LRM 20")).toEqual({ damageText: "2+M2 (7)", rangeText: "+4 +2 +0 +0 +2", unknown: false });
+    // Same damage as the plain LRM of the same size.
+    expect(conv("Extended LRM 15").damageText).toBe(conv("LRM 15").damageText);
+  });
+
+  it("Clan ER Large Pulse Laser -> 4 (-1/-1/-1/+1/+3), Ht 3", () => {
+    expect(dr("CLERLargePulseLaser", "Clan")).toEqual({ damageText: "4", rangeText: "-1 -1 -1 +1 +3", unknown: false });
+    expect(ht("CLERLargePulseLaser", "Clan")).toBe(3);
+  });
+
+  it("Medium/Heavy Recoilless Rifle (BA) -> 1 (+0/+0/+4)", () => {
+    expect(dr("ISBAMediumRecoillessRifle")).toEqual({ damageText: "1", rangeText: "+0 +0 +4 – –", unknown: false });
+    expect(dr("ISBAHeavyRecoillessRifle")).toEqual({ damageText: "1", rangeText: "+0 +0 +4 – –", unknown: false });
+  });
+
+  it("MG Array is a linking device (equipment), not a weapon; plain MGs stay weapons", () => {
+    expect(isWeaponBlockEquipment("Light Machine Gun Array")).toBe(true);
+    expect(isWeaponBlockEquipment("Machine Gun Array")).toBe(true);
+    expect(isWeaponBlockEquipment("Light Machine Gun")).toBe(false);
   });
 });
 
