@@ -592,6 +592,23 @@ describe("range brackets (page 43, VERIFIED vs DFA cards)", () => {
     expect(convertWeapon({ name: "Prototype ER Medium Laser", location: "RA", rearMounted: false }, "Clan", 50).damageText).toBe("2");
   });
 
+  it("reproduces the batch-10 mockup (improved heavy lasers, artillery cannons, re-eng small)", () => {
+    const row = (name: string, tech: TechBase = "IS") => {
+      const w = convertWeapon({ name, location: "RA", rearMounted: false }, tech, 50);
+      return { dmg: w.damageText, rng: w.rangeText, ht: Math.round(lookupWeaponHeat(name) / 5), unk: w.unknown };
+    };
+    // Improved Heavy lasers: already in the table; MegaMek's word order now folds in.
+    expect(row("CLImprovedSmallHeavyLaser", "Clan")).toEqual({ dmg: "2", rng: "+0 +0 – – –", ht: 1, unk: false });
+    expect(row("CLImprovedMediumHeavyLaser", "Clan")).toEqual({ dmg: "4", rng: "+0 +0 +2 – –", ht: 1, unk: false });
+    expect(row("CLImprovedLargeHeavyLaser", "Clan")).toEqual({ dmg: "6", rng: "+0 +0 +2 +4 –", ht: 4, unk: false });
+    // Small Re-engineered Laser (-1 to-hit, point-blank).
+    expect(row("Small Re-engineered Laser")).toEqual({ dmg: "2", rng: "-1 -1 – – –", ht: 1, unk: false });
+    // Artillery cannons (rvmissile) + Thumper artillery piece (flat +4).
+    expect(row("Long Tom Cannon")).toEqual({ dmg: "3+M2 (7)", rng: "+2 +0 +0 +2 +4", ht: 4, unk: false });
+    expect(row("Sniper Cannon")).toEqual({ dmg: "2+M1 (4)", rng: "+2 +0 +2 – –", ht: 2, unk: false });
+    expect(row("Thumper")).toEqual({ dmg: "2+M2 (5)", rng: "– +4 +4 +4 +4", ht: 1, unk: false });
+  });
+
   it("standard bookkeeping: MagShot, I-OS, prototype RL, and non-weapon mounts", () => {
     // "MagShot" splits to "mag shot" — rejoined so it picks up its gauss stats.
     expect(normalizeWeaponName("MagShot")).toBe("magshot");

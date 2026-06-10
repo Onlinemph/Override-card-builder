@@ -284,6 +284,7 @@ export const WEAPON_DAMAGE: Readonly<Record<string, number>> = {
   "small vsp laser": 5, // range-varying; see WEAPON_DAMAGE_BY_RANGE (nominal short value)
   "medium vsp laser": 9, // range-varying; see WEAPON_DAMAGE_BY_RANGE (nominal short value)
   "large vsp laser": 11, // range-varying; see WEAPON_DAMAGE_BY_RANGE (nominal short value)
+  "small reengineered laser": 4, // VERIFIED vs DFA mockup (reSLas -> 2, Ht 1)
   "medium reengineered laser": 6, // VERIFIED vs DFA card (reMLas -> 2)
 
   // --- Energy: Chemical Lasers (fuel-fired; Small/Medium make no heat, Large 1).
@@ -524,6 +525,13 @@ export const WEAPON_RV_MISSILE: Readonly<Record<string, RangeVaryingMissileProfi
   // Arrow IV artillery: flat base across ranges, so byRange is uniform and the
   // formatter collapses it to "4+M1 (7)". VERIFIED vs DFA card.
   "arrow iv": { byRange: [4, 4, 4], mDice: 1, max: 7 },
+
+  // Artillery cannons + Thumper. Uniform base collapses to "base+M{n} (max)".
+  // VERIFIED vs DFA mockup: Long Tom Cannon 3+M2 (7), Sniper Cannon 2+M1 (4),
+  // Thumper 2+M2 (5).
+  "long tom cannon": { byRange: [3, 3, 3], mDice: 2, max: 7 },
+  "sniper cannon": { byRange: [2, 2, 2], mDice: 1, max: 4 },
+  "thumper": { byRange: [2, 2, 2], mDice: 2, max: 5 },
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -659,6 +667,7 @@ export const WEAPON_RANGES: Readonly<Record<string, WeaponRange>> = {
   "improved heavy large laser": { min: 0, medium: 10, long: 15 }, // ciHLLas: +0/+0/+2/+4/–
 
   // --- Energy: Re-engineered laser (-1 to-hit; VERIFIED vs DFA card reMLas: -1/-1/+1/–/–) ---
+  "small reengineered laser": { min: 0, medium: 2, long: 3, toHitMod: -1 }, // reSLas: -1/-1/–/–/–
   "medium reengineered laser": { min: 0, medium: 6, long: 9, toHitMod: -1 },
 
   // --- Energy: ER Medium Pulse Laser (Clan; -1 to-hit; VERIFIED vs DFA card cerMPLas: -1/-1/+1/+3/–) ---
@@ -729,6 +738,11 @@ export const WEAPON_RANGES: Readonly<Record<string, WeaponRange>> = {
   // Improved Heavy Gauss: flat damage, longer reach. VERIFIED vs DFA mockup
   // iHGauss: +2/+0/+2/+2/+4.
   "improved heavy gauss rifle": { min: 3, medium: 12, long: 20 },
+
+  // --- Artillery cannons (direct fire; VERIFIED vs DFA mockup). Thumper (the
+  // artillery piece) uses the flat +4 override instead — see WEAPON_BRACKET_OVERRIDE. ---
+  "long tom cannon": { min: 3, medium: 13, long: 24 }, // +2/+0/+0/+2/+4
+  "sniper cannon": { min: 3, medium: 9, long: 12 }, // +2/+0/+2/–/–
 
   // --- Ballistic: misc Gauss / supporting (canonical, tech-independent) ---
   "ap gauss rifle": { min: 0, medium: 6, long: 9 }, // CONFIRM
@@ -878,7 +892,12 @@ export const WEAPON_HEAT: Readonly<Record<string, number>> = {
   "large vsp laser": 10, // 10/5 -> 2 (VERIFIED vs DFA Aeshna mockup: Ht 2)
   "er small pulse laser": 3, // round(3/5) -> 1 (VERIFIED vs DFA mockup cerSPLas: Ht 1)
   "binary laser cannon": 16, // round(16/5) -> 3 (VERIFIED vs DFA mockup Blazer: Ht 3)
+  "small reengineered laser": 4, // round(4/5) -> 1 (VERIFIED vs DFA mockup reSLas: Ht 1)
   "medium reengineered laser": 7, // round(7/5) -> 1
+  // Artillery cannons + Thumper (VERIFIED vs DFA mockup: Ht 4 / 2 / 1).
+  "long tom cannon": 20, // round(20/5) -> 4
+  "sniper cannon": 10, // round(10/5) -> 2
+  "thumper": 5, // round(5/5) -> 1
   "plasma cannon": 7, // round(7/5) -> 1 (cPlasCannon)
   "micro pulse laser": 1,
   "er micro laser": 1,
@@ -1008,6 +1027,9 @@ export const WEAPON_BRACKET_OVERRIDE: Readonly<Record<string, import("./types.js
   // Arrow IV artillery: no point-blank fire; flat +4 from short out. VERIFIED vs
   // DFA card: –/+4/+4/+4/+4.
   "arrow iv": { pb: null, s: 4, m: 4, l: 4, x: 4 },
+  // Thumper artillery piece: same flat-+4 artillery pattern. VERIFIED vs DFA
+  // mockup: –/+4/+4/+4/+4.
+  "thumper": { pb: null, s: 4, m: 4, l: 4, x: 4 },
   // Silver Bullet Gauss: cluster shotgun with a -1 to-hit from Short out. VERIFIED
   // vs DFA mockup SBGauss: +2/-1/-1/+1/+3.
   "silver bullet gauss rifle": { pb: 2, s: -1, m: -1, l: 1, x: 3 },
@@ -1471,6 +1493,14 @@ export const WEAPON_ABBREV: Readonly<Record<string, string>> = {
   "large pulse laser": "LPLas",
   "er medium pulse laser": "erMPLas",
   "er small pulse laser": "erSPLas",
+  // Clan-only improved heavy lasers (the "c" is part of the printed label).
+  "improved heavy small laser": "ciHSLas",
+  "improved heavy medium laser": "ciHMLas",
+  "improved heavy large laser": "ciHLLas",
+  // Re-engineered lasers (IS; no Clan prefix).
+  "small reengineered laser": "reSLas",
+  "medium reengineered laser": "reMLas",
+  "large reengineered laser": "reLLas",
   "small chem laser": "ChemSLas",
   "medium chem laser": "ChemMLas",
   "large chem laser": "ChemLLas",

@@ -164,6 +164,7 @@ export function normalizeWeaponName(raw: string): string {
   s = s.replace(/\bmag shot\b/g, "magshot"); // "MagShot" splits to "mag shot" -> rejoin
   s = s.replace(/\bfire ?drake( incendiary)?\b/g, "firedrake"); // "FireDrake"/"Firedrake Incendiary" -> "firedrake"
   s = s.replace(/\bchemical laser\b/g, "chem laser"); // "Medium Chemical Laser" -> "medium chem laser"
+  s = s.replace(/\bimproved (small|medium|large) heavy laser\b/g, "improved heavy $1 laser"); // MegaMek word order
   s = s.replace(/\bi-?os\b/g, "").trim(); // strip "(I)OS" Improved-One-Shot suffix (ISSRM2IOS -> srm 2)
   s = s.replace(/\b(rocket launcher \d+) prototype\b/g, "$1"); // prototype RL = same stats
   s = s.replace(/\bprototype (rocket launcher \d+)\b/g, "$1"); // "Prototype Rocket Launcher 20" -> "rocket launcher 20"
