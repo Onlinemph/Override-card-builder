@@ -881,6 +881,22 @@ export function isNonWeaponMount(name: string): boolean {
 }
 
 /**
+ * Capital- and sub-capital-scale weapons (and their ammo): Capital/Sub-Capital
+ * Missile Launchers, Sub-Capital Cannons/Lasers, Screen Launchers, and the
+ * named capital missiles (AR10, Killer Whale, White Shark, Barracuda, Piranha,
+ * Stingray, Manta Ray). Override has no 'Mech-scale stats for these, so on the
+ * drone DropShips/pocket-warships that carry them they are suppressed entirely
+ * (no row, no warning) rather than printed as zero-damage unknowns.
+ */
+export function isWarshipWeapon(name: string): boolean {
+  return (
+    /\bcapital\b/i.test(name) || // "Capital ..." and "Sub-Capital ..."
+    /screen launcher/i.test(name) ||
+    /\b(ar10|killer whale|white shark|barracuda|piranha|stingray|manta ray)\b/i.test(name)
+  );
+}
+
+/**
  * Notable construction options carried on the header lines (Engine: / Gyro: /
  * Armor: / Structure: / Cockpit:) rather than as crit slots, surfaced as
  * body-wide equipment so they reach the card: XL/XXL/Light/Compact engines (with

@@ -19,6 +19,7 @@ import {
   ammoLabel,
   convertWeapon,
   groupIntoTics,
+  isWarshipWeapon,
   isWeaponBlockEquipment,
   lookupTmm,
   lookupWeaponDamage,
@@ -116,6 +117,8 @@ export function convertFighter(unit: FighterUnit): FighterCard {
   for (const facing of FACING_ORDER) {
     const cardWeapons: CardWeapon[] = [];
     for (const mount of unit.mounts.filter((m) => m.facing === facing)) {
+      // Capital-scale guns have no 'Mech-scale stats — drop them (no row, no warning).
+      if (isWarshipWeapon(mount.name)) continue;
       const isAmmo = /\bammo\b/i.test(mount.name);
       const { unknown } = lookupWeaponDamage(mount.name, unit.techBase);
       // AMS / Laser AMS / TAG are equipment in Override, never weapons.

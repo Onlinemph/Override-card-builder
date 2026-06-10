@@ -19,6 +19,7 @@ import {
   ammoLabel,
   convertWeapon,
   groupIntoTics,
+  isWarshipWeapon,
   isWeaponBlockEquipment,
   lookupTmm,
   lookupWeaponDamage,
@@ -103,6 +104,8 @@ export function convertDropship(unit: DropshipUnit): DropshipCard {
   for (const arc of ARC_ORDER) {
     const cardWeapons: CardWeapon[] = [];
     for (const mount of unit.mounts.filter((m) => m.facing === arc)) {
+      // Capital-scale guns have no 'Mech-scale stats — drop them (no row, no warning).
+      if (isWarshipWeapon(mount.name)) continue;
       const isAmmo = /\bammo\b/i.test(mount.name);
       const { unknown } = lookupWeaponDamage(mount.name, unit.techBase);
       const isEquipment = isWeaponBlockEquipment(mount.name);

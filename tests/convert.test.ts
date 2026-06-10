@@ -23,6 +23,7 @@ import {
   isRocketLauncher,
   isWeaponBlockEquipment,
   isNonWeaponMount,
+  isWarshipWeapon,
   lookupHeadArmor,
   lookupTmm,
   lookupWeaponDamage,
@@ -607,6 +608,18 @@ describe("range brackets (page 43, VERIFIED vs DFA cards)", () => {
     expect(isNonWeaponMount("1 Cargo (1 ton)")).toBe(true);
     expect(isNonWeaponMount("ISNarc Pods")).toBe(true);
     expect(isNonWeaponMount("Medium Laser")).toBe(false);
+  });
+
+  it("flags capital/sub-capital/screen weapons (and their ammo) as warship-scale", () => {
+    expect(isWarshipWeapon("Capital Missile Launcher (AR10 Launcher)")).toBe(true);
+    expect(isWarshipWeapon("Sub-Capital Cannon (Heavy)")).toBe(true);
+    expect(isWarshipWeapon("Sub-Capital Laser (SCL/1)")).toBe(true);
+    expect(isWarshipWeapon("(B) Screen Launcher")).toBe(true);
+    expect(isWarshipWeapon("Ammo AR10 Killer Whale")).toBe(true);
+    expect(isWarshipWeapon("Sub-Capital Missile Launcher (Piranha)")).toBe(true);
+    // 'Mech-scale weapons are not warship-scale.
+    expect(isWarshipWeapon("Gauss Rifle")).toBe(false);
+    expect(isWarshipWeapon("ER PPC")).toBe(false);
   });
 
   it("applies Clan range overrides where TW ranges diverge", () => {
