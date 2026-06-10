@@ -944,6 +944,43 @@ describe("DFA card batch 4: ER Med Pulse, ATM-12, Plasma + heat round + aliases"
   });
 });
 
+describe("DFA card batch 5: Thunderbolt, Extended LRM, X-Pulse/Re-eng/Heavy lasers", () => {
+  const conv = (name: string, tech: TechBase = "IS") =>
+    convertWeapon({ name, location: "CT", rawLocation: "CT", rearMounted: false }, tech, 20);
+  const dr = (name: string, tech: TechBase = "IS") => {
+    const c = conv(name, tech);
+    return { damageText: c.damageText, rangeText: c.rangeText, unknown: c.unknown };
+  };
+  const ht = (name: string, tech: TechBase = "IS") => ticHeat({ weapons: [conv(name, tech)] } as never);
+
+  it("Thunderbolt 5 -> 2, Ht 1 (+4/+2/+2/+4/–), direct", () => {
+    expect(dr("Thunderbolt 5")).toEqual({ damageText: "2", rangeText: "+4 +2 +2 +4 –", unknown: false });
+    expect(ht("Thunderbolt 5")).toBe(1);
+  });
+
+  it("Extended LRM 20 -> 1|1|2+M2 (7), Ht 2 (+4/+2/+0/+0/+2)", () => {
+    expect(dr("Extended LRM 20")).toEqual({ damageText: "1|1|2+M2 (7)", rangeText: "+4 +2 +0 +0 +2", unknown: false });
+    expect(ht("Extended LRM 20")).toBe(2);
+  });
+
+  it("Large X-Pulse / Large Re-engineered lasers -> 3 with their pulse/accuracy mods", () => {
+    expect(dr("Large X-Pulse Laser")).toEqual({ damageText: "3", rangeText: "-2 -2 +0 +2 –", unknown: false });
+    expect(ht("Large X-Pulse Laser")).toBe(3);
+    expect(dr("Large Re-engineered Laser")).toEqual({ damageText: "3", rangeText: "-1 -1 +1 +3 –", unknown: false });
+    expect(ht("Large Re-engineered Laser")).toBe(2);
+  });
+
+  it("Improved Heavy Small Laser -> 2 (+0/+0), no to-hit penalty", () => {
+    expect(dr("Improved Heavy Small Laser", "Clan")).toEqual({ damageText: "2", rangeText: "+0 +0 – – –", unknown: false });
+  });
+
+  it("FIX: Heavy Medium Laser carries the +1 heavy-laser to-hit penalty", () => {
+    // Was +0/+0/+2 (wrong); now +1/+1/+3 like the heavy large laser.
+    expect(dr("Heavy Medium Laser", "Clan")).toEqual({ damageText: "4", rangeText: "+1 +1 +3 – –", unknown: false });
+    expect(ht("Heavy Medium Laser", "Clan")).toBe(1);
+  });
+});
+
 describe("DFA card batch 5: Arrow IV artillery + forged TSEMP", () => {
   const conv = (name: string, tech: TechBase = "Clan") =>
     convertWeapon({ name, location: "RA", rawLocation: "RA", rearMounted: false }, tech, 50);
