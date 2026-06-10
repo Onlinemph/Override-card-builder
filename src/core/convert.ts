@@ -145,7 +145,11 @@ export function normalizeWeaponName(raw: string): string {
   s = s.replace(/\bhyper assault gauss\b/g, "hag"); // Hyper Assault Gauss/30 -> hag/30
   s = s.replace(/\b(ac|hag)\s+(\d+)/g, "$1/$2"); // "ac 20"/"hag 30" -> "ac/20"/"hag/30" (also Rotary/Ultra/Light AC)
   s = s.replace(/\blb[\s-]?x[\s-]?ac[\s-]?(\d+)/g, "lb $1-x ac"); // glued "LBXAC10" -> "lb 10-x ac"
+  s = s.replace(/\blight auto ?cannon\s*\/?\s*(\d+)/g, "light ac/$1"); // "Light Auto Cannon/5" -> "light ac/5"
   s = s.replace(/\blac[\s/-]?(\d+)/g, "light ac/$1"); // "LAC5"/"LAC/5" -> "light ac/5"
+  // Torpedoes share their missile counterpart's stats (LRT = LRM, SRT = SRM,
+  // same Clan/IS divide) — they only differ in being underwater-only.
+  s = s.replace(/\blrt\b/g, "lrm").replace(/\bsrt\b/g, "srm");
   s = s.replace(/\b(srm|lrm|mml|atm|iatm)\s*-\s*(\d+)/g, "$1 $2"); // srm-6/mml-5/atm-6 -> "srm 6" etc.
   s = s.replace(/^streak\s+/, ""); // Streak weapons share their non-streak counterpart's stats
 
@@ -156,6 +160,9 @@ export function normalizeWeaponName(raw: string): string {
   s = s.replace(/\bimproved atm\b/g, "atm").replace(/\bi\s*atm\b/g, "atm"); // iATM shares the ATM stat block (streak)
   s = s.replace(/\bmagshot gr\b/g, "magshot gauss rifle"); // BA "MagshotGR" -> full name
   s = s.replace(/\bmg\b/g, "machine gun"); // MG abbreviation -> full name
+  s = s.replace(/\bsnppc\b/g, "snub-nose ppc"); // glued "ISSNPPC" -> "snub-nose ppc"
+  s = s.replace(/\b(small|medium|large) vsp\b(?!\s+laser)/g, "$1 vsp laser"); // "Medium VSP" -> "medium vsp laser"
+  s = s.replace(/\bblazer cannon\b/g, "binary laser cannon"); // "Blazer Cannon" -> canonical name
   s = s.replace(/\bos\s*$/, "").trimEnd(); // trailing "os" (one-shot variant without parens)
   return s.replace(/\s+/g, " ").trim();
 }

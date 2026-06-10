@@ -267,6 +267,7 @@ export const WEAPON_DAMAGE: Readonly<Record<string, number>> = {
   "medium pulse laser": 6,
   "large pulse laser": 9,
   "er medium pulse laser": 7, // VERIFIED vs DFA card (cerMPLas -> 3)
+  "er small pulse laser": 5, // VERIFIED vs DFA mockup (cerSPLas -> 2, Ht 1); bracket override below
 
   // --- Energy: X-Pulse lasers (IS; same damage as the base laser, -2 to-hit) ---
   "small xpulse laser": 3, // VERIFIED vs DFA card (SXPLas -> 1)
@@ -278,6 +279,7 @@ export const WEAPON_DAMAGE: Readonly<Record<string, number>> = {
   "improved heavy large laser": 18, // VERIFIED vs DFA card (ciHLLas -> 6)
 
   // --- Energy: Variable Speed Pulse + Re-engineered lasers ---
+  "small vsp laser": 5, // range-varying; see WEAPON_DAMAGE_BY_RANGE (nominal short value)
   "medium vsp laser": 9, // range-varying; see WEAPON_DAMAGE_BY_RANGE (nominal short value)
   "large vsp laser": 11, // range-varying; see WEAPON_DAMAGE_BY_RANGE (nominal short value)
   "medium reengineered laser": 6, // VERIFIED vs DFA card (reMLas -> 2)
@@ -288,6 +290,9 @@ export const WEAPON_DAMAGE: Readonly<Record<string, number>> = {
   "light ppc": 5,
   "heavy ppc": 15,
   "snub-nose ppc": 10, // range-varying damage; see WEAPON_DAMAGE_BY_RANGE (nominal short value here)
+
+  // --- Energy: Binary Laser (Blazer) Cannon. VERIFIED vs DFA mockup (Blazer -> 4, Ht 3). ---
+  "binary laser cannon": 12,
 
   // --- Energy: flamers (heat weapons; 2 damage in damage mode) ---
   flamer: 2,
@@ -331,6 +336,7 @@ export const WEAPON_DAMAGE: Readonly<Record<string, number>> = {
 
   // --- Ballistic: Protomech / light autocannon family ---
   "ap gauss rifle": 3,
+  "proto mech ac/8": 8, // VERIFIED vs DFA mockup (cPMAC/8 -> 3, Ht 0)
 
   // --- Ballistic: machine guns ---
   "machine gun": 2,
@@ -341,6 +347,7 @@ export const WEAPON_DAMAGE: Readonly<Record<string, number>> = {
   "gauss rifle": 15,
   "light gauss rifle": 8,
   "heavy gauss rifle": 25, // range-varying damage; see WEAPON_DAMAGE_BY_RANGE (nominal short value here)
+  "improved heavy gauss rifle": 22, // VERIFIED vs DFA mockup (iHGauss -> 8, flat damage, Ht 0)
   "magshot gauss rifle": 2,
   magshot: 2,
   // Battle Armor support guns (TW per-trooper; squad damage scales by survivors).
@@ -505,6 +512,9 @@ export const WEAPON_RANGES: Readonly<Record<string, WeaponRange>> = {
   "small laser": { min: 0, medium: 2, long: 3 },
   "medium laser": { min: 0, medium: 6, long: 9 },
   "large laser": { min: 0, medium: 10, long: 15 },
+  // Binary Laser (Blazer) Cannon shares the Large Laser brackets. VERIFIED vs DFA
+  // mockup Blazer: +0/+0/+2/+4/–.
+  "binary laser cannon": { min: 0, medium: 10, long: 15 },
 
   // --- Energy: PPCs (min range 3; Light/Heavy share the standard brackets) ---
   ppc: { min: 3, medium: 12, long: 18 },
@@ -618,6 +628,9 @@ export const WEAPON_RANGES: Readonly<Record<string, WeaponRange>> = {
   "light ac/2": { min: 0, medium: 12, long: 18 }, // CONFIRM
   "light ac/5": { min: 0, medium: 10, long: 15 }, // CONFIRM
 
+  // --- Ballistic: ProtoMech AC (VERIFIED vs DFA mockup cPMAC/8: +0/+0/+2/–/–) ---
+  "proto mech ac/8": { min: 0, medium: 6, long: 9 },
+
   // --- Ballistic: Ultra AC (VERIFIED: UAC/10 IS, UAC/20; /2 and /5 extrapolated from the pattern) ---
   "ultra ac/2": { min: 0, medium: 18, long: 27 }, // CONFIRM (extrapolated)
   "ultra ac/5": { min: 0, medium: 14, long: 21 }, // CONFIRM (extrapolated)
@@ -641,6 +654,9 @@ export const WEAPON_RANGES: Readonly<Record<string, WeaponRange>> = {
 
   // --- Ballistic: Heavy Gauss (range-varying damage; VERIFIED vs DFA card: +4/+2/+0/+2/+4) ---
   "heavy gauss rifle": { min: 4, medium: 13, long: 20 },
+  // Improved Heavy Gauss: flat damage, longer reach. VERIFIED vs DFA mockup
+  // iHGauss: +2/+0/+2/+2/+4.
+  "improved heavy gauss rifle": { min: 3, medium: 12, long: 20 },
 
   // --- Ballistic: misc Gauss / supporting (canonical, tech-independent) ---
   "ap gauss rifle": { min: 0, medium: 6, long: 9 }, // CONFIRM
@@ -782,8 +798,11 @@ export const WEAPON_HEAT: Readonly<Record<string, number>> = {
   "er large pulse laser": 13, // round(13/5) -> 3 (cerLPLas)
   "improved heavy medium laser": 7,
   "improved heavy large laser": 18,
+  "small vsp laser": 3, // round(3/5) -> 1 (VERIFIED vs DFA mockup vsSPLas: Ht 1)
   "medium vsp laser": 7, // round(7/5) -> 1
   "large vsp laser": 10, // 10/5 -> 2 (VERIFIED vs DFA Aeshna mockup: Ht 2)
+  "er small pulse laser": 3, // round(3/5) -> 1 (VERIFIED vs DFA mockup cerSPLas: Ht 1)
+  "binary laser cannon": 16, // round(16/5) -> 3 (VERIFIED vs DFA mockup Blazer: Ht 3)
   "medium reengineered laser": 7, // round(7/5) -> 1
   "plasma cannon": 7, // round(7/5) -> 1 (cPlasCannon)
   "micro pulse laser": 1,
@@ -794,6 +813,8 @@ export const WEAPON_HEAT: Readonly<Record<string, number>> = {
   "heavy ppc": 15,
   "snub-nose ppc": 10,
   flamer: 3,
+  "improved heavy gauss rifle": 2, // round(2/5) -> 0 (VERIFIED vs DFA mockup iHGauss: Ht 0)
+  "proto mech ac/8": 1, // round(1/5) -> 0 (VERIFIED vs DFA mockup cPMAC/8: Ht 0)
   "er flamer": 4,
   "vehicle flamer": 3,
   "plasma rifle": 10,
@@ -870,6 +891,7 @@ export const WEAPON_HEAT: Readonly<Record<string, number>> = {
 export const WEAPON_DAMAGE_BY_RANGE: Readonly<Record<string, readonly [number, number, number]>> = {
   "snub-nose ppc": [10, 8, 5], // VERIFIED -> 4|3|2
   "heavy gauss rifle": [25, 20, 10], // VERIFIED -> 9|7|4
+  "small vsp laser": [5, 4, 3], // VERIFIED vs DFA mockup vsSPLas -> 2|2|1
   "medium vsp laser": [9, 7, 5], // VERIFIED vs DFA card vsMPLas -> 3|3|2
   "large vsp laser": [11, 9, 7], // VERIFIED vs DFA Aeshna mockup vsLPLas -> 4|3|3
 } as const;
@@ -885,7 +907,13 @@ export const WEAPON_DAMAGE_BY_RANGE: Readonly<Record<string, readonly [number, n
 export const WEAPON_BRACKET_OVERRIDE: Readonly<Record<string, import("./types.js").RangeBrackets>> = {
   // Variable-Speed Pulse Laser: -3 at PB/S, fading to +0 by medium. VERIFIED vs
   // DFA card vsMPLas: -3/-3/+0/–/–.
+  // Small VSP is shorter-ranged, so medium falls in the +2 bracket. VERIFIED vs
+  // DFA mockup vsSPLas: -3/-3/+2/–/–.
+  "small vsp laser": { pb: -3, s: -3, m: 2, l: null, x: null },
   "medium vsp laser": { pb: -3, s: -3, m: 0, l: null, x: null },
+  // Clan ER Small Pulse Laser: pulse bonus fading from close range. VERIFIED vs
+  // DFA mockup cerSPLas: -1/-1/+3/–/–.
+  "er small pulse laser": { pb: -1, s: -1, m: 3, l: null, x: null },
   // VERIFIED vs DFA Aeshna mockup vsLPLas: -3/-3/+0/+3/–.
   "large vsp laser": { pb: -3, s: -3, m: 0, l: 3, x: null },
   // Arrow IV artillery: no point-blank fire; flat +4 from short out. VERIFIED vs
@@ -1121,6 +1149,12 @@ export const IMPORTANT_EQUIPMENT: ReadonlyArray<ImportantEquipment> = [
   { match: ["supercharger"], label: "Supercharger" },
   { match: ["masc"], label: "MASC" },
   { match: ["machine gun array"], label: "MG Array" },
+  // Anti-infantry/anti-BA pods: MegaMek lists them in the Weapons: block, but
+  // Override treats them as equipment (no damage line). A-Pod = Anti-Personnel,
+  // B-Pod = Anti-BattleArmor, M-Pod = the one-shot mine pod.
+  { match: ["antipersonnelpod", "anti-personnel pod", "a-pod"], label: "A-Pod", countable: true, unique: true },
+  { match: ["b-pod", "anti-battlearmor"], label: "B-Pod", countable: true, unique: true },
+  { match: ["m-pod"], label: "M-Pod", countable: true, unique: true },
   { match: ["triple strength myomer", "triple-strength myomer", "tsm"], label: "TSM" },
   { match: ["coolant pod"], label: "Coolant Pod" },
   { match: ["stealth"], label: "Stealth Armor", unique: true },
@@ -1334,7 +1368,10 @@ export const WEAPON_ABBREV: Readonly<Record<string, string>> = {
   "small pulse laser": "SPLas",
   "medium pulse laser": "MPLas",
   "large pulse laser": "LPLas",
+  "er small pulse laser": "erSPLas",
   "micro pulse laser": "μPLas",
+  "small vsp laser": "vsSPLas",
+  "binary laser cannon": "Blazer",
   "er micro laser": "ER μLas",
   ppc: "PPC",
   "er ppc": "ER PPC",
@@ -1349,7 +1386,9 @@ export const WEAPON_ABBREV: Readonly<Record<string, string>> = {
   "gauss rifle": "Gauss",
   "light gauss rifle": "LGauss",
   "heavy gauss rifle": "HGauss",
+  "improved heavy gauss rifle": "iHGauss",
   "ap gauss rifle": "APGauss",
+  "proto mech ac/8": "PMAC/8",
   "magshot gauss rifle": "MGauss",
   "david light gauss rifle": "DLGauss",
   "king david light gauss rifle": "KDLGauss",

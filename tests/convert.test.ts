@@ -512,6 +512,44 @@ describe("range brackets (page 43, VERIFIED vs DFA cards)", () => {
     expect(brackets("ultra ac/20")).toBe("+0 +0 +2 – –"); // cUAC/20
   });
 
+  it("reproduces the batch-7 weapon mockup rows exactly (dmg / range / abbrev)", () => {
+    const row = (name: string, tech: TechBase = "IS") => {
+      const w = convertWeapon({ name, location: "RA", rearMounted: false }, tech, 50);
+      return { dmg: w.damageText, rng: w.rangeText, ab: abbreviateWeapon(name, tech) };
+    };
+    // Existing stats that were only failing on normalization (now resolve).
+    expect(row("Light Auto Cannon/5")).toEqual({ dmg: "2", rng: "+0 +0 +2 +4 –", ab: "LAC/5" });
+    expect(row("Light Auto Cannon/2")).toEqual({ dmg: "1", rng: "+0 +0 +2 +4 –", ab: "LAC/2" });
+    expect(row("ISSNPPC")).toEqual({ dmg: "4|3|2", rng: "+0 +0 +0 +4 –", ab: "SNPPC" });
+    expect(row("Medium VSP").dmg).toBe("3|3|2"); // "Medium VSP" -> "medium vsp laser"
+    // New weapons from the mockup.
+    expect(row("Small VSP Laser")).toEqual({ dmg: "2|2|1", rng: "-3 -3 +2 – –", ab: "vsSPLas" });
+    expect(row("ProtoMech AC/8", "Clan")).toEqual({ dmg: "3", rng: "+0 +0 +2 – –", ab: "cPMAC/8" });
+    expect(row("ISImprovedHeavyGaussRifle")).toEqual({ dmg: "8", rng: "+2 +0 +2 +2 +4", ab: "iHGauss" });
+    expect(row("ER Small Pulse Laser", "Clan")).toEqual({ dmg: "2", rng: "-1 -1 +3 – –", ab: "erSPLas" });
+    expect(row("Binary Laser (Blazer) Cannon")).toEqual({ dmg: "4", rng: "+0 +0 +2 +4 –", ab: "Blazer" });
+    expect(row("Blazer Cannon").dmg).toBe("4"); // alias folds onto "binary laser cannon"
+  });
+
+  it("mirrors torpedoes onto their missile counterpart (LRT=LRM, SRT=SRM), keeping the Clan divide", () => {
+    expect(normalizeWeaponName("LRT 15")).toBe("lrm 15");
+    expect(normalizeWeaponName("SRT 4")).toBe("srm 4");
+    expect(normalizeWeaponName("CLLRT20")).toBe("lrm 20");
+    expect(damageTextFor("LRT 15")).toBe(damageTextFor("LRM 15"));
+    expect(damageTextFor("SRT 6", "Clan")).toBe(damageTextFor("SRM 6", "Clan"));
+    // The raw torpedo name is preserved for display even though stats come from LRM.
+    const w = convertWeapon({ name: "LRT 15", location: "LT", rearMounted: false }, "IS", 50);
+    expect(w.name).toBe("LRT 15");
+    expect(w.unknown).toBe(false);
+  });
+
+  it("files anti-infantry/anti-BA pods under equipment, not the weapons table", () => {
+    expect(isWeaponBlockEquipment("M-Pod")).toBe(true);
+    expect(isWeaponBlockEquipment("B-Pod")).toBe(true);
+    expect(isWeaponBlockEquipment("Anti-BattleArmor Pods (B-Pods)")).toBe(true);
+    expect(isWeaponBlockEquipment("ISAntiPersonnelPod")).toBe(true);
+  });
+
   it("applies Clan range overrides where TW ranges diverge", () => {
     const clan = (key: string) =>
       formatRangeBrackets(computeRangeBrackets(WEAPON_RANGES_CLAN[key]!));
