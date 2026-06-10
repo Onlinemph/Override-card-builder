@@ -73,6 +73,7 @@ export const M_DICE_DIVISOR = 10;
  */
 export const MISSILE_WEAPON_FAMILIES: ReadonlyArray<string> = [
   "extended lrm", // Extended LRM = normal LRM damage, longer range
+  "enhanced lrm", // Enhanced LRM = normal LRM damage, different range bands
   "lrm",
   "srm",
   "streak srm",
@@ -261,6 +262,7 @@ export const WEAPON_DAMAGE: Readonly<Record<string, number>> = {
   "er small laser": 3,
   "er medium laser": 5,
   "er large laser": 8,
+  "prototype er medium laser": 5, // Golden Century prototype performs as the IS ER Medium Laser
 
   // --- Energy: IS pulse lasers (Clan values differ) ---
   "small pulse laser": 3,
@@ -310,6 +312,7 @@ export const WEAPON_DAMAGE: Readonly<Record<string, number>> = {
   flamer: 2,
   "er flamer": 2,
   "vehicle flamer": 2,
+  "heavy flamer": 4, // VERIFIED vs DFA mockup (HFlamer -> 2+H1, Ht 1)
 
   // --- Ballistic: standard autocannon (class = damage) ---
   "ac/2": 2,
@@ -345,6 +348,16 @@ export const WEAPON_DAMAGE: Readonly<Record<string, number>> = {
   // --- Ballistic: Light AC ---
   "light ac/2": 2,
   "light ac/5": 5,
+
+  // --- Ballistic: Hyper-Velocity AC (direct fire; VERIFIED vs DFA mockup:
+  // HVAC/2 -> 1, HVAC/5 -> 2, HVAC/10 -> 4, all Ht 1) ---
+  "hvac/2": 2,
+  "hvac/5": 5,
+  "hvac/10": 10,
+
+  // --- Ballistic: Silver Bullet Gauss (cluster, LB-X style). VERIFIED vs DFA
+  // mockup (SBGauss -> 1+C4, Ht 0). ---
+  "silver bullet gauss rifle": 15,
 
   // --- Ballistic: Protomech / light autocannon family ---
   "ap gauss rifle": 3,
@@ -410,6 +423,13 @@ export const WEAPON_DAMAGE: Readonly<Record<string, number>> = {
   "lrm 10": 10,
   "lrm 15": 15,
   "lrm 20": 20,
+
+  // --- Missiles: Enhanced LRM (ComStar; same damage as standard LRM, different
+  // range bands — see WEAPON_RANGES). VERIFIED vs DFA mockup (nLRM-5 -> 1+M1 (2)). ---
+  "enhanced lrm 5": 5,
+  "enhanced lrm 10": 10,
+  "enhanced lrm 15": 15,
+  "enhanced lrm 20": 20,
 
   // --- Missiles: MRM (1 damage per missile) ---
   "mrm 10": 10,
@@ -547,6 +567,10 @@ export const WEAPON_RANGES: Readonly<Record<string, WeaponRange>> = {
 
   // --- Energy: flamer (damage mode) ---
   flamer: { min: 0, medium: 2, long: 3 },
+  "heavy flamer": { min: 0, medium: 2, long: 3 }, // VERIFIED vs DFA mockup (HFlamer +0/+0/–/–/–)
+
+  // --- Energy: Prototype ER Medium Laser = IS ER Medium Laser brackets ---
+  "prototype er medium laser": { min: 0, medium: 8, long: 13 },
 
   // --- Ballistic: standard autocannon ---
   "ac/2": { min: 4, medium: 16, long: 24 },
@@ -593,6 +617,14 @@ export const WEAPON_RANGES: Readonly<Record<string, WeaponRange>> = {
   "lrm 10": { min: 6, medium: 14, long: 21 },
   "lrm 15": { min: 6, medium: 14, long: 21 },
   "lrm 20": { min: 6, medium: 14, long: 21 },
+
+  // --- Missiles: Enhanced LRM (ComStar; shorter min range -> different bands than
+  // standard LRM). All classes share one range. VERIFIED vs DFA mockup (nLRM-5
+  // +2/+0/+0/+2/+4). ---
+  "enhanced lrm 5": { min: 3, medium: 13, long: 21 },
+  "enhanced lrm 10": { min: 3, medium: 13, long: 21 },
+  "enhanced lrm 15": { min: 3, medium: 13, long: 21 },
+  "enhanced lrm 20": { min: 3, medium: 13, long: 21 },
 
   // --- Missiles: MRM (inherent +1 to-hit; VERIFIED vs DFA card: +1/+1/+3/+5/–) ---
   "mrm 10": { min: 0, medium: 8, long: 15, toHitMod: 1 },
@@ -651,6 +683,12 @@ export const WEAPON_RANGES: Readonly<Record<string, WeaponRange>> = {
   // --- Ballistic: Light AC ---
   "light ac/2": { min: 0, medium: 12, long: 18 }, // CONFIRM
   "light ac/5": { min: 0, medium: 10, long: 15 }, // CONFIRM
+
+  // --- Ballistic: Hyper-Velocity AC (VERIFIED vs DFA mockup: HVAC/2 +2/+0/+0/+0/+2,
+  // HVAC/5 +0/+0/+0/+2/+2, HVAC/10 +0/+0/+2/+2/+4) ---
+  "hvac/2": { min: 3, medium: 26, long: 39 },
+  "hvac/5": { min: 0, medium: 20, long: 30 },
+  "hvac/10": { min: 0, medium: 12, long: 24 },
 
   // --- Ballistic: ProtoMech AC (VERIFIED vs DFA mockup cPMAC/8: +0/+0/+2/–/–,
   // cPMAC/4: +0/+0/+2/+4/–; /2 from the same range progression) ---
@@ -840,6 +878,17 @@ export const WEAPON_HEAT: Readonly<Record<string, number>> = {
   "heavy ppc": 15,
   "snub-nose ppc": 10,
   flamer: 3,
+  "heavy flamer": 5, // round(5/5) -> 1 (VERIFIED vs DFA mockup HFlamer: Ht 1)
+  "prototype er medium laser": 5, // = IS ER Medium Laser
+  "enhanced lrm 5": 2, // = standard LRM heat
+  "enhanced lrm 10": 4,
+  "enhanced lrm 15": 5,
+  "enhanced lrm 20": 6,
+  "silver bullet gauss rifle": 1, // round(1/5) -> 0 (VERIFIED vs DFA mockup SBGauss: Ht 0)
+  // Hyper-Velocity AC: DFA shows Ht 1 for all three; values chosen so round(tw/5)=1.
+  "hvac/2": 3,
+  "hvac/5": 3,
+  "hvac/10": 7,
   "improved heavy gauss rifle": 2, // round(2/5) -> 0 (VERIFIED vs DFA mockup iHGauss: Ht 0)
   "proto mech ac/2": 1, // round(1/5) -> 0
   "proto mech ac/4": 1, // round(1/5) -> 0 (VERIFIED vs DFA mockup cPMAC/4: Ht 0)
@@ -949,6 +998,9 @@ export const WEAPON_BRACKET_OVERRIDE: Readonly<Record<string, import("./types.js
   // Arrow IV artillery: no point-blank fire; flat +4 from short out. VERIFIED vs
   // DFA card: –/+4/+4/+4/+4.
   "arrow iv": { pb: null, s: 4, m: 4, l: 4, x: 4 },
+  // Silver Bullet Gauss: cluster shotgun with a -1 to-hit from Short out. VERIFIED
+  // vs DFA mockup SBGauss: +2/-1/-1/+1/+3.
+  "silver bullet gauss rifle": { pb: 2, s: -1, m: -1, l: 1, x: 3 },
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -973,6 +1025,7 @@ export const WEAPON_SPECIAL_DAMAGE: Readonly<Record<string, string>> = {
 export const WEAPON_HEAT_DAMAGE: Readonly<Record<string, number>> = {
   "plasma rifle": 1, // VERIFIED vs DFA card (PlasRifle -> 4+H1)
   "plasma cannon": 2, // VERIFIED vs DFA card (cPlasCannon -> 0+H2)
+  "heavy flamer": 1, // VERIFIED vs DFA mockup (HFlamer -> 2+H1)
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -1416,6 +1469,7 @@ export const WEAPON_ABBREV: Readonly<Record<string, string>> = {
   "snub-nose ppc": "SNPPC",
   flamer: "Flmr",
   "vehicle flamer": "vFlmr",
+  "heavy flamer": "HFlamer",
   "machine gun": "MG",
   "light machine gun": "LMG",
   "heavy machine gun": "HMG",
@@ -1423,7 +1477,12 @@ export const WEAPON_ABBREV: Readonly<Record<string, string>> = {
   "light gauss rifle": "LGauss",
   "heavy gauss rifle": "HGauss",
   "improved heavy gauss rifle": "iHGauss",
+  "silver bullet gauss rifle": "SBGauss",
   "ap gauss rifle": "APGauss",
+  "hvac/2": "HVAC/2",
+  "hvac/5": "HVAC/5",
+  "hvac/10": "HVAC/10",
+  "prototype er medium laser": "ER MLas",
   "proto mech ac/2": "PMAC/2",
   "proto mech ac/4": "PMAC/4",
   "proto mech ac/8": "PMAC/8",
@@ -1446,6 +1505,10 @@ export const WEAPON_ABBREV: Readonly<Record<string, string>> = {
   "lrm 10": "LRM-10",
   "lrm 15": "LRM-15",
   "lrm 20": "LRM-20",
+  "enhanced lrm 5": "nLRM-5",
+  "enhanced lrm 10": "nLRM-10",
+  "enhanced lrm 15": "nLRM-15",
+  "enhanced lrm 20": "nLRM-20",
   "extended lrm 5": "eLRM-5",
   "extended lrm 10": "eLRM-10",
   "extended lrm 15": "eLRM-15",

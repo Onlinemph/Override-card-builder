@@ -26,6 +26,7 @@ import {
   lookupHeadArmor,
   lookupTmm,
   lookupWeaponDamage,
+  lookupWeaponHeat,
   normalizeWeaponName,
   parseMtf,
   roundNearest,
@@ -567,6 +568,27 @@ describe("range brackets (page 43, VERIFIED vs DFA cards)", () => {
     // ProtoMech AC/4 verified; AC/2 from the same range progression.
     expect(row("ProtoMech AC/4", "Clan")).toEqual({ dmg: "2", rng: "+0 +0 +2 +4 –", ab: "cPMAC/4", unk: false });
     expect(row("ProtoMech AC/2", "Clan").dmg).toBe("1");
+  });
+
+  it("reproduces the batch-9 mockup rows (SBGauss, HFlamer, Enhanced LRM, HVAC, Prototype ER ML)", () => {
+    const row = (name: string, tech: TechBase = "IS") => {
+      const w = convertWeapon({ name, location: "RA", rearMounted: false }, tech, 50);
+      return { dmg: w.damageText, rng: w.rangeText, ht: Math.round(lookupWeaponHeat(name) / 5) };
+    };
+    expect(row("Silver Bullet Gauss Rifle")).toEqual({ dmg: "1+C4", rng: "+2 -1 -1 +1 +3", ht: 0 });
+    expect(row("Heavy Flamer")).toEqual({ dmg: "2+H1", rng: "+0 +0 – – –", ht: 1 });
+    // Enhanced LRM = standard LRM damage, with its own (shared) range bands.
+    expect(row("Enhanced LRM 5")).toEqual({ dmg: "1+M1 (2)", rng: "+2 +0 +0 +2 +4", ht: 0 });
+    expect(row("Enhanced LRM 20").rng).toBe("+2 +0 +0 +2 +4"); // every class shares the bands
+    expect(damageTextFor("Enhanced LRM 15")).toBe(damageTextFor("LRM 15"));
+    // Hyper-Velocity AC.
+    expect(row("Hyper Velocity Auto Cannon/2")).toEqual({ dmg: "1", rng: "+2 +0 +0 +0 +2", ht: 1 });
+    expect(row("Hyper Velocity Auto Cannon/5")).toEqual({ dmg: "2", rng: "+0 +0 +0 +2 +2", ht: 1 });
+    expect(row("Hyper Velocity Auto Cannon/10")).toEqual({ dmg: "4", rng: "+0 +0 +2 +2 +4", ht: 1 });
+    // Prototype ER Medium Laser = IS ER Medium Laser, even on a Clan unit (Clan ER
+    // ML would be 3; the prototype stays at the IS value of 2).
+    expect(row("Prototype ER Medium Laser", "IS")).toEqual({ dmg: "2", rng: "+0 +0 +2 +4 –", ht: 1 });
+    expect(convertWeapon({ name: "Prototype ER Medium Laser", location: "RA", rearMounted: false }, "Clan", 50).damageText).toBe("2");
   });
 
   it("standard bookkeeping: MagShot, I-OS, prototype RL, and non-weapon mounts", () => {

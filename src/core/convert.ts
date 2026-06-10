@@ -141,6 +141,7 @@ export function normalizeWeaponName(raw: string): string {
   s = s.replace(/^ba\s+/, ""); // drop spaced BA prefix ("ba er small laser" -> "er small laser")
   s = s.replace(/\berppc\b/g, "er ppc"); // glued all-caps "ERPPC" (from "ISERPPC"/"CLERPPC") -> "er ppc"
   s = s.replace(/\bparticle cannon\b/g, "ppc"); // "(Light/Heavy/...) Particle Cannon" -> "(...) ppc"
+  s = s.replace(/\bhyper[\s-]?velocity (?:auto ?cannon|ac)\s*\/?\s*(\d+)/g, "hvac/$1"); // Hyper Velocity Auto Cannon/10 -> hvac/10
   s = s.replace(/\bautocannon\//g, "ac/"); // Autocannon/20 -> ac/20
   s = s.replace(/\bhyper assault gauss\b/g, "hag"); // Hyper Assault Gauss/30 -> hag/30
   s = s.replace(/\b(ac|hag)\s+(\d+)/g, "$1/$2"); // "ac 20"/"hag 30" -> "ac/20"/"hag/30" (also Rotary/Ultra/Light AC)
