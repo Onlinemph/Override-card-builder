@@ -161,4 +161,10 @@ describe("Support vehicles (SupportTank / LargeSupportTank / SupportVTOL)", () =
   it("LargeSupportTank is accepted too", () => {
     expect(parseBlkVehicle(blk("LargeSupportTank", "Tracked"), "l.blk").support).toBe(true);
   });
+
+  it("routes a Naval (Hydrofoil) unit through the vehicle path", () => {
+    const r = convertAny(blk("Naval", "Hydrofoil"), "n.blk");
+    expect(r.kind).toBe("vehicle");
+    if (r.kind === "vehicle") expect(r.card.move).toMatch(/f$/); // Hydrofoil motion letter
+  });
 });

@@ -295,8 +295,9 @@ export function parseBlkVehicle(text: string, file = "<unknown>"): VehicleUnit {
 
   const unitType = scalar(blocks, "unittype");
   const normalizedType = unitType?.toLowerCase().replace(/\s+/g, "");
-  // Combat vehicles (Tank/VTOL) and Support vehicles share the BLK structure.
-  const VEHICLE_TYPES = new Set(["tank", "vtol", "supporttank", "largesupporttank", "supportvtol"]);
+  // Combat vehicles (Tank/VTOL), Support vehicles, and Naval (surface/hydrofoil)
+  // craft all share the BLK structure (4 facings + turret, cruiseMP, equipment).
+  const VEHICLE_TYPES = new Set(["tank", "vtol", "supporttank", "largesupporttank", "supportvtol", "naval"]);
   if (unitType && !VEHICLE_TYPES.has(normalizedType ?? "")) {
     throw new ParseError(
       `expected a Tank/VTOL or Support vehicle BLK but got unit type "${unitType}"`,
@@ -623,9 +624,11 @@ function parseDropshipArmor(blocks: Block[]): DropshipArmorRaw {
 }
 
 /**
- * Collect weapon/equipment mounts from the per-arc equipment blocks. A leading
- * "(B) " marks the first weapon of a TW bay — bays are an aero fire-grouping
- * concept the Override card replaces with TICs, so the marker is dropped.
+ * Collect weapon/equipment mounts from the per-arc equipment blocks. Leading
+ * single-letter parenthetical markers are stripped: "(B)" opens a TW bay (an
+ * aero fire-grouping the Override card replaces with TICs) and "(R)" marks a
+ * rear sub-arc — neither belongs in the weapon name, so "(R) (B) ISERLargeLaser"
+ * becomes "ISERLargeLaser" -> the known "ER Large Laser".
  */
 function parseDropshipMounts(blocks: Block[]): DropshipMount[] {
   const mounts: DropshipMount[] = [];
@@ -633,7 +636,7 @@ function parseDropshipMounts(blocks: Block[]): DropshipMount[] {
     const facing = DROPSHIP_FACING_BLOCKS[block.key];
     if (!facing) continue;
     for (const line of block.lines) {
-      const name = line.replace(/^\(B\)\s*/i, "").trim();
+      const name = line.replace(/^(?:\([A-Za-z]\)\s*)+/, "").trim();
       if (name) mounts.push({ name, facing });
     }
   }
