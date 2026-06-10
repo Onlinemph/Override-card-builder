@@ -12,6 +12,7 @@ import { fileURLToPath } from "node:url";
 
 import { convertAny } from "../src/core/index.js";
 import { renderBACard } from "../src/web/ba-card.js";
+import { renderDropshipCard } from "../src/web/dropship-card.js";
 import { renderFighterCard } from "../src/web/fighter-card.js";
 import { renderInfantryCard } from "../src/web/infantry-card.js";
 import { renderMechCard } from "../src/web/mech-card.js";
@@ -37,7 +38,9 @@ const cardHtml =
           ? renderInfantryCard(result.card)
           : result.kind === "protomech"
             ? renderProtoCard(result.card)
-            : renderMechCard(result.card);
+            : result.kind === "dropship"
+              ? renderDropshipCard(result.card)
+              : renderMechCard(result.card);
 
 const css = readFileSync(join(root, "src/web/style.css"), "utf8");
 const html = `<!doctype html>

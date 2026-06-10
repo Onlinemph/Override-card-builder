@@ -8,6 +8,7 @@ import "./style.css";
 
 import { convertAny, ParseError } from "../core/index.js";
 import { renderBACard } from "./ba-card.js";
+import { renderDropshipCard } from "./dropship-card.js";
 import { renderFighterCard } from "./fighter-card.js";
 import { renderInfantryCard } from "./infantry-card.js";
 import { renderMechCard } from "./mech-card.js";
@@ -490,6 +491,7 @@ function cardHtml(result: AnyCard): string {
   if (result.kind === "fighter") return renderFighterCard(result.card);
   if (result.kind === "infantry") return renderInfantryCard(result.card);
   if (result.kind === "protomech") return renderProtoCard(result.card);
+  if (result.kind === "dropship") return renderDropshipCard(result.card);
   return renderMechCard(result.card);
 }
 

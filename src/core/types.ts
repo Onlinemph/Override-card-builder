@@ -916,3 +916,97 @@ export interface ProtoMechCard {
   warnings: string[];
   sourceFile?: string;
 }
+
+// ---------------------------------------------------------------------------
+// DropShip (BLK). Converted with the aerospace-fighter rules: armor = TW/4,
+// Sinks = dissipation/5, DThr = (nose + aft + one side)/30, TMM = single higher
+// value on max thrust. Four firing arcs (Nose / Left Side / Right Side / Aft)
+// plus a Hull bay for non-firing gear; SI comes straight from the BLK
+// <structural_integrity> (÷3 to the card scale, best-effort).
+// ---------------------------------------------------------------------------
+
+/** DropShip firing arcs (hull = non-firing internal mounts). */
+export type DropshipFacing = "nose" | "leftSide" | "rightSide" | "aft" | "hull";
+
+/** One mounted weapon/equipment item and the arc it fires from. */
+export interface DropshipMount {
+  name: string;
+  facing: DropshipFacing;
+}
+
+/** Raw per-arc TW armor from the BLK `<armor>` block (nose, left, right, aft). */
+export interface DropshipArmorRaw {
+  nose: number;
+  leftSide: number;
+  rightSide: number;
+  aft: number;
+}
+
+/** One transport bay from `<transporters>` (e.g. 'Mech ×4, Cargo 1800t). */
+export interface DropshipBay {
+  /** Display label ("'Mech", "Fighter", "Cargo", …). */
+  label: string;
+  /** Bay size: unit count for unit bays, tonnage for cargo. */
+  size: number;
+  /** True when `size` is tonnage (cargo bays). */
+  tons?: boolean;
+}
+
+/** A fully-parsed DropShip — physical facts only. */
+export interface DropshipUnit {
+  kind: "dropship";
+  chassis: string;
+  model: string;
+  techBase: TechBase;
+  /** Tonnage (200–100,000). */
+  tonnage: number;
+  /** Airframe: "Spheroid" | "Aerodyne". */
+  motionType: string;
+  /** Safe Thrust. */
+  safeThrust: number;
+  /** Max Thrust: explicit if present, else ceil(safe * 1.5). */
+  maxThrust: number;
+  /** Heat-sink count from `<heatsinks>`. */
+  heatSinkCount: number;
+  /** Heat-sink tech from `<sink_type>`: 1 = double, 0 = single. */
+  heatSinkType: HeatSinkType;
+  /** TW Structural Integrity from `<structural_integrity>`. */
+  structuralIntegrity: number;
+  armor: DropshipArmorRaw;
+  mounts: DropshipMount[];
+  bays: DropshipBay[];
+  sourceFile?: string;
+}
+
+/** Converted Override record-card statistics for a DropShip. */
+export interface DropshipCard {
+  kind: "dropship";
+  name: string;
+  chassis: string;
+  model: string;
+  techBase: TechBase;
+  tonnage: number;
+  /** "Spheroid" | "Aerodyne". */
+  motionLabel: string;
+  /** Printed thrust string, e.g. "3 / 5" (safe / max). */
+  move: string;
+  safeThrust: number;
+  maxThrust: number;
+  /** Printed TMM: a SINGLE number, the higher (sprint) value on max thrust. */
+  tmm: number;
+  /** Override heat sinks: dissipation / 5, round nearest. */
+  sinks: number;
+  /** Damage Threshold: (nose + aft + one side) TW armor / 30, round nearest. */
+  dthr: number;
+  /** Per-arc Override armor (TW / 4, round nearest, min 1). */
+  armor: DropshipArmorRaw;
+  /** Single Structural Integrity: TW SI / 3, round nearest, min 1 (best-effort). */
+  structure: number;
+  /** Weapon rows (TICs grouped per arc; `facing` holds the arc code). */
+  weapons: VehicleWeaponRow[];
+  equipment: VehicleEquipment[];
+  /** Transport capacity ('Mech ×4, Fighter ×2, Cargo 1800t, …). */
+  bays: DropshipBay[];
+  warnings: string[];
+  sourceFile?: string;
+}

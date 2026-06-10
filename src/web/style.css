@@ -928,3 +928,33 @@ footer {
 .fsi-label { font-weight: 700; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.02em; color: #15171c; }
 .fsi-pips { display: flex; flex-wrap: wrap; gap: 2px; }
 .fsi-val { margin-left: auto; font-weight: 700; color: #15171c; }
+
+/* ---- DropShip arc armor diamond ------------------------------------------ */
+.ddoll {
+  display: grid;
+  grid-template-columns: 1fr 0.9fr 1fr;
+  grid-template-areas:
+    ".    nose ."
+    "ls   si   rs"
+    ".    aft  .";
+  gap: 0.4rem;
+  align-items: stretch;
+}
+.dloc {
+  background: #e3e3dd;
+  border: 1.5px solid #9a9a92;
+  border-radius: 8px;
+  padding: 0.4rem 0.3rem;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.dloc.dnose { grid-area: nose; }
+.dloc.dls { grid-area: ls; }
+.dloc.drs { grid-area: rs; }
+.dloc.daft { grid-area: aft; }
+.dloc.dsi { grid-area: si; background: #d7d7cf; border-style: dashed; }
+.dloc-name { font-weight: 700; font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.02em; }
+.dloc-val { font-weight: 800; font-size: 1.5rem; color: #6c4f9e; font-variant-numeric: tabular-nums; }
+.dloc-val.si { color: #c0392b; }

@@ -23,7 +23,7 @@ import { readdirSync, readFileSync, statSync, writeFileSync, mkdirSync } from "n
 import { basename, extname, join, resolve } from "node:path";
 
 import { convertAny, ParseError } from "../core/index.js";
-import type { BattleArmorCard, FighterCard, InfantryCard, OverrideCard, ProtoMechCard, VehicleCard } from "../core/index.js";
+import type { BattleArmorCard, DropshipCard, FighterCard, InfantryCard, OverrideCard, ProtoMechCard, VehicleCard } from "../core/index.js";
 
 /** Input file extensions the tool understands. */
 const SUPPORTED_EXTS = new Set([".mtf", ".blk"]);
@@ -320,6 +320,38 @@ function printProtoSummary(card: ProtoMechCard): void {
   process.stdout.write(lines.join("\n") + "\n\n");
 }
 
+/** Print a DropShip card summary (aerospace rules; SI from the BLK, best-effort). */
+function printDropshipSummary(card: DropshipCard): void {
+  const lines: string[] = [];
+  lines.push(`${card.name}  (DropShip, ${card.motionLabel}, ${card.tonnage.toLocaleString()}t ${card.techBase})`);
+  lines.push(
+    `  Thrust ${card.move}   TMM ${card.tmm}   DThr ${card.dthr}   Sinks ${card.sinks}   SI ${card.structure}`,
+  );
+  const a = card.armor;
+  lines.push(`  Armor  nose ${a.nose}  L-side ${a.leftSide}  R-side ${a.rightSide}  aft ${a.aft}`);
+  if (card.bays.length > 0) {
+    lines.push(`  Capacity: ${card.bays.map((b) => (b.tons ? `${b.label} ${b.size.toLocaleString()}t` : `${b.label} x${b.size}`)).join(", ")}`);
+  }
+  if (card.weapons.length > 0) {
+    lines.push("  Weapons:");
+    for (const w of card.weapons) {
+      const flag = w.unknown ? "  [!] unknown weapon" : "";
+      const rng = w.rangeText ? ` [${w.rangeText}]` : "";
+      const ht = w.heat > 0 ? ` ht${w.heat}` : "";
+      lines.push(`    - ${w.label} @ ${w.facing}: dmg ${w.damageText}${ht}${rng}${flag}`);
+    }
+  }
+  if (card.equipment.length > 0) {
+    lines.push("  Equipment:");
+    for (const e of card.equipment) {
+      const qty = e.count > 1 ? ` x${e.count}` : "";
+      lines.push(`    - ${e.label} (${e.facing})${qty}`);
+    }
+  }
+  for (const warn of card.warnings) lines.push(`  ! ${warn}`);
+  process.stdout.write(lines.join("\n") + "\n\n");
+}
+
 /** Build a flat CSV (one row per unit) covering the scalar card fields. */
 function toCsv(cards: OverrideCard[]): string {
   const header = [
@@ -429,6 +461,8 @@ function main(): void {
         printInfantrySummary(result.card);
       } else if (result.kind === "protomech") {
         printProtoSummary(result.card);
+      } else if (result.kind === "dropship") {
+        printDropshipSummary(result.card);
       } else {
         cards.push(result.card);
         printSummary(result.card);

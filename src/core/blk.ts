@@ -27,6 +27,11 @@ import type {
   BAWeightClass,
   BattleArmorUnit,
   BlkMount,
+  DropshipArmorRaw,
+  DropshipBay,
+  DropshipFacing,
+  DropshipMount,
+  DropshipUnit,
   FighterArmorRaw,
   FighterFacing,
   FighterMount,
@@ -574,5 +579,116 @@ export function parseBlkProto(text: string, file = "<unknown>"): ProtoMechUnit {
     hasMainGun,
     armor,
     mounts,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// DropShip (BLK Dropship).
+// ---------------------------------------------------------------------------
+
+/** Per-arc equipment blocks -> DropShip facing. */
+const DROPSHIP_FACING_BLOCKS: Readonly<Record<string, DropshipFacing>> = {
+  "nose equipment": "nose",
+  "left side equipment": "leftSide",
+  "right side equipment": "rightSide",
+  "aft equipment": "aft",
+  "hull equipment": "hull",
+};
+
+/** `<transporters>` bay type -> display label (unit bays count units; cargo is tons). */
+const DROPSHIP_BAY_LABELS: Readonly<Record<string, { label: string; tons?: boolean }>> = {
+  mechbay: { label: "'Mech" },
+  asfbay: { label: "Fighter" },
+  artsasfbay: { label: "Fighter" },
+  smallcraftbay: { label: "Small Craft" },
+  battlearmorbay: { label: "Battle Armor" },
+  infantrybay: { label: "Infantry", tons: true },
+  lightvehiclebay: { label: "Light Vehicle" },
+  heavyvehiclebay: { label: "Heavy Vehicle" },
+  protomechbay: { label: "ProtoMech" },
+  cargobay: { label: "Cargo", tons: true },
+  liquidcargobay: { label: "Liquid Cargo", tons: true },
+};
+
+/** Armor block order: nose, left side, right side, aft. */
+function parseDropshipArmor(blocks: Block[]): DropshipArmorRaw {
+  const block = blocks.find((b) => b.key === "armor");
+  const v = (block?.lines ?? []).map((l) => Number.parseInt(l, 10)).filter((n) => Number.isFinite(n));
+  const at = (i: number) => v[i] ?? 0;
+  return { nose: at(0), leftSide: at(1), rightSide: at(2), aft: at(3) };
+}
+
+/**
+ * Collect weapon/equipment mounts from the per-arc equipment blocks. A leading
+ * "(B) " marks the first weapon of a TW bay — bays are an aero fire-grouping
+ * concept the Override card replaces with TICs, so the marker is dropped.
+ */
+function parseDropshipMounts(blocks: Block[]): DropshipMount[] {
+  const mounts: DropshipMount[] = [];
+  for (const block of blocks) {
+    const facing = DROPSHIP_FACING_BLOCKS[block.key];
+    if (!facing) continue;
+    for (const line of block.lines) {
+      const name = line.replace(/^\(B\)\s*/i, "").trim();
+      if (name) mounts.push({ name, facing });
+    }
+  }
+  return mounts;
+}
+
+/** Transport bays from `<transporters>` lines (`type:size:doors[:bay]`); quarters etc. skipped. */
+function parseDropshipBays(blocks: Block[]): DropshipBay[] {
+  const block = blocks.find((b) => b.key === "transporters");
+  const bays: DropshipBay[] = [];
+  for (const line of block?.lines ?? []) {
+    const [type, sizeRaw] = line.split(":");
+    const spec = DROPSHIP_BAY_LABELS[(type ?? "").toLowerCase().trim()];
+    if (!spec) continue;
+    const size = Number.parseFloat(sizeRaw ?? "0") || 0;
+    if (size <= 0) continue;
+    const existing = bays.find((b) => b.label === spec.label);
+    if (existing) existing.size += size;
+    else bays.push({ label: spec.label, size, ...(spec.tons ? { tons: true } : {}) });
+  }
+  return bays;
+}
+
+/** Parse BLK DropShip text into a `DropshipUnit`. Throws if not a Dropship. */
+export function parseBlkDropship(text: string, file = "<unknown>"): DropshipUnit {
+  const blocks = readBlocks(text);
+
+  const unitType = scalar(blocks, "unittype");
+  if (unitType && unitType.toLowerCase().replace(/\s+/g, "") !== "dropship") {
+    throw new ParseError(`expected a Dropship BLK but got unit type "${unitType}"`, file, "UnitType");
+  }
+
+  const chassis = scalarAny(blocks, ["name", "chassis_name"]);
+  if (!chassis) throw new ParseError("missing unit name", file, "Name");
+  const model = scalarAny(blocks, ["model"]) ?? "";
+
+  const tonnage = Number.parseFloat(scalarAny(blocks, ["tonnage", "weight"]) ?? "0") || 0;
+  const motionType = scalarAny(blocks, ["motion_type"]) ?? "Spheroid";
+  const safeThrust = intOr(scalarAny(blocks, ["safethrust", "cruisemp"]), 0);
+  const maxRaw = scalarAny(blocks, ["maxthrust", "flankmp"]);
+  const maxThrust = maxRaw !== undefined ? intOr(maxRaw, 0) : Math.ceil(safeThrust * RUN_MP_MULTIPLIER);
+  const heatSinkCount = intOr(scalar(blocks, "heatsinks"), 0);
+  const heatSinkType: HeatSinkType = intOr(scalar(blocks, "sink_type"), 0) === 1 ? "double" : "single";
+  const structuralIntegrity = intOr(scalar(blocks, "structural_integrity"), 0);
+
+  return {
+    kind: "dropship",
+    chassis,
+    model,
+    techBase: resolveTechBase(blocks),
+    tonnage,
+    motionType,
+    safeThrust,
+    maxThrust,
+    heatSinkCount,
+    heatSinkType,
+    structuralIntegrity,
+    armor: parseDropshipArmor(blocks),
+    mounts: parseDropshipMounts(blocks),
+    bays: parseDropshipBays(blocks),
   };
 }

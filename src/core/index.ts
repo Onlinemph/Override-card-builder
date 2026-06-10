@@ -15,4 +15,5 @@ export * from "./vehicle.js";
 export * from "./fighter.js";
 export * from "./infantry.js";
 export * from "./proto.js";
+export * from "./dropship.js";
 export * from "./dispatch.js";
