@@ -131,6 +131,7 @@ export function normalizeWeaponName(raw: string): string {
   s = s.replace(/^\d+\s+/, ""); // drop leading count
   s = s.replace(/^(IS|CL)(?=[A-Z])/, ""); // drop attached tech prefix ("ISMediumLaser" -> "MediumLaser")
   s = s.replace(/^BA(?=[A-Z])/, ""); // drop attached BA prefix ("BAERSmallLaser" -> "ERSmallLaser")
+  s = s.replace(/^(IS|CL)(?=[A-Z])/, ""); // re-strip a tech prefix that followed BA ("BACLERMediumPulseLaser")
   // Split an acronym run from a following Capitalized word ("ERSmall" -> "ER
   // Small"), then camelCase and letter/digit boundaries ("MediumLaser" ->
   // "Medium Laser"). The first handles BLK's glued names (e.g. "CLERSmallLaser").
@@ -161,6 +162,7 @@ export function normalizeWeaponName(raw: string): string {
   s = s.replace(/\bimproved atm\b/g, "atm").replace(/\bi\s*atm\b/g, "atm"); // iATM shares the ATM stat block (streak)
   s = s.replace(/\bmagshot gr\b/g, "magshot gauss rifle"); // BA "MagshotGR" -> full name
   s = s.replace(/\bmag shot\b/g, "magshot"); // "MagShot" splits to "mag shot" -> rejoin
+  s = s.replace(/\bfire ?drake( incendiary)?\b/g, "firedrake"); // "FireDrake"/"Firedrake Incendiary" -> "firedrake"
   s = s.replace(/\bchemical laser\b/g, "chem laser"); // "Medium Chemical Laser" -> "medium chem laser"
   s = s.replace(/\bi-?os\b/g, "").trim(); // strip "(I)OS" Improved-One-Shot suffix (ISSRM2IOS -> srm 2)
   s = s.replace(/\b(rocket launcher \d+) prototype\b/g, "$1"); // prototype RL = same stats

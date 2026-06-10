@@ -384,6 +384,13 @@ export const WEAPON_DAMAGE: Readonly<Record<string, number>> = {
   "king david light gauss rifle": 1,
   "tsunami heavy gauss rifle": 1,
   "light recoilless rifle": 2,
+  // Battle Armor anti-personnel guns (per-trooper TW). VERIFIED vs DFA BA mockup:
+  // Firedrake Needler / Heavy & Micro Grenade Launchers -> 2|2|2|1|1|1 (TW 1);
+  // Heavy Mortar -> 6|5|4|3|2|1 (TW 3).
+  "firedrake needler": 1,
+  "heavy grenade launcher": 1,
+  "micro grenade launcher": 1,
+  "heavy mortar": 3,
 
   // --- Ballistic: Plasma (IS Plasma Rifle deals damage; Clan Plasma Cannon is
   // heat-only — 0 damage + 2 heat dice, see WEAPON_HEAT_DAMAGE). ---
@@ -733,6 +740,9 @@ export const WEAPON_RANGES: Readonly<Record<string, WeaponRange>> = {
   "king david light gauss rifle": { min: 0, medium: 8, long: 12 }, // +0/+0/+2/–
   "tsunami heavy gauss rifle": { min: 0, medium: 5, long: 9 }, // +0/+0/+4/–
   "light recoilless rifle": { min: 0, medium: 5, long: 9 }, // +0/+0/+4/–
+  // BA Heavy Mortar: VERIFIED vs DFA BA mockup (+2/+0/+4/–). Needler/grenade
+  // launchers are point-blank only — see WEAPON_BRACKET_OVERRIDE.
+  "heavy mortar": { min: 3, medium: 5, long: 6 },
 
   // --- Energy/ballistic: plasma + flamers (canonical) ---
   "plasma rifle": { min: 0, medium: 10, long: 15 }, // CONFIRM
@@ -1001,6 +1011,10 @@ export const WEAPON_BRACKET_OVERRIDE: Readonly<Record<string, import("./types.js
   // Silver Bullet Gauss: cluster shotgun with a -1 to-hit from Short out. VERIFIED
   // vs DFA mockup SBGauss: +2/-1/-1/+1/+3.
   "silver bullet gauss rifle": { pb: 2, s: -1, m: -1, l: 1, x: 3 },
+  // Battle Armor point-blank-only guns. VERIFIED vs DFA BA mockup: +0/–/–/–.
+  "firedrake needler": { pb: 0, s: null, m: null, l: null, x: null },
+  "heavy grenade launcher": { pb: 0, s: null, m: null, l: null, x: null },
+  "micro grenade launcher": { pb: 0, s: null, m: null, l: null, x: null },
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -1454,6 +1468,7 @@ export const WEAPON_ABBREV: Readonly<Record<string, string>> = {
   "small pulse laser": "SPLas",
   "medium pulse laser": "MPLas",
   "large pulse laser": "LPLas",
+  "er medium pulse laser": "erMPLas",
   "er small pulse laser": "erSPLas",
   "small chem laser": "ChemSLas",
   "medium chem laser": "ChemMLas",
@@ -1494,6 +1509,10 @@ export const WEAPON_ABBREV: Readonly<Record<string, string>> = {
   "king david light gauss rifle": "KDLGauss",
   "tsunami heavy gauss rifle": "T Gauss",
   "light recoilless rifle": "LRecoilless",
+  "firedrake needler": "FNeedler",
+  "heavy grenade launcher": "HGrenade Launcher",
+  "micro grenade launcher": "mGrenade Launcher",
+  "heavy mortar": "HMortar",
   magshot: "Magshot",
   "srm 2": "SRM-2",
   "srm 4": "SRM-4",

@@ -622,6 +622,28 @@ describe("range brackets (page 43, VERIFIED vs DFA cards)", () => {
     expect(isWarshipWeapon("ER PPC")).toBe(false);
   });
 
+  it("reproduces the BA weapon mockup (per-trooper degradation + brackets)", () => {
+    // Per-trooper squad damage at 6..1 troopers = ceil(troopers * perTrooperTW / 3).
+    const degrade = (name: string, tech: TechBase = "IS") => {
+      const rep = convertWeapon({ name, location: "X", rearMounted: false }, tech, 0);
+      return {
+        rng: rep.rangeText,
+        dmg: [6, 5, 4, 3, 2, 1].map((t) => formatDamage(scaleSquadDamage(rep, t))).join(" "),
+        unk: rep.unknown,
+      };
+    };
+    // New from the mockup: point-blank needler/grenades (TW 1), Heavy Mortar (TW 3).
+    expect(degrade("ISBAFiredrakeIncendiaryNeedler")).toEqual({ rng: "+0 – – – –", dmg: "2 2 2 1 1 1", unk: false });
+    expect(degrade("ISBAFireDrakeNeedler").dmg).toBe("2 2 2 1 1 1"); // alt spelling folds in
+    expect(degrade("CLBAHeavyGrenadeLauncher")).toMatchObject({ rng: "+0 – – – –", dmg: "2 2 2 1 1 1" });
+    expect(degrade("ISBAMicroGrenadeLauncher")).toMatchObject({ rng: "+0 – – – –", dmg: "2 2 2 1 1 1" });
+    expect(degrade("ISBAHeavyMortar")).toEqual({ rng: "+2 +0 +4 – –", dmg: "6 5 4 3 2 1", unk: false });
+    // "Same as mech" weapons: the BA prefix is stripped, keeping the IS/Clan divide.
+    expect(degrade("BACLERMediumPulseLaser", "Clan").unk).toBe(false); // BACL double-prefix fixed
+    expect(degrade("ISBACompactNarc").unk).toBe(false); // 0-damage tagger
+    expect(degrade("ISBAHeavyFlamer").unk).toBe(false);
+  });
+
   it("applies Clan range overrides where TW ranges diverge", () => {
     const clan = (key: string) =>
       formatRangeBrackets(computeRangeBrackets(WEAPON_RANGES_CLAN[key]!));
