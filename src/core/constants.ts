@@ -284,6 +284,18 @@ export const WEAPON_DAMAGE: Readonly<Record<string, number>> = {
   "large vsp laser": 11, // range-varying; see WEAPON_DAMAGE_BY_RANGE (nominal short value)
   "medium reengineered laser": 6, // VERIFIED vs DFA card (reMLas -> 2)
 
+  // --- Energy: Chemical Lasers (fuel-fired; Small/Medium make no heat, Large 1).
+  // VERIFIED vs DFA mockup: cChemSLas 1, cChemMLas 2, cChemLLas 3 / Ht 1. ---
+  "small chem laser": 3,
+  "medium chem laser": 5,
+  "large chem laser": 8,
+
+  // --- Guidance: Narc launchers (0 damage; they tag, not hit). VERIFIED vs DFA
+  // mockup: iNarc/Narc/Compact Narc all 0 damage with a range row. ---
+  "narc beacon": 0,
+  "i narc": 0,
+  "compact narc": 0,
+
   // --- Energy: PPCs ---
   ppc: 10,
   "er ppc": 10, // IS ER PPC; Clan ER PPC is 15 (see WEAPON_DAMAGE_CLAN)
@@ -336,6 +348,8 @@ export const WEAPON_DAMAGE: Readonly<Record<string, number>> = {
 
   // --- Ballistic: Protomech / light autocannon family ---
   "ap gauss rifle": 3,
+  "proto mech ac/2": 2, // CONFIRM (ProtoMech AC progression; cPMAC/2 -> 1, Ht 0)
+  "proto mech ac/4": 4, // VERIFIED vs DFA mockup (cPMAC/4 -> 2, Ht 0)
   "proto mech ac/8": 8, // VERIFIED vs DFA mockup (cPMAC/8 -> 3, Ht 0)
 
   // --- Ballistic: machine guns ---
@@ -515,6 +529,16 @@ export const WEAPON_RANGES: Readonly<Record<string, WeaponRange>> = {
   // Binary Laser (Blazer) Cannon shares the Large Laser brackets. VERIFIED vs DFA
   // mockup Blazer: +0/+0/+2/+4/–.
   "binary laser cannon": { min: 0, medium: 10, long: 15 },
+  // Chemical Lasers share the standard laser brackets. VERIFIED vs DFA mockup:
+  // cChemSLas +0/+0/–/–/–, cChemMLas +0/+0/+2/–/–, cChemLLas +0/+0/+2/+4/–.
+  "small chem laser": { min: 0, medium: 2, long: 3 },
+  "medium chem laser": { min: 0, medium: 6, long: 9 },
+  "large chem laser": { min: 0, medium: 10, long: 15 },
+  // Narc guidance launchers (0 damage). VERIFIED vs DFA mockup: iNarc
+  // +0/+0/+2/+4/–, Narc +0/+0/+2/–/–, Compact Narc +0/+0/+4/–/–.
+  "narc beacon": { min: 0, medium: 6, long: 9 },
+  "i narc": { min: 0, medium: 9, long: 15 },
+  "compact narc": { min: 0, medium: 4, long: 6 },
 
   // --- Energy: PPCs (min range 3; Light/Heavy share the standard brackets) ---
   ppc: { min: 3, medium: 12, long: 18 },
@@ -628,7 +652,10 @@ export const WEAPON_RANGES: Readonly<Record<string, WeaponRange>> = {
   "light ac/2": { min: 0, medium: 12, long: 18 }, // CONFIRM
   "light ac/5": { min: 0, medium: 10, long: 15 }, // CONFIRM
 
-  // --- Ballistic: ProtoMech AC (VERIFIED vs DFA mockup cPMAC/8: +0/+0/+2/–/–) ---
+  // --- Ballistic: ProtoMech AC (VERIFIED vs DFA mockup cPMAC/8: +0/+0/+2/–/–,
+  // cPMAC/4: +0/+0/+2/+4/–; /2 from the same range progression) ---
+  "proto mech ac/2": { min: 0, medium: 12, long: 18 }, // CONFIRM
+  "proto mech ac/4": { min: 0, medium: 10, long: 15 },
   "proto mech ac/8": { min: 0, medium: 6, long: 9 },
 
   // --- Ballistic: Ultra AC (VERIFIED: UAC/10 IS, UAC/20; /2 and /5 extrapolated from the pattern) ---
@@ -814,7 +841,10 @@ export const WEAPON_HEAT: Readonly<Record<string, number>> = {
   "snub-nose ppc": 10,
   flamer: 3,
   "improved heavy gauss rifle": 2, // round(2/5) -> 0 (VERIFIED vs DFA mockup iHGauss: Ht 0)
+  "proto mech ac/2": 1, // round(1/5) -> 0
+  "proto mech ac/4": 1, // round(1/5) -> 0 (VERIFIED vs DFA mockup cPMAC/4: Ht 0)
   "proto mech ac/8": 1, // round(1/5) -> 0 (VERIFIED vs DFA mockup cPMAC/8: Ht 0)
+  "large chem laser": 6, // round(6/5) -> 1 (VERIFIED vs DFA mockup cChemLLas: Ht 1; S/M chem make no heat)
   "er flamer": 4,
   "vehicle flamer": 3,
   "plasma rifle": 10,
@@ -1157,6 +1187,9 @@ export const IMPORTANT_EQUIPMENT: ReadonlyArray<ImportantEquipment> = [
   { match: ["m-pod"], label: "M-Pod", countable: true, unique: true },
   { match: ["triple strength myomer", "triple-strength myomer", "tsm"], label: "TSM" },
   { match: ["coolant pod"], label: "Coolant Pod" },
+  { match: ["ppc capacitor"], label: "PPC Capacitor" },
+  { match: ["risc advanced point defense", "risc apds"], label: "RISC APDS" },
+  { match: ["laser insulator"], label: "Laser Insulator" },
   { match: ["stealth"], label: "Stealth Armor", unique: true },
   { match: ["null signature"], label: "Null Sig System", unique: true },
   { match: ["void signature"], label: "Void Sig System", unique: true },
@@ -1369,6 +1402,9 @@ export const WEAPON_ABBREV: Readonly<Record<string, string>> = {
   "medium pulse laser": "MPLas",
   "large pulse laser": "LPLas",
   "er small pulse laser": "erSPLas",
+  "small chem laser": "ChemSLas",
+  "medium chem laser": "ChemMLas",
+  "large chem laser": "ChemLLas",
   "micro pulse laser": "μPLas",
   "small vsp laser": "vsSPLas",
   "binary laser cannon": "Blazer",
@@ -1388,7 +1424,12 @@ export const WEAPON_ABBREV: Readonly<Record<string, string>> = {
   "heavy gauss rifle": "HGauss",
   "improved heavy gauss rifle": "iHGauss",
   "ap gauss rifle": "APGauss",
+  "proto mech ac/2": "PMAC/2",
+  "proto mech ac/4": "PMAC/4",
   "proto mech ac/8": "PMAC/8",
+  "narc beacon": "Narc",
+  "i narc": "iNarc",
+  "compact narc": "Compact Narc",
   "magshot gauss rifle": "MGauss",
   "david light gauss rifle": "DLGauss",
   "king david light gauss rifle": "KDLGauss",

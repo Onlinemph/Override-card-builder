@@ -159,6 +159,10 @@ export function normalizeWeaponName(raw: string): string {
   s = s.replace(/^tsemp\b.*/, "tsemp cannon"); // any TSEMP variant -> "tsemp cannon"
   s = s.replace(/\bimproved atm\b/g, "atm").replace(/\bi\s*atm\b/g, "atm"); // iATM shares the ATM stat block (streak)
   s = s.replace(/\bmagshot gr\b/g, "magshot gauss rifle"); // BA "MagshotGR" -> full name
+  s = s.replace(/\bmag shot\b/g, "magshot"); // "MagShot" splits to "mag shot" -> rejoin
+  s = s.replace(/\bchemical laser\b/g, "chem laser"); // "Medium Chemical Laser" -> "medium chem laser"
+  s = s.replace(/\bi-?os\b/g, "").trim(); // strip "(I)OS" Improved-One-Shot suffix (ISSRM2IOS -> srm 2)
+  s = s.replace(/\b(rocket launcher \d+) prototype\b/g, "$1"); // prototype RL = same stats
   s = s.replace(/\bmg\b/g, "machine gun"); // MG abbreviation -> full name
   s = s.replace(/\bsnppc\b/g, "snub-nose ppc"); // glued "ISSNPPC" -> "snub-nose ppc"
   s = s.replace(/\b(small|medium|large) vsp\b(?!\s+laser)/g, "$1 vsp laser"); // "Medium VSP" -> "medium vsp laser"
@@ -183,7 +187,9 @@ export function abbreviateWeapon(raw: string, techBase: TechBase = "IS"): string
   if (mapped) {
     // The printed card prefixes Clan ballistic/missile weapons with "c"
     // (cSRM-2, cRAC/5) but leaves energy weapons bare (SLas, ER PPC).
-    const energy = /laser|ppc|flamer|plasma|tag|narc/.test(key);
+    // Narc is a missile-family launcher: the card prints "cNarc" for Clan, so it
+    // is NOT in the energy (bare) set.
+    const energy = /laser|ppc|flamer|plasma|tag/.test(key);
     const label = isStreak ? `S${mapped}` : mapped;
     return techBase === "Clan" && !energy ? `c${label}` : label;
   }
@@ -862,6 +868,18 @@ export function isWeaponBlockEquipment(name: string): boolean {
 }
 
 /**
+ * Non-weapon lines that BLK files list in the Weapons: block but that carry no
+ * damage of their own: ammo bins, cargo, and Narc pods (the launcher is the
+ * weapon; the pods are its ammo). These are pulled out so they don't surface as
+ * zero-damage "unknown" weapons. Ammo bins still reach the equipment line (the
+ * ammo path in buildEquipment keys on "ammo"); cargo and pods are dropped.
+ */
+export function isNonWeaponMount(name: string): boolean {
+  // No leading \b: MegaMek glues these ("ISPlasmaRifleAmmo", "ISNarc Pods").
+  return /ammo/i.test(name) || /\bcargo\b/i.test(name) || /narc pods/i.test(name);
+}
+
+/**
  * Notable construction options carried on the header lines (Engine: / Gyro: /
  * Armor: / Structure: / Cockpit:) rather than as crit slots, surfaced as
  * body-wide equipment so they reach the card: XL/XXL/Light/Compact engines (with
@@ -990,7 +1008,12 @@ export function convertUnit(unit: Unit): OverrideCard {
   const weaponMounts: Weapon[] = [];
   const divertedEquipment: CritSlot[] = [];
   for (const w of unit.weapons) {
-    if (isWeaponBlockEquipment(w.name)) {
+    if (isNonWeaponMount(w.name)) {
+      // Ammo bins reach the ammo line via buildEquipment; cargo/pods are dropped.
+      if (/ammo/i.test(w.name)) {
+        divertedEquipment.push({ name: w.name, location: w.location, rawLocation: w.rawLocation });
+      }
+    } else if (isWeaponBlockEquipment(w.name)) {
       divertedEquipment.push({ name: w.name, location: w.location, rawLocation: w.rawLocation });
     } else {
       weaponMounts.push(w);

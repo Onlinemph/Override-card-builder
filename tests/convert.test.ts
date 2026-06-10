@@ -22,6 +22,7 @@ import {
   isRangeVaryingCluster,
   isRocketLauncher,
   isWeaponBlockEquipment,
+  isNonWeaponMount,
   lookupHeadArmor,
   lookupTmm,
   lookupWeaponDamage,
@@ -548,6 +549,42 @@ describe("range brackets (page 43, VERIFIED vs DFA cards)", () => {
     expect(isWeaponBlockEquipment("B-Pod")).toBe(true);
     expect(isWeaponBlockEquipment("Anti-BattleArmor Pods (B-Pods)")).toBe(true);
     expect(isWeaponBlockEquipment("ISAntiPersonnelPod")).toBe(true);
+  });
+
+  it("reproduces the batch-8 mockup rows (Narc launchers, Chem lasers, ProtoMech AC)", () => {
+    const row = (name: string, tech: TechBase = "IS") => {
+      const w = convertWeapon({ name, location: "RA", rearMounted: false }, tech, 50);
+      return { dmg: w.damageText, rng: w.rangeText, ab: abbreviateWeapon(name, tech), unk: w.unknown };
+    };
+    // Narc launchers: 0 damage, but a real range row (they tag, not hit).
+    expect(row("iNarc")).toEqual({ dmg: "0", rng: "+0 +0 +2 +4 –", ab: "iNarc", unk: false });
+    expect(row("ISNarcBeacon", "Clan")).toEqual({ dmg: "0", rng: "+0 +0 +2 – –", ab: "cNarc", unk: false });
+    expect(row("Compact Narc")).toEqual({ dmg: "0", rng: "+0 +0 +4 – –", ab: "Compact Narc", unk: false });
+    // Chemical lasers (Small/Medium make no heat; Large makes 1).
+    expect(row("Small Chem Laser", "Clan")).toMatchObject({ dmg: "1", rng: "+0 +0 – – –" });
+    expect(row("CLMediumChemicalLaser", "Clan")).toMatchObject({ dmg: "2", rng: "+0 +0 +2 – –" });
+    expect(row("Large Chem Laser", "Clan")).toMatchObject({ dmg: "3", rng: "+0 +0 +2 +4 –" });
+    // ProtoMech AC/4 verified; AC/2 from the same range progression.
+    expect(row("ProtoMech AC/4", "Clan")).toEqual({ dmg: "2", rng: "+0 +0 +2 +4 –", ab: "cPMAC/4", unk: false });
+    expect(row("ProtoMech AC/2", "Clan").dmg).toBe("1");
+  });
+
+  it("standard bookkeeping: MagShot, I-OS, prototype RL, and non-weapon mounts", () => {
+    // "MagShot" splits to "mag shot" — rejoined so it picks up its gauss stats.
+    expect(normalizeWeaponName("MagShot")).toBe("magshot");
+    expect(damageTextFor("MagShot")).toBe("1");
+    // I-OS (Improved One-Shot) shares the base launcher's stats.
+    expect(normalizeWeaponName("ISSRM2IOS")).toBe("srm 2");
+    // Prototype Rocket Launchers mirror the production launcher.
+    expect(normalizeWeaponName("CLRocketLauncher15Prototype")).toBe("rocket launcher 15");
+    // A genuine prototype weapon is NOT collapsed onto its production cousin.
+    expect(normalizeWeaponName("Prototype ER Medium Laser")).toBe("prototype er medium laser");
+    // Ammo/cargo/Narc-pod lines are not weapons (glued spellings included).
+    expect(isNonWeaponMount("ISPlasmaRifleAmmo")).toBe(true);
+    expect(isNonWeaponMount("CLPlasmaCannonAmmo:OMNI")).toBe(true);
+    expect(isNonWeaponMount("1 Cargo (1 ton)")).toBe(true);
+    expect(isNonWeaponMount("ISNarc Pods")).toBe(true);
+    expect(isNonWeaponMount("Medium Laser")).toBe(false);
   });
 
   it("applies Clan range overrides where TW ranges diverge", () => {
