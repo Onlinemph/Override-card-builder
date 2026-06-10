@@ -20,9 +20,11 @@ import {
   convertWeapon,
   groupIntoTics,
   isWarshipWeapon,
+  isNonWeaponMount,
   isWeaponBlockEquipment,
   lookupTmm,
   lookupWeaponDamage,
+  normalizeWeaponName,
   roundNearest,
   ticHeat,
 } from "./convert.js";
@@ -74,7 +76,8 @@ function buildDropshipEquipment(mounts: ReadonlyArray<DropshipMount>): VehicleEq
       category = "ammo";
       countable = true;
     } else {
-      const match = IMPORTANT_EQUIPMENT.find((e) => e.match.some((s) => lower.includes(s)));
+      const norm = normalizeWeaponName(m.name);
+      const match = IMPORTANT_EQUIPMENT.find((e) => e.match.some((s) => lower.includes(s) || norm.includes(s)));
       if (!match) continue;
       label = match.label;
       category = "equipment";
@@ -106,7 +109,7 @@ export function convertDropship(unit: DropshipUnit): DropshipCard {
     for (const mount of unit.mounts.filter((m) => m.facing === arc)) {
       // Capital-scale guns have no 'Mech-scale stats — drop them (no row, no warning).
       if (isWarshipWeapon(mount.name)) continue;
-      const isAmmo = /\bammo\b/i.test(mount.name);
+      const isAmmo = isNonWeaponMount(mount.name); // glued ammo + cargo + Narc pods
       const { unknown } = lookupWeaponDamage(mount.name, unit.techBase);
       const isEquipment = isWeaponBlockEquipment(mount.name);
       // Hull mounts never fire; treat them all as equipment/ammo.

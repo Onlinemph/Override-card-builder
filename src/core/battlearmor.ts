@@ -23,6 +23,7 @@ import {
   convertWeapon,
   formatDamage,
   groupIntoTics,
+  isNonWeaponMount,
   lookupTmm,
   lookupWeaponDamage,
   normalizeWeaponName,
@@ -145,7 +146,7 @@ export function convertBattleArmor(unit: BattleArmorUnit): BattleArmorCard {
     if (isBaArmorType(mount.name)) continue;
     // Ammo and gear go through the equipment filter, never the weapon path —
     // even though an ammo line ("SRM 2 Ammo") contains a weapon-looking word.
-    const isAmmo = /\bammo\b/i.test(mount.name);
+    const isAmmo = isNonWeaponMount(mount.name); // glued ammo + cargo + Narc pods
     const { unknown } = lookupWeaponDamage(mount.name, unit.techBase);
     if (!isAmmo && (!unknown || looksLikeWeapon(mount.name))) {
       weaponNames.push(...expand(mount.name, mount.copies));

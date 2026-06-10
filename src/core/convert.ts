@@ -166,7 +166,15 @@ export function normalizeWeaponName(raw: string): string {
   s = s.replace(/\bchemical laser\b/g, "chem laser"); // "Medium Chemical Laser" -> "medium chem laser"
   s = s.replace(/\bi-?os\b/g, "").trim(); // strip "(I)OS" Improved-One-Shot suffix (ISSRM2IOS -> srm 2)
   s = s.replace(/\b(rocket launcher \d+) prototype\b/g, "$1"); // prototype RL = same stats
+  s = s.replace(/\bprototype (rocket launcher \d+)\b/g, "$1"); // "Prototype Rocket Launcher 20" -> "rocket launcher 20"
+  s = s.replace(/\b(er medium laser) prototype\b/g, "prototype $1"); // glued "CLERMediumLaserPrototype" word order
+  s = s.replace(/\b(ac\/\d+) primitive\b/g, "$1"); // "Autocannon/10 Primitive" -> ac/10
   s = s.replace(/\bmg\b/g, "machine gun"); // MG abbreviation -> full name
+  s = s.replace(/\bl?mga\b/g, "machine gun array"); // "MGA"/"LMGA" -> Machine Gun Array
+  s = s.replace(/\b([abm]) pod\b/g, "$1-pod"); // de-glued "ISMPod" -> "m pod" -> "m-pod"
+  s = s.replace(/\banti personnel pod\b/g, "anti-personnel pod"); // glued "ISAntiPersonnelPod"
+  s = s.replace(/\blppc\b/g, "light ppc"); // glued "ISLPPC" -> "light ppc"
+  s = s.replace(/\bsbgr\b/g, "silver bullet gauss rifle"); // glued "ISSBGR" -> full name
   s = s.replace(/\bsnppc\b/g, "snub-nose ppc"); // glued "ISSNPPC" -> "snub-nose ppc"
   s = s.replace(/\b(small|medium|large) vsp\b(?!\s+laser)/g, "$1 vsp laser"); // "Medium VSP" -> "medium vsp laser"
   s = s.replace(/\bblazer cannon\b/g, "binary laser cannon"); // "Blazer Cannon" -> canonical name
@@ -867,7 +875,10 @@ function equipmentLocation(loc: CritSlot["location"]): CritSlot["location"] {
  */
 export function isWeaponBlockEquipment(name: string): boolean {
   const lower = name.toLowerCase();
-  return IMPORTANT_EQUIPMENT.some((e) => e.match.some((m) => lower.includes(m)));
+  // Also test the normalized name so BLK's glued spellings de-glue to match the
+  // space-containing tokens ("ISLaserInsulator" -> "laser insulator").
+  const norm = normalizeWeaponName(name);
+  return IMPORTANT_EQUIPMENT.some((e) => e.match.some((m) => lower.includes(m) || norm.includes(m)));
 }
 
 /**
@@ -956,12 +967,13 @@ export function buildEquipment(critSlots: ReadonlyArray<CritSlot>): CardEquipmen
 
   for (const slot of critSlots) {
     const lower = slot.name.toLowerCase();
+    const norm = normalizeWeaponName(slot.name); // de-glue BLK names ("ISMGA" -> "machine gun array")
     const loc = equipmentLocation(slot.location); // CT/LT/RT -> one "Torso"
     if (lower.includes("ammo")) {
       bump(ammoLabel(slot.name), loc, "ammo", true); // each bin counts
       continue;
     }
-    const match = IMPORTANT_EQUIPMENT.find((e) => e.match.some((m) => lower.includes(m)));
+    const match = IMPORTANT_EQUIPMENT.find((e) => e.match.some((m) => lower.includes(m) || norm.includes(m)));
     if (match) bump(match.label, loc, "equipment", match.countable ?? false, match.unique ?? false);
   }
 

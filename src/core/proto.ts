@@ -21,9 +21,11 @@ import {
   ammoLabel,
   convertWeapon,
   groupIntoTics,
+  isNonWeaponMount,
   isWeaponBlockEquipment,
   lookupTmm,
   lookupWeaponDamage,
+  normalizeWeaponName,
   roundNearest,
 } from "./convert.js";
 import { ticHeat } from "./convert.js";
@@ -102,7 +104,8 @@ function buildProtoEquipment(mounts: ReadonlyArray<ProtoMount>, jumpMP: number):
       category = "ammo";
       countable = true;
     } else {
-      const match = IMPORTANT_EQUIPMENT.find((e) => e.match.some((s) => lower.includes(s)));
+      const norm = normalizeWeaponName(m.name);
+      const match = IMPORTANT_EQUIPMENT.find((e) => e.match.some((s) => lower.includes(s) || norm.includes(s)));
       if (!match) continue;
       label = match.label;
       category = "equipment";
@@ -135,7 +138,7 @@ export function convertProto(unit: ProtoMechUnit): ProtoMechCard {
   for (const loc of PROTO_ORDER) {
     const cardWeapons: CardWeapon[] = [];
     for (const mount of unit.mounts.filter((m) => m.loc === loc)) {
-      const isAmmo = /\bammo\b/i.test(mount.name);
+      const isAmmo = isNonWeaponMount(mount.name); // glued ammo + cargo + Narc pods
       const { unknown } = lookupWeaponDamage(mount.name, unit.techBase);
       const isEquipment = isWeaponBlockEquipment(mount.name);
       if (!isAmmo && !isEquipment && (!unknown || looksLikeWeapon(mount.name))) {

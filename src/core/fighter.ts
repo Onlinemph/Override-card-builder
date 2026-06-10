@@ -20,9 +20,11 @@ import {
   convertWeapon,
   groupIntoTics,
   isWarshipWeapon,
+  isNonWeaponMount,
   isWeaponBlockEquipment,
   lookupTmm,
   lookupWeaponDamage,
+  normalizeWeaponName,
   roundNearest,
   ticHeat,
 } from "./convert.js";
@@ -84,7 +86,8 @@ function buildFighterEquipment(mounts: ReadonlyArray<FighterMount>): VehicleEqui
       category = "ammo";
       countable = true;
     } else {
-      const match = IMPORTANT_EQUIPMENT.find((e) => e.match.some((s) => lower.includes(s)));
+      const norm = normalizeWeaponName(m.name);
+      const match = IMPORTANT_EQUIPMENT.find((e) => e.match.some((s) => lower.includes(s) || norm.includes(s)));
       if (!match) continue;
       label = match.label;
       category = "equipment";
@@ -119,7 +122,7 @@ export function convertFighter(unit: FighterUnit): FighterCard {
     for (const mount of unit.mounts.filter((m) => m.facing === facing)) {
       // Capital-scale guns have no 'Mech-scale stats — drop them (no row, no warning).
       if (isWarshipWeapon(mount.name)) continue;
-      const isAmmo = /\bammo\b/i.test(mount.name);
+      const isAmmo = isNonWeaponMount(mount.name); // glued ammo + cargo + Narc pods
       const { unknown } = lookupWeaponDamage(mount.name, unit.techBase);
       // AMS / Laser AMS / TAG are equipment in Override, never weapons.
       const isEquipment = isWeaponBlockEquipment(mount.name);

@@ -26,9 +26,11 @@ import {
   ammoLabel,
   convertWeapon,
   groupIntoTics,
+  isNonWeaponMount,
   isWeaponBlockEquipment,
   lookupTmm,
   lookupWeaponDamage,
+  normalizeWeaponName,
   roundNearest,
   ticHeat,
 } from "./convert.js";
@@ -91,7 +93,8 @@ function buildVehicleEquipment(mounts: ReadonlyArray<VehicleMount>): VehicleEqui
       category = "ammo";
       countable = true;
     } else {
-      const match = IMPORTANT_EQUIPMENT.find((e) => e.match.some((s) => lower.includes(s)));
+      const norm = normalizeWeaponName(m.name);
+      const match = IMPORTANT_EQUIPMENT.find((e) => e.match.some((s) => lower.includes(s) || norm.includes(s)));
       if (!match) continue;
       label = match.label;
       category = "equipment";
@@ -124,7 +127,7 @@ export function convertVehicle(unit: VehicleUnit): VehicleCard {
   for (const facing of FACING_ORDER) {
     const cardWeapons: CardWeapon[] = [];
     for (const mount of unit.mounts.filter((m) => m.facing === facing)) {
-      const isAmmo = /\bammo\b/i.test(mount.name);
+      const isAmmo = isNonWeaponMount(mount.name); // glued ammo + cargo + Narc pods
       const { unknown } = lookupWeaponDamage(mount.name, unit.techBase);
       // AMS / Laser AMS / TAG are equipment in Override, never weapons.
       const isEquipment = isWeaponBlockEquipment(mount.name);

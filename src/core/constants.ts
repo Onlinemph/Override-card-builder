@@ -1254,6 +1254,7 @@ export const IMPORTANT_EQUIPMENT: ReadonlyArray<ImportantEquipment> = [
   { match: ["m-pod"], label: "M-Pod", countable: true, unique: true },
   { match: ["triple strength myomer", "triple-strength myomer", "tsm"], label: "TSM" },
   { match: ["coolant pod"], label: "Coolant Pod" },
+  { match: ["lift hoist"], label: "Lift Hoist" },
   { match: ["ppc capacitor"], label: "PPC Capacitor" },
   { match: ["risc advanced point defense", "risc apds"], label: "RISC APDS" },
   { match: ["laser insulator"], label: "Laser Insulator" },

@@ -610,6 +610,21 @@ describe("range brackets (page 43, VERIFIED vs DFA cards)", () => {
     expect(isNonWeaponMount("Medium Laser")).toBe(false);
   });
 
+  it("resolves glued BLK aliases and equipment that previously surfaced as unknown", () => {
+    // Glued abbreviations / word-order variants mirror their known weapon.
+    expect(normalizeWeaponName("ISLPPC")).toBe("light ppc");
+    expect(normalizeWeaponName("ISSBGR")).toBe("silver bullet gauss rifle");
+    expect(normalizeWeaponName("Autocannon/10 Primitive")).toBe("ac/10");
+    expect(normalizeWeaponName("CLERMediumLaserPrototype")).toBe("prototype er medium laser");
+    expect(normalizeWeaponName("Prototype Rocket Launcher 20")).toBe("rocket launcher 20");
+    expect(lookupWeaponDamage("ISLPPC").unknown).toBe(false);
+    expect(lookupWeaponDamage("ISSBGR").unknown).toBe(false);
+    // Glued equipment de-glues to match the equipment tokens (no longer a weapon).
+    for (const n of ["ISMGA", "1 ISLMGA", "CLMGA:OMNI", "ISMPod", "1 CLBPod", "CLLightActiveProbe", "ISLaserInsulator", "1 Lift Hoist"]) {
+      expect(isWeaponBlockEquipment(n)).toBe(true);
+    }
+  });
+
   it("flags capital/sub-capital/screen weapons (and their ammo) as warship-scale", () => {
     expect(isWarshipWeapon("Capital Missile Launcher (AR10 Launcher)")).toBe(true);
     expect(isWarshipWeapon("Sub-Capital Cannon (Heavy)")).toBe(true);
