@@ -147,6 +147,8 @@ export function normalizeWeaponName(raw: string): string {
   s = s.replace(/\blb[\s-]?x[\s-]?ac[\s-]?(\d+)/g, "lb $1-x ac"); // glued "LBXAC10" -> "lb 10-x ac"
   s = s.replace(/\blac[\s/-]?(\d+)/g, "light ac/$1"); // "LAC5"/"LAC/5" -> "light ac/5"
   s = s.replace(/\b(srm|lrm|mml|atm|iatm)\s*-\s*(\d+)/g, "$1 $2"); // srm-6/mml-5/atm-6 -> "srm 6" etc.
+  s = s.replace(/^streak\s+/, ""); // Streak weapons share their non-streak counterpart's stats
+
   s = s.replace(/\bx[\s-]?pulse\b/g, "xpulse"); // "X-Pulse"/"X Pulse" -> "xpulse"
   s = s.replace(/re-?engineered/g, "reengineered"); // "Re-engineered" -> "reengineered"
   s = s.replace(/^arrow ?iv\b.*/, "arrow iv"); // "Arrow IV System"/"ArrowIV" -> "arrow iv"
@@ -166,13 +168,17 @@ export function normalizeWeaponName(raw: string): string {
  * card's "cSRM-2"); energy abbreviations are left unprefixed.
  */
 export function abbreviateWeapon(raw: string, techBase: TechBase = "IS"): string {
+  // normalizeWeaponName strips "Streak" (it shares the base weapon's stats), but
+  // the label should keep it — prepend "S" so SRM-6 -> SSRM-6, LRM-15 -> SLRM-15.
+  const isStreak = /streak/i.test(raw); // no \b: also catch glued "CLStreakLRM10"
   const key = normalizeWeaponName(raw);
   const mapped = WEAPON_ABBREV[key];
   if (mapped) {
     // The printed card prefixes Clan ballistic/missile weapons with "c"
     // (cSRM-2, cRAC/5) but leaves energy weapons bare (SLas, ER PPC).
     const energy = /laser|ppc|flamer|plasma|tag|narc/.test(key);
-    return techBase === "Clan" && !energy ? `c${mapped}` : mapped;
+    const label = isStreak ? `S${mapped}` : mapped;
+    return techBase === "Clan" && !energy ? `c${label}` : label;
   }
   // Fallback: strip qualifiers/tech prefixes and split glued names, keep caps.
   let s = raw.replace(/\([^)]*\)/g, "").replace(/\s*\[ba\]/gi, "").trim();

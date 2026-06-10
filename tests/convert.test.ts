@@ -5,6 +5,7 @@ import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import {
+  abbreviateWeapon,
   buildTic,
   classifyDamage,
   computeDamageProfile,
@@ -156,6 +157,16 @@ describe("lookupWeaponDamage (TW values, tech-base aware)", () => {
   });
   it("flags unknown weapons", () => {
     expect(lookupWeaponDamage("Death Ray")).toEqual({ twDamage: 0, unknown: true });
+  });
+
+  it("resolves Streak weapons to their non-streak counterpart, keeping tech + label", () => {
+    // Streak LRMs were unknown; now share the LRM stats (Clan/IS divide intact).
+    expect(lookupWeaponDamage("Streak LRM 15", "IS").twDamage).toBe(15);
+    expect(lookupWeaponDamage("CLStreakLRM10", "Clan").twDamage).toBe(10);
+    expect(normalizeWeaponName("Streak SRM 6")).toBe("srm 6");
+    // Label keeps the "S" (and Clan "c"); glued names too.
+    expect(abbreviateWeapon("Streak LRM 15", "IS")).toBe("SLRM-15");
+    expect(abbreviateWeapon("CLStreakLRM10", "Clan")).toBe("cSLRM-10");
   });
 
   it("scores Battle Armor support guns from their BLK names (VERIFIED vs DFA mockup)", () => {
