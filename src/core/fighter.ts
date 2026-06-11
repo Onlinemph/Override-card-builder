@@ -14,7 +14,7 @@
  * fighter table (Nose 6-8, R-Wing 3-5, L-Wing 9-11, Aft 2 & 12).
  */
 
-import { IMPORTANT_EQUIPMENT, VEHICLE_ARMOR_DIVISOR, WEAPON_HINTS, vehicleStructure } from "./constants.js";
+import { IMPORTANT_EQUIPMENT, VEHICLE_ARMOR_DIVISOR, vehicleStructure } from "./constants.js";
 import {
   ammoLabel,
   convertWeapon,
@@ -24,6 +24,7 @@ import {
   isWeaponBlockEquipment,
   lookupTmm,
   lookupWeaponDamage,
+  looksLikeWeapon,
   normalizeWeaponName,
   roundNearest,
   ticRow,
@@ -72,11 +73,6 @@ const FACING_ORDER: ReadonlyArray<FighterFacing> = [
   "wings",
   "fuselage",
 ];
-
-function looksLikeWeapon(name: string): boolean {
-  const lower = name.toLowerCase();
-  return WEAPON_HINTS.some((hint) => lower.includes(hint));
-}
 
 /** Armor: TW / 4, round nearest, min 1 (0 if the facing is absent). */
 function convertArmor(tw: number): number {

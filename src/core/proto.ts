@@ -15,7 +15,7 @@
  * and the armor:structure ratio); Head/Arm/Main-Gun = 1 (washes out under ÷3).
  */
 
-import { IMPORTANT_EQUIPMENT, WEAPON_DAMAGE_DIVISOR, WEAPON_HINTS } from "./constants.js";
+import { IMPORTANT_EQUIPMENT, WEAPON_DAMAGE_DIVISOR } from "./constants.js";
 import {
   ammoLabel,
   convertWeapon,
@@ -24,6 +24,7 @@ import {
   isWeaponBlockEquipment,
   lookupTmm,
   lookupWeaponDamage,
+  looksLikeWeapon,
   normalizeWeaponName,
   roundNearest,
   ticRow,
@@ -65,11 +66,6 @@ const PROTO_CODE: Readonly<Record<ProtoLoc, string>> = {
   legs: "L",
   mainGun: "MG",
 };
-
-function looksLikeWeapon(name: string): boolean {
-  const lower = name.toLowerCase();
-  return WEAPON_HINTS.some((hint) => lower.includes(hint));
-}
 
 /** Armor / structure: TW / 3, round nearest, min 1 (0 if the location is absent). */
 function convertProtoPip(tw: number): number {

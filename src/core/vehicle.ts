@@ -19,7 +19,6 @@ import {
   MOTION_TYPE_LETTER,
   VEHICLE_ARMOR_DIVISOR,
   vehicleStructure,
-  WEAPON_HINTS,
 } from "./constants.js";
 import {
   ammoLabel,
@@ -29,6 +28,7 @@ import {
   isWeaponBlockEquipment,
   lookupTmm,
   lookupWeaponDamage,
+  looksLikeWeapon,
   normalizeWeaponName,
   roundNearest,
   ticRow,
@@ -78,11 +78,6 @@ const FACING_ORDER: ReadonlyArray<VehicleFacing> = [
   "rotor",
   "body",
 ];
-
-function looksLikeWeapon(name: string): boolean {
-  const lower = name.toLowerCase();
-  return WEAPON_HINTS.some((hint) => lower.includes(hint));
-}
 
 /** Armor: TW / 4, round nearest, min 1 (0 if the facing is absent). */
 function convertArmor(tw: number): number {

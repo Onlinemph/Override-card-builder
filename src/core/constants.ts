@@ -1472,6 +1472,15 @@ export const WEAPON_HINTS: ReadonlyArray<string> = [
   "blazer",
   "needler",
   "magshot",
+  // Artillery & specials whose names carry no other weapon token — surface them
+  // as rows (with a "?" if still unstatted) rather than silently dropping them.
+  "sniper",
+  "long tom",
+  "thumper",
+  "arrow",
+  "cruise missile",
+  "taser",
+  "torpedo",
 ] as const;
 
 /**

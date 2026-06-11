@@ -55,6 +55,7 @@ import {
   WEAPON_DAMAGE_CLAN,
   WEAPON_DAMAGE_DIVISOR,
   WEAPON_HEAT,
+  WEAPON_HINTS,
   WEAPON_RV_MISSILE,
 } from "./constants.js";
 import type {
@@ -169,6 +170,9 @@ export function normalizeWeaponName(raw: string): string {
   s = s.replace(/\bi-?os\b/g, "").trim(); // strip "(I)OS" Improved-One-Shot suffix (ISSRM2IOS -> srm 2)
   s = s.replace(/\b(rocket launcher \d+) prototype\b/g, "$1"); // prototype RL = same stats
   s = s.replace(/\bprototype (rocket launcher \d+)\b/g, "$1"); // "Prototype Rocket Launcher 20" -> "rocket launcher 20"
+  s = s.replace(/\brl\s*-?\s*(\d+)/g, "rocket launcher $1"); // glued "RL10" -> "rocket launcher 10"
+  s = s.replace(/\blr torpedo\s*(\d+)/g, "lrm $1").replace(/\bsr torpedo\s*(\d+)/g, "srm $1"); // LR/SR Torpedo = LRM/SRM
+  s = s.replace(/\s+artillery\b/g, ""); // "Thumper Artillery" -> "thumper", "Sniper Artillery" -> "sniper"
   s = s.replace(/\b(er medium laser) prototype\b/g, "prototype $1"); // glued "CLERMediumLaserPrototype" word order
   s = s.replace(/\b(ac\/\d+) primitive\b/g, "$1"); // "Autocannon/10 Primitive" -> ac/10
   s = s.replace(/\bmg\b/g, "machine gun"); // MG abbreviation -> full name
@@ -924,11 +928,26 @@ export function isNonWeaponMount(name: string): boolean {
  * drone DropShips/pocket-warships that carry them they are suppressed entirely
  * (no row, no warning) rather than printed as zero-damage unknowns.
  */
+/**
+ * Heuristic gate for the vehicle / aero / proto / dropship paths: an UNKNOWN
+ * mount is only shown as a weapon row when its name looks like a weapon (so
+ * sensors, chassis mods, etc. don't surface as zero-damage rows). Checks both
+ * the raw name and its normalized form, so glued BLK spellings de-glue to match
+ * a multi-word token ("ISLongTom" -> "long tom", "ISCruiseMissile50" matches
+ * "cruise missile"). 'Mechs show every weapon and do not use this gate.
+ */
+export function looksLikeWeapon(name: string): boolean {
+  const lower = name.toLowerCase();
+  const norm = normalizeWeaponName(name);
+  return WEAPON_HINTS.some((h) => lower.includes(h) || norm.includes(h));
+}
+
 export function isWarshipWeapon(name: string): boolean {
   return (
     /\bcapital\b/i.test(name) || // "Capital ..." and "Sub-Capital ..."
     /screen launcher/i.test(name) ||
-    /\b(ar10|killer whale|white shark|barracuda|piranha|stingray|manta ray)\b/i.test(name)
+    /tele-?operated/i.test(name) || // tele-operated capital missiles (Kraken, etc.)
+    /\b(ar10|killer whale|white shark|barracuda|piranha|stingray|manta ray|kraken)\b/i.test(name)
   );
 }
 

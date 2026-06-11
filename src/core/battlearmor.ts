@@ -15,7 +15,6 @@ import {
   ARM_LEG_ARMOR_DIVISOR,
   MIN_ARM_LEG_ARMOR,
   TMM_JUMP_BONUS,
-  WEAPON_HINTS,
 } from "./constants.js";
 import {
   abbreviateWeapon,
@@ -26,6 +25,7 @@ import {
   isNonWeaponMount,
   lookupTmm,
   lookupWeaponDamage,
+  looksLikeWeapon,
   normalizeWeaponName,
   roundNearest,
   scaleSquadDamage,
@@ -44,11 +44,6 @@ import type {
 const BA_LOCATION = "CT" as const;
 
 /** True if an item name looks like a weapon (so unknowns surface rather than drop). */
-function looksLikeWeapon(name: string): boolean {
-  const lower = name.toLowerCase();
-  return WEAPON_HINTS.some((hint) => lower.includes(hint));
-}
-
 /**
  * True for anti-personnel infantry small arms (infantry rifles, Mauser systems,
  * or anything in the Anti-Personnel Mount). These do no meaningful damage to

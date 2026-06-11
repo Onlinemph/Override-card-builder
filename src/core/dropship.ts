@@ -13,7 +13,7 @@
  * unknown (0 damage) with a warning until rules are supplied.
  */
 
-import { IMPORTANT_EQUIPMENT, WEAPON_HINTS, VEHICLE_ARMOR_DIVISOR, STRUCTURE_DIVISOR } from "./constants.js";
+import { IMPORTANT_EQUIPMENT, VEHICLE_ARMOR_DIVISOR, STRUCTURE_DIVISOR } from "./constants.js";
 import {
   ammoLabel,
   convertWeapon,
@@ -23,6 +23,7 @@ import {
   isWeaponBlockEquipment,
   lookupTmm,
   lookupWeaponDamage,
+  looksLikeWeapon,
   normalizeWeaponName,
   roundNearest,
   ticRow,
@@ -77,11 +78,6 @@ const ARC_CODE: Readonly<Record<DropshipFacing, string>> = {
   hull: "HL",
 };
 const ARC_ORDER: ReadonlyArray<DropshipFacing> = ["nose", "leftSide", "rightSide", "aft", "hull"];
-
-function looksLikeWeapon(name: string): boolean {
-  const lower = name.toLowerCase();
-  return WEAPON_HINTS.some((hint) => lower.includes(hint));
-}
 
 /** Armor: TW / 4, round nearest, min 1 (0 if the arc is absent). */
 function convertArmor(tw: number): number {
