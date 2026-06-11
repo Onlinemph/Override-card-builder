@@ -6,7 +6,7 @@
 
 import "./style.css";
 
-import { convertAny, ParseError } from "../core/index.js";
+import { convertAny, groupIntoTics, ParseError } from "../core/index.js";
 import { renderBACard } from "./ba-card.js";
 import { renderDropshipCard } from "./dropship-card.js";
 import { renderFighterCard } from "./fighter-card.js";
@@ -14,6 +14,8 @@ import { renderInfantryCard } from "./infantry-card.js";
 import { renderMechCard } from "./mech-card.js";
 import { renderProtoCard } from "./proto-card.js";
 import { renderVehicleCard } from "./vehicle-card.js";
+import { applyMove, groupingFromTics, renderTicEditorHtml, ticsFromGrouping } from "./tic-editor.js";
+import type { Grouping } from "./tic-editor.js";
 
 // ---------------------------------------------------------------------------
 // Unit browser — powered by the pre-built index served as a STATIC asset at
@@ -138,7 +140,7 @@ async function initBrowser(): Promise<void> {
 
   render();
 }
-import type { AnyCard } from "../core/index.js";
+import type { AnyCard, OverrideCard } from "../core/index.js";
 
 // Injected by Vite (see vite.config.ts).
 declare const __BUILD_TIME__: string;
@@ -495,14 +497,48 @@ function cardHtml(result: AnyCard): string {
   return renderMechCard(result.card);
 }
 
-/** Render the converted cards. Both 'Mech and BA cards are static (no editor). */
+// Active manual-TIC edit session. Set only when a SINGLE 'Mech card is shown;
+// the grouping is the source of truth and rebuilds card.tics on every change.
+let edit: { card: OverrideCard; grouping: Grouping } | null = null;
+
+/** Render the converted cards, attaching the TIC editor for a single 'Mech. */
 function showResults(results: ConvertResult[]): void {
+  edit = null;
   if (results.length === 0) {
     output.innerHTML = `<p class="muted">Nothing to convert.</p>`;
     return;
   }
+  // A lone 'Mech card is editable: re-partition its weapons into TICs live.
+  if (results.length === 1 && results[0]!.ok && results[0]!.result.kind === "mech") {
+    edit = { card: results[0]!.result.card, grouping: groupingFromTics(results[0]!.result.card) };
+    renderEdit();
+    return;
+  }
   output.innerHTML = results.map((r) => (r.ok ? cardHtml(r.result) : r.html)).join("");
 }
+
+/** Re-render the editable 'Mech card + its TIC editor from the current grouping. */
+function renderEdit(): void {
+  if (!edit) return;
+  edit.card.tics = ticsFromGrouping(edit.card, edit.grouping);
+  output.innerHTML = renderMechCard(edit.card) + renderTicEditorHtml(edit.card, edit.grouping);
+}
+
+// Delegated editor controls (the panel is re-rendered on each change, so listen
+// on the stable `output` container rather than the transient selects/buttons).
+output.addEventListener("change", (e) => {
+  const sel = (e.target as HTMLElement).closest<HTMLSelectElement>("select.tic-move");
+  if (!sel || !edit || !sel.value) return;
+  const wi = Number(sel.dataset.wi);
+  const target = sel.value === "new" ? "new" : Number(sel.value.replace(/^g:/, ""));
+  edit.grouping = applyMove(edit.grouping, wi, target);
+  renderEdit();
+});
+output.addEventListener("click", (e) => {
+  if (!(e.target as HTMLElement).closest("#tic-reset") || !edit) return;
+  edit.grouping = groupingFromTics({ ...edit.card, tics: groupIntoTics(edit.card.weapons) });
+  renderEdit();
+});
 
 $("convert").addEventListener("click", () => {
   const text = textarea.value.trim();

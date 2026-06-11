@@ -958,3 +958,81 @@ footer {
 .dloc-name { font-weight: 700; font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.02em; }
 .dloc-val { font-weight: 800; font-size: 1.5rem; color: #6c4f9e; font-variant-numeric: tabular-nums; }
 .dloc-val.si { color: #c0392b; }
+
+/* ---- Manual TIC editor (single 'Mech card) ------------------------------- */
+.tic-editor {
+  margin-top: 16px;
+  padding: 14px 16px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.tic-editor-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.tic-editor-head h3 {
+  margin: 0;
+  font-size: 14px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.tic-reset {
+  padding: 4px 10px;
+  font-size: 12px;
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+  color: var(--ink);
+  border-radius: 6px;
+  cursor: pointer;
+}
+.tic-reset:hover { border-color: var(--accent); }
+.tic-hint { margin: 6px 0 12px; font-size: 12px; }
+.tic-boxes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.tic-box {
+  flex: 1 1 200px;
+  min-width: 180px;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 8px 10px;
+}
+.tic-box-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.tic-tag {
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--accent);
+  letter-spacing: 0.03em;
+}
+.tic-meta { font-size: 12px; color: var(--muted); }
+.tic-members { list-style: none; margin: 0; padding: 0; }
+.tic-members li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 3px 0;
+}
+.tic-wname { font-size: 13px; }
+.tic-move {
+  font-size: 11px;
+  padding: 1px 4px;
+  background: var(--panel);
+  color: var(--muted);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  cursor: pointer;
+}
+.tic-move:hover { border-color: var(--accent); color: var(--ink); }
