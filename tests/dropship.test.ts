@@ -54,8 +54,8 @@ describe("convertDropship (aerospace rules)", () => {
     expect(c.sinks).toBe(16); // 40 doubles -> 80 -> /5
   });
 
-  it("computes DThr = (nose + aft + one side)/30 and single TMM", () => {
-    expect(c.dthr).toBe(25); // (300 + 200 + 250) / 30 = 25
+  it("computes DThr from OVERRIDE armor (nose + aft + one side)/30 and single TMM", () => {
+    expect(c.dthr).toBe(6); // override armor (75 + 50 + 63) / 30 = 6.27 -> 6
     expect(c.tmm).toBe(2); // max 6 -> base 1 -> higher value 2
     expect(c.move).toBe("4 / 6");
   });

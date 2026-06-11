@@ -3,7 +3,7 @@
  *
  * PURE module. Built on the aerospace-fighter rules (per the user's direction —
  * "same rules as before"): armor = TW/4 (round nearest, min 1), Sinks =
- * dissipation/5, DThr = (nose + aft + one side) TW / 30, TMM = the single
+ * dissipation/5, DThr = (nose + aft + one side) OVERRIDE armor / 30, TMM = the single
  * higher (sprint) value on max thrust. Weapons reuse the shared engine, grouped
  * into TICs PER ARC (Nose / Left Side / Right Side / Aft; Hull mounts are
  * equipment). SI comes from the BLK <structural_integrity> at TW/3 (round
@@ -169,8 +169,10 @@ export function convertDropship(unit: DropshipUnit): DropshipCard {
   const dissipation = unit.heatSinkCount * (unit.heatSinkType === "double" ? 2 : 1);
   const sinks = roundNearest(dissipation / 5);
 
-  // DThr: (nose + aft + one side) TW armor / 30, round nearest.
-  const dthr = roundNearest((a.nose + a.aft + Math.max(a.leftSide, a.rightSide)) / 30);
+  // DThr: (nose + aft + one side) of the OVERRIDE armor / 30, round nearest —
+  // the already-reduced card armor (TW/4), NOT raw TW armor (~10% of a side on
+  // the Override scale).
+  const dthr = roundNearest((armor.nose + armor.aft + Math.max(armor.leftSide, armor.rightSide)) / 30);
 
   return {
     kind: "dropship",

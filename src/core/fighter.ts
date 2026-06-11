@@ -8,8 +8,9 @@
  * Armor = TW/4 (VERIFIED); SI is a single airframe-wide value by tonnage
  * bracket; move shows "safe / max" thrust; TMM is a SINGLE number (the higher
  * sprint value on max thrust); Sinks = dissipation/5 (aerospace only — conv.
- * fighters do not track heat); DThr = (nose + aft + one wing) TW / 30. Sinks /
- * DThr / TMM VERIFIED vs the DFA Aeshna mockup. Hit locations use the Override
+ * fighters do not track heat); DThr = (nose + aft + one wing) OVERRIDE armor / 30
+ * (the reduced TW/4 card armor, ~10% of a side). Sinks / TMM VERIFIED vs the DFA
+ * Aeshna mockup. Hit locations use the Override
  * fighter table (Nose 6-8, R-Wing 3-5, L-Wing 9-11, Aft 2 & 12).
  */
 
@@ -177,9 +178,11 @@ export function convertFighter(unit: FighterUnit): FighterCard {
   const dissipation = unit.heatSinkCount * (unit.heatSinkType === "double" ? 2 : 1);
   const sinks = unit.conventional ? 0 : roundNearest(dissipation / 5);
 
-  // Damage Threshold: (nose + aft + one wing) TW armor / 30, round nearest.
-  // VERIFIED: Aeshna (85 + 54 + 64) / 30 = 6.77 -> DThr 7.
-  const dthr = roundNearest((a.nose + a.aft + Math.max(a.leftWing, a.rightWing)) / 30);
+  // Damage Threshold: (nose + aft + one wing) of the OVERRIDE armor / 30, round
+  // nearest. Uses the already-reduced card armor (TW/4), NOT raw TW armor — on
+  // the Override scale this lands at ~10% of a side's armor, matching the TW
+  // Threshold relationship. Aeshna (21 + 14 + 16) / 30 = 1.7 -> DThr 2.
+  const dthr = roundNearest((armor.nose + armor.aft + Math.max(armor.leftWing, armor.rightWing)) / 30);
 
   return {
     kind: "fighter",

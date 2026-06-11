@@ -63,16 +63,16 @@ describe("convertFighter", () => {
     expect(c.structure).toBe(2); // 50t -> 2 (45–70t bracket)
   });
 
-  it("computes DThr = (nose + aft + one wing) / 30, round nearest", () => {
-    // TF-1: (40 + 16 + 24) / 30 = 2.67 -> 3.
-    expect(c.dthr).toBe(3);
+  it("computes DThr from OVERRIDE armor (nose + aft + one wing) / 30, round nearest", () => {
+    // TF-1 override armor (10 + 4 + 6) / 30 = 0.67 -> 1.
+    expect(c.dthr).toBe(1);
   });
 
-  it("matches the DFA Aeshna mockup: 21 doubles -> Sinks 8, DThr 7, TMM 3", () => {
+  it("matches the DFA Aeshna mockup: 21 doubles -> Sinks 8, DThr 2, TMM 3", () => {
     const blk = `<UnitType>\nAero\n</UnitType>\n<Name>\nAeshna\n</Name>\n<SafeThrust>\n5\n</SafeThrust>\n<heatsinks>\n21\n</heatsinks>\n<sink_type>\n1\n</sink_type>\n<tonnage>\n100.0\n</tonnage>\n<armor>\n85\n64\n64\n54\n</armor>\n`;
     const a = convertFighter(parseBlkFighter(blk, "aeshna.blk"));
     expect(a.sinks).toBe(8); // 21 x 2 = 42 -> /5 = 8.4 -> 8
-    expect(a.dthr).toBe(7); // (85 + 54 + 64) / 30 = 6.77 -> 7
+    expect(a.dthr).toBe(2); // override armor (21 + 14 + 16) / 30 = 1.7 -> 2
     expect(a.tmm).toBe(3); // max 8 -> base 2 -> higher value 3
   });
 
@@ -80,7 +80,7 @@ describe("convertFighter", () => {
     const blk = `<UnitType>\nConvFighter\n</UnitType>\n<Name>\nX\n</Name>\n<SafeThrust>\n4\n</SafeThrust>\n<heatsinks>\n10\n</heatsinks>\n<sink_type>\n0\n</sink_type>\n<armor>\n20\n10\n10\n10\n</armor>\n`;
     const conv = convertFighter(parseBlkFighter(blk, "cf.blk"));
     expect(conv.sinks).toBe(0);
-    expect(conv.dthr).toBe(1); // (20 + 10 + 10) / 30 = 1.33 -> 1
+    expect(conv.dthr).toBe(0); // override armor (5 + 3 + 3) / 30 = 0.37 -> 0 (small/light fighters can floor at 0)
   });
 
   it("groups identical weapons WITHIN a facing only, tagged by facing code", () => {
