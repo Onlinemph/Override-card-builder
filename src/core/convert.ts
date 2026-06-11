@@ -68,6 +68,7 @@ import type {
   TechBase,
   Tic,
   Unit,
+  VehicleWeaponRow,
   Weapon,
   WeaponRange,
 } from "./types.js";
@@ -548,6 +549,23 @@ export function abbreviatedTicLabel(tic: Tic, unitTech: TechBase): string {
   return tic.count > 1 ? `x${tic.count} ${ab}` : ab;
 }
 
+/**
+ * Build one rendered weapon row (used by the vehicle / fighter / dropship cards
+ * and their TIC editor) from a TIC plus its arc/facing short code. Keeping this
+ * shared means the editor's regrouped rows match the converter's exactly.
+ */
+export function ticRow(tic: Tic, techBase: TechBase, facingCode: string): VehicleWeaponRow {
+  return {
+    label: abbreviatedTicLabel(tic, techBase),
+    facing: facingCode,
+    damageText: tic.damageText,
+    heat: ticHeat(tic),
+    range: tic.range,
+    rangeText: tic.rangeText,
+    unknown: tic.weapons.some((w) => w.unknown),
+  };
+}
+
 export function detectWeaponTech(raw: string): TechBase | null {
   const s = raw.trim().replace(/^\d+\s+/, ""); // tolerate a leading count ("1 ISERPPC")
   // Attached tech prefix glued to an uppercase acronym ("CLERPPC", "ISMediumLaser"):
@@ -572,6 +590,7 @@ export function convertWeapon(w: Weapon, techBase: TechBase, mass: number): Card
     return {
       name: w.name,
       location: w.location,
+      rawLocation: w.rawLocation,
       rearMounted: w.rearMounted,
       twDamage: dmg,
       damage: dmg,
@@ -593,6 +612,7 @@ export function convertWeapon(w: Weapon, techBase: TechBase, mass: number): Card
     return {
       name: w.name,
       location: w.location,
+      rawLocation: w.rawLocation,
       rearMounted: w.rearMounted,
       twDamage: 0,
       damage: 0,
@@ -622,6 +642,7 @@ export function convertWeapon(w: Weapon, techBase: TechBase, mass: number): Card
     return {
       name: w.name,
       location: w.location,
+      rawLocation: w.rawLocation,
       rearMounted: w.rearMounted,
       twDamage: rvm.max,
       damage: rvm.max,
@@ -660,6 +681,7 @@ export function convertWeapon(w: Weapon, techBase: TechBase, mass: number): Card
   return {
     name: w.name,
     location: w.location,
+    rawLocation: w.rawLocation,
     rearMounted: w.rearMounted,
     twDamage,
     damage: profile.max,
@@ -697,7 +719,7 @@ export function isLegalTicProfile(p: DamageProfile): boolean {
  * in each side torso) group into a single TIC ("x2 cLRM-15" @ T). Rear-torso
  * sections collapse together too; arms, legs, and head stay distinct.
  */
-function groupingLocation(loc: CardWeapon["location"]): string {
+export function groupingLocation(loc: CardWeapon["location"]): string {
   if (loc === "CT" || loc === "LT" || loc === "RT") return "T";
   if (loc === "CTR" || loc === "LTR" || loc === "RTR") return "Tr";
   return loc;

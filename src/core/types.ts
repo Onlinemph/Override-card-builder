@@ -223,6 +223,9 @@ export interface CardWeapon {
   name: string;
   /** Normalized location code. */
   location: MechLocation;
+  /** Original location/facing string from the source (e.g. "Left Arm", "nose").
+   * Used by the TIC editor as the per-facing grouping key for vehicles/aero. */
+  rawLocation?: string;
   /** Rear-mounted flag carried from parsing. */
   rearMounted: boolean;
   /** Total Warfare damage looked up for this weapon (0 if unknown). */
@@ -583,6 +586,10 @@ export interface VehicleCard {
   /** True for Support vehicles — the card labels them "Support …". */
   support?: boolean;
   weapons: VehicleWeaponRow[];
+  /** Raw per-arc weapons (rawLocation = facing) — source for the manual TIC editor. */
+  weaponMounts: CardWeapon[];
+  /** Auto-grouped TICs; the weapons rows above are derived from these. */
+  tics: Tic[];
   equipment: VehicleEquipment[];
   warnings: string[];
   sourceFile?: string;
@@ -684,6 +691,10 @@ export interface FighterCard {
   /** Single airframe-wide Structural Integrity (best-effort from tonnage). */
   structure: number;
   weapons: VehicleWeaponRow[];
+  /** Raw per-arc weapons (rawLocation = facing) — source for the manual TIC editor. */
+  weaponMounts: CardWeapon[];
+  /** Auto-grouped TICs; the weapons rows above are derived from these. */
+  tics: Tic[];
   equipment: VehicleEquipment[];
   warnings: string[];
   sourceFile?: string;
@@ -914,6 +925,10 @@ export interface ProtoMechCard {
   structure: ProtoCardArmor;
   /** Weapon rows (TICs grouped per location; `facing` holds the Loc code). */
   weapons: VehicleWeaponRow[];
+  /** Raw per-arc weapons (rawLocation = facing) — source for the manual TIC editor. */
+  weaponMounts: CardWeapon[];
+  /** Auto-grouped TICs; the weapons rows above are derived from these. */
+  tics: Tic[];
   /** Frenzy melee damage by tonnage (1 / 2 / 3); replaces Punch/Kick. */
   frenzy: number;
   equipment: VehicleEquipment[];
@@ -1008,6 +1023,10 @@ export interface DropshipCard {
   structure: number;
   /** Weapon rows (TICs grouped per arc; `facing` holds the arc code). */
   weapons: VehicleWeaponRow[];
+  /** Raw per-arc weapons (rawLocation = facing) — source for the manual TIC editor. */
+  weaponMounts: CardWeapon[];
+  /** Auto-grouped TICs; the weapons rows above are derived from these. */
+  tics: Tic[];
   equipment: VehicleEquipment[];
   /** Transport capacity ('Mech ×4, Fighter ×2, Cargo 1800t, …). */
   bays: DropshipBay[];

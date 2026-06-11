@@ -17,7 +17,6 @@
 
 import { IMPORTANT_EQUIPMENT, WEAPON_DAMAGE_DIVISOR, WEAPON_HINTS } from "./constants.js";
 import {
-  abbreviatedTicLabel,
   ammoLabel,
   convertWeapon,
   groupIntoTics,
@@ -27,8 +26,8 @@ import {
   lookupWeaponDamage,
   normalizeWeaponName,
   roundNearest,
+  ticRow,
 } from "./convert.js";
-import { ticHeat } from "./convert.js";
 import type {
   CardWeapon,
   ProtoCardArmor,
@@ -36,10 +35,21 @@ import type {
   ProtoMechCard,
   ProtoMechUnit,
   ProtoMount,
+  TechBase,
+  Tic,
   VehicleEquipment,
   VehicleWeaponRow,
   Weapon,
 } from "./types.js";
+
+/** Rebuild the per-location weapon rows from TICs (shared by the converter and the
+ * TIC editor), in canonical location order. */
+export function protoWeaponRows(tics: ReadonlyArray<Tic>, techBase: TechBase): VehicleWeaponRow[] {
+  const order = (t: Tic) => PROTO_ORDER.indexOf(t.weapons[0]!.rawLocation as ProtoLoc);
+  return [...tics]
+    .sort((a, b) => order(a) - order(b))
+    .map((t) => ticRow(t, techBase, PROTO_CODE[t.weapons[0]!.rawLocation as ProtoLoc]));
+}
 
 /** All ProtoMech weapons share a synthetic 'Mech location; grouping is per proto loc. */
 const SYNTH_LOCATION = "CT" as const;
@@ -132,7 +142,8 @@ function buildProtoEquipment(mounts: ReadonlyArray<ProtoMount>, jumpMP: number):
 export function convertProto(unit: ProtoMechUnit): ProtoMechCard {
   const warnings: string[] = [];
   const otherMounts: ProtoMount[] = [];
-  const weapons: VehicleWeaponRow[] = [];
+  const allWeapons: CardWeapon[] = []; // raw mounts (carry the location in rawLocation) for the TIC editor
+  const allTics: Tic[] = [];
   const unknownWeapons = new Set<string>();
 
   for (const loc of PROTO_ORDER) {
@@ -149,18 +160,11 @@ export function convertProto(unit: ProtoMechUnit): ProtoMechCard {
         otherMounts.push(mount);
       }
     }
-    for (const tic of groupIntoTics(cardWeapons)) {
-      weapons.push({
-        label: abbreviatedTicLabel(tic, unit.techBase),
-        facing: PROTO_CODE[loc],
-        damageText: tic.damageText,
-        heat: ticHeat(tic),
-        range: tic.range,
-        rangeText: tic.rangeText,
-        unknown: tic.weapons.some((w) => w.unknown),
-      });
-    }
+    allWeapons.push(...cardWeapons);
+    allTics.push(...groupIntoTics(cardWeapons));
   }
+
+  const weapons = protoWeaponRows(allTics, unit.techBase);
 
   for (const name of unknownWeapons) {
     warnings.push(`weapon not in TW damage table: "${name}" (damage set to 0)`);
@@ -210,6 +214,8 @@ export function convertProto(unit: ProtoMechUnit): ProtoMechCard {
     armor,
     structure,
     weapons,
+    weaponMounts: allWeapons,
+    tics: allTics,
     frenzy: protoFrenzyDamage(unit.tonnage),
     equipment: buildProtoEquipment(otherMounts, unit.jumpMP),
     warnings,

@@ -6,7 +6,15 @@
 
 import "./style.css";
 
-import { convertAny, groupIntoTics, ParseError } from "../core/index.js";
+import {
+  convertAny,
+  dropshipWeaponRows,
+  fighterWeaponRows,
+  groupingLocation,
+  ParseError,
+  protoWeaponRows,
+  vehicleWeaponRows,
+} from "../core/index.js";
 import { renderBACard } from "./ba-card.js";
 import { renderDropshipCard } from "./dropship-card.js";
 import { renderFighterCard } from "./fighter-card.js";
@@ -15,7 +23,7 @@ import { renderMechCard } from "./mech-card.js";
 import { renderProtoCard } from "./proto-card.js";
 import { renderVehicleCard } from "./vehicle-card.js";
 import { applyMove, groupingFromTics, renderTicEditorHtml, ticsFromGrouping } from "./tic-editor.js";
-import type { Grouping } from "./tic-editor.js";
+import type { EditorFacets, Grouping } from "./tic-editor.js";
 
 // ---------------------------------------------------------------------------
 // Unit browser — powered by the pre-built index served as a STATIC asset at
@@ -140,7 +148,7 @@ async function initBrowser(): Promise<void> {
 
   render();
 }
-import type { AnyCard, OverrideCard } from "../core/index.js";
+import type { AnyCard, CardWeapon, Tic } from "../core/index.js";
 
 // Injected by Vite (see vite.config.ts).
 declare const __BUILD_TIME__: string;
@@ -497,31 +505,82 @@ function cardHtml(result: AnyCard): string {
   return renderMechCard(result.card);
 }
 
-// Active manual-TIC edit session. Set only when a SINGLE 'Mech card is shown;
-// the grouping is the source of truth and rebuilds card.tics on every change.
-let edit: { card: OverrideCard; grouping: Grouping } | null = null;
+// ---- Manual TIC editor wiring ---------------------------------------------
 
-/** Render the converted cards, attaching the TIC editor for a single 'Mech. */
+/** An active edit session: the grouping is the source of truth and rebuilds the
+ * card's weapon display on every change (card.tics for mechs, weapon rows else). */
+interface EditSession {
+  weapons: CardWeapon[];
+  facets: EditorFacets;
+  grouping: Grouping;
+  autoGrouping: Grouping; // the original auto-grouping, for "Reset to auto"
+  apply: (tics: Tic[]) => void; // write the regrouped result onto the card
+  renderCard: () => string;
+}
+let edit: EditSession | null = null;
+
+// 'Mech locations collapse the torso; the facet key matches isLegalTic's rule.
+const mechFacets: EditorFacets = {
+  keyOf: (w) => groupingLocation(w.location) + (w.rearMounted ? "|R" : ""),
+  facetLabel: (w) => {
+    const g = groupingLocation(w.location);
+    const base = g === "T" || g === "Tr" ? "Torso" : w.location;
+    return w.rearMounted ? `${base} (R)` : base;
+  },
+};
+// Vehicles / aero / proto / dropship group per arc (the weapon's rawLocation).
+const titleCase = (s: string) =>
+  s.replace(/([a-z])([A-Z])/g, "$1 $2").replace(/^./, (c) => c.toUpperCase());
+const facingFacets: EditorFacets = {
+  keyOf: (w) => w.rawLocation ?? "",
+  facetLabel: (w) => titleCase(w.rawLocation ?? "—"),
+};
+
+/** Build an edit session for an editable card kind, or null when not editable. */
+function makeSession(r: AnyCard): EditSession | null {
+  const start = (weapons: CardWeapon[], tics: Tic[], facets: EditorFacets, apply: EditSession["apply"], renderCard: () => string): EditSession => {
+    const grouping = groupingFromTics(tics, weapons);
+    return { weapons, facets, grouping, autoGrouping: grouping, apply, renderCard };
+  };
+  switch (r.kind) {
+    case "mech":
+      return start(r.card.weapons, r.card.tics, mechFacets, (t) => (r.card.tics = t), () => renderMechCard(r.card));
+    case "vehicle":
+      return start(r.card.weaponMounts, r.card.tics, facingFacets, (t) => (r.card.weapons = vehicleWeaponRows(t, r.card.techBase)), () => renderVehicleCard(r.card));
+    case "fighter":
+      return start(r.card.weaponMounts, r.card.tics, facingFacets, (t) => (r.card.weapons = fighterWeaponRows(t, r.card.techBase)), () => renderFighterCard(r.card));
+    case "protomech":
+      return start(r.card.weaponMounts, r.card.tics, facingFacets, (t) => (r.card.weapons = protoWeaponRows(t, r.card.techBase)), () => renderProtoCard(r.card));
+    case "dropship":
+      return start(r.card.weaponMounts, r.card.tics, facingFacets, (t) => (r.card.weapons = dropshipWeaponRows(t, r.card.techBase)), () => renderDropshipCard(r.card));
+    default:
+      return null; // BA / infantry: no TICs
+  }
+}
+
+/** Render the converted cards, attaching the TIC editor for a single editable unit. */
 function showResults(results: ConvertResult[]): void {
   edit = null;
   if (results.length === 0) {
     output.innerHTML = `<p class="muted">Nothing to convert.</p>`;
     return;
   }
-  // A lone 'Mech card is editable: re-partition its weapons into TICs live.
-  if (results.length === 1 && results[0]!.ok && results[0]!.result.kind === "mech") {
-    edit = { card: results[0]!.result.card, grouping: groupingFromTics(results[0]!.result.card) };
-    renderEdit();
-    return;
+  if (results.length === 1 && results[0]!.ok) {
+    const session = makeSession(results[0]!.result);
+    if (session && session.weapons.length > 0) {
+      edit = session;
+      renderEdit();
+      return;
+    }
   }
   output.innerHTML = results.map((r) => (r.ok ? cardHtml(r.result) : r.html)).join("");
 }
 
-/** Re-render the editable 'Mech card + its TIC editor from the current grouping. */
+/** Re-render the editable card + its TIC editor from the current grouping. */
 function renderEdit(): void {
   if (!edit) return;
-  edit.card.tics = ticsFromGrouping(edit.card, edit.grouping);
-  output.innerHTML = renderMechCard(edit.card) + renderTicEditorHtml(edit.card, edit.grouping);
+  edit.apply(ticsFromGrouping(edit.weapons, edit.grouping));
+  output.innerHTML = edit.renderCard() + renderTicEditorHtml(edit.weapons, edit.grouping, edit.facets);
 }
 
 // Delegated editor controls (the panel is re-rendered on each change, so listen
@@ -536,7 +595,7 @@ output.addEventListener("change", (e) => {
 });
 output.addEventListener("click", (e) => {
   if (!(e.target as HTMLElement).closest("#tic-reset") || !edit) return;
-  edit.grouping = groupingFromTics({ ...edit.card, tics: groupIntoTics(edit.card.weapons) });
+  edit.grouping = edit.autoGrouping.map((g) => [...g]);
   renderEdit();
 });
 

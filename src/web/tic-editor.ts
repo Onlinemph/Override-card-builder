@@ -1,46 +1,48 @@
 /**
- * Manual TIC editor (web only, 'Mech cards).
+ * Manual TIC editor (web only).
  *
- * The card is driven by `card.tics`; this panel lets the user re-partition the
- * unit's flat `card.weapons` into custom TICs and rebuilds them with the SAME
- * pure core math (`buildTic`), so the card updates live. It never touches the
- * conversion pipeline — it only swaps which weapons share a TIC.
+ * The card's weapon table is driven by its TICs; this panel lets the user
+ * re-partition the unit's flat weapon list into custom TICs and rebuilds them
+ * with the SAME pure core math (`buildTic`), so the card updates live. It never
+ * touches the conversion pipeline — it only swaps which weapons share a TIC.
  *
- * Legality (same location/facing + within the page-41 caps) is delegated to the
- * core `isLegalTic`, so the editor can only offer moves the game rules allow.
+ * Grouping is facet-scoped: weapons may only share a TIC when their `keyOf`
+ * matches (the 'Mech location for mechs, the arc/facing for vehicles & aero) and
+ * the combined profile stays within the page-41 caps (`isLegalTicProfile`).
  *
- * Battle Armor / infantry do not use TICs and are out of scope; ProtoMech cards
- * currently render ungrouped weapons, so they are excluded too.
+ * Battle Armor / infantry do not use TICs and are out of scope.
  */
 
-import { buildTic, isLegalTic } from "../core/index.js";
-import type { CardWeapon, OverrideCard, Tic } from "../core/index.js";
+import { buildTic, isLegalTicProfile } from "../core/index.js";
+import type { CardWeapon, Tic } from "../core/index.js";
 
-/** A grouping: each entry is one TIC, listed as indices into `card.weapons`. */
+/** A grouping: each entry is one TIC, listed as indices into the weapon array. */
 export type Grouping = number[][];
+
+/** Per-kind hooks: the legality/grouping facet and a human label for it. */
+export interface EditorFacets {
+  /** Grouping key — weapons can only TIC together when these match. */
+  keyOf: (w: CardWeapon) => string;
+  /** Human label for a TIC's facet (location / arc), shown on the box. */
+  facetLabel: (w: CardWeapon) => string;
+}
 
 const esc = (s: string | number): string =>
   String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 
-/** Derive the editable grouping from the card's current (auto- or hand-) TICs. */
-export function groupingFromTics(card: OverrideCard): Grouping {
-  return card.tics.map((t) => t.weapons.map((w) => card.weapons.indexOf(w)).filter((i) => i >= 0));
+/** Derive the editable grouping from a card's current (auto- or hand-) TICs. */
+export function groupingFromTics(tics: ReadonlyArray<Tic>, weapons: CardWeapon[]): Grouping {
+  return tics.map((t) => t.weapons.map((w) => weapons.indexOf(w)).filter((i) => i >= 0));
 }
 
 /** Rebuild `Tic[]` from a grouping, dropping empty groups. */
-export function ticsFromGrouping(card: OverrideCard, g: Grouping): Tic[] {
-  return g
-    .filter((grp) => grp.length > 0)
-    .map((grp) => buildTic(grp.map((i) => card.weapons[i]!)));
+export function ticsFromGrouping(weapons: CardWeapon[], g: Grouping): Tic[] {
+  return g.filter((grp) => grp.length > 0).map((grp) => buildTic(grp.map((i) => weapons[i]!)));
 }
-
-/** Members of a group, as CardWeapons. */
-const membersOf = (card: OverrideCard, grp: number[]): CardWeapon[] => grp.map((i) => card.weapons[i]!);
 
 /**
  * Move weapon `wi` into target group `target` (an existing group index, or
- * "new" for a fresh solo TIC). Returns a fresh, compacted grouping. The caller
- * has already validated the move via {@link canMove}.
+ * "new" for a fresh solo TIC). Returns a fresh, compacted grouping.
  */
 export function applyMove(g: Grouping, wi: number, target: number | "new"): Grouping {
   const next = g.map((grp) => grp.filter((i) => i !== wi));
@@ -49,24 +51,32 @@ export function applyMove(g: Grouping, wi: number, target: number | "new"): Grou
   return next.filter((grp) => grp.length > 0);
 }
 
-/** True if weapon `wi` may join existing group `gi` (same location + legal caps). */
-function canMove(card: OverrideCard, g: Grouping, wi: number, gi: number): boolean {
-  if (g[gi]!.includes(wi)) return false; // already there
-  return isLegalTic([...membersOf(card, g[gi]!), card.weapons[wi]!]);
+/** True if the indices form a legal TIC: one facet + within the caps. */
+function legal(weapons: CardWeapon[], members: number[], keyOf: EditorFacets["keyOf"]): boolean {
+  if (members.length <= 1) return true;
+  const k = keyOf(weapons[members[0]!]!);
+  if (!members.every((i) => keyOf(weapons[i]!) === k)) return false;
+  return isLegalTicProfile(buildTic(members.map((i) => weapons[i]!)).profile);
 }
 
-/** Render the editor panel HTML for the card's current grouping. */
-export function renderTicEditorHtml(card: OverrideCard, g: Grouping): string {
+/** True if weapon `wi` may join existing group `gi`. */
+function canMove(weapons: CardWeapon[], g: Grouping, wi: number, gi: number, keyOf: EditorFacets["keyOf"]): boolean {
+  if (g[gi]!.includes(wi)) return false;
+  return legal(weapons, [...g[gi]!, wi], keyOf);
+}
+
+/** Render the editor panel HTML for the current grouping. */
+export function renderTicEditorHtml(weapons: CardWeapon[], g: Grouping, facets: EditorFacets): string {
   const boxes = g
     .map((grp, gi) => {
-      const tic = buildTic(membersOf(card, grp));
+      const tic = buildTic(grp.map((i) => weapons[i]!));
+      const facet = facets.facetLabel(weapons[grp[0]!]!);
       const rows = grp
         .map((wi) => {
-          const w = card.weapons[wi]!;
-          // Offer every OTHER group this weapon could legally join, plus a solo split.
+          const w = weapons[wi]!;
           const opts = g
             .map((_, ti) => ti)
-            .filter((ti) => ti !== gi && canMove(card, g, wi, ti))
+            .filter((ti) => ti !== gi && canMove(weapons, g, wi, ti, facets.keyOf))
             .map((ti) => `<option value="g:${ti}">→ TIC ${ti + 1}</option>`)
             .join("");
           const split = grp.length > 1 ? `<option value="new">→ split off</option>` : "";
@@ -82,7 +92,7 @@ export function renderTicEditorHtml(card: OverrideCard, g: Grouping): string {
       return `<div class="tic-box">
           <div class="tic-box-head">
             <span class="tic-tag">TIC ${gi + 1}</span>
-            <span class="tic-meta">${esc(tic.damageText)} · ${esc(loc(tic))}</span>
+            <span class="tic-meta">${esc(tic.damageText)} · ${esc(facet)}</span>
           </div>
           <ul class="tic-members">${rows}</ul>
         </div>`;
@@ -97,10 +107,4 @@ export function renderTicEditorHtml(card: OverrideCard, g: Grouping): string {
       <p class="muted tic-hint">Move a weapon to combine it into another TIC (same location only) or split it off. The card updates live.</p>
       <div class="tic-boxes">${boxes}</div>
     </section>`;
-}
-
-/** Short location label for a TIC (uses the first member's location). */
-function loc(tic: Tic): string {
-  const base = tic.location === "CT" || tic.location === "LT" || tic.location === "RT" ? "Torso" : tic.location;
-  return tic.rearMounted ? `${base} (R)` : base;
 }

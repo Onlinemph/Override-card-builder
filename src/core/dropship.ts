@@ -15,7 +15,6 @@
 
 import { IMPORTANT_EQUIPMENT, WEAPON_HINTS, VEHICLE_ARMOR_DIVISOR, STRUCTURE_DIVISOR } from "./constants.js";
 import {
-  abbreviatedTicLabel,
   ammoLabel,
   convertWeapon,
   groupIntoTics,
@@ -26,7 +25,7 @@ import {
   lookupWeaponDamage,
   normalizeWeaponName,
   roundNearest,
-  ticHeat,
+  ticRow,
 } from "./convert.js";
 import type {
   CardWeapon,
@@ -34,10 +33,37 @@ import type {
   DropshipFacing,
   DropshipMount,
   DropshipUnit,
+  TechBase,
+  Tic,
   VehicleEquipment,
   VehicleWeaponRow,
   Weapon,
 } from "./types.js";
+
+/** Rebuild the per-arc weapon rows from TICs (shared by the converter and the TIC
+ * editor): arc order, then collapse repeated unknown capital batteries into "xN". */
+export function dropshipWeaponRows(tics: ReadonlyArray<Tic>, techBase: TechBase): VehicleWeaponRow[] {
+  const order = (t: Tic) => ARC_ORDER.indexOf(t.weapons[0]!.rawLocation as DropshipFacing);
+  const rows = [...tics]
+    .sort((a, b) => order(a) - order(b))
+    .map((t) => ticRow(t, techBase, ARC_CODE[t.weapons[0]!.rawLocation as DropshipFacing]));
+
+  // Capital batteries repeat the same unknown gun many times per arc; collapse
+  // identical unknown rows into one "xN" line so the card stays readable.
+  const collapsed: VehicleWeaponRow[] = [];
+  for (const row of rows) {
+    const prev = collapsed.find(
+      (r) => r.unknown && row.unknown && r.label.replace(/^x\d+ /, "") === row.label && r.facing === row.facing,
+    );
+    if (prev) {
+      const n = Number.parseInt(prev.label.match(/^x(\d+) /)?.[1] ?? "1", 10) + 1;
+      prev.label = `x${n} ${prev.label.replace(/^x\d+ /, "")}`;
+    } else {
+      collapsed.push({ ...row });
+    }
+  }
+  return collapsed;
+}
 
 /** All dropship weapons share a synthetic 'Mech location; grouping is per arc. */
 const SYNTH_LOCATION = "CT" as const;
@@ -101,7 +127,8 @@ function buildDropshipEquipment(mounts: ReadonlyArray<DropshipMount>): VehicleEq
 export function convertDropship(unit: DropshipUnit): DropshipCard {
   const warnings: string[] = [];
   const otherMounts: DropshipMount[] = [];
-  const weapons: VehicleWeaponRow[] = [];
+  const allWeapons: CardWeapon[] = []; // raw mounts (carry the arc in rawLocation) for the TIC editor
+  const allTics: Tic[] = [];
   const unknownWeapons = new Set<string>();
 
   for (const arc of ARC_ORDER) {
@@ -121,35 +148,15 @@ export function convertDropship(unit: DropshipUnit): DropshipCard {
         otherMounts.push(mount);
       }
     }
-    for (const tic of groupIntoTics(cardWeapons)) {
-      weapons.push({
-        label: abbreviatedTicLabel(tic, unit.techBase),
-        facing: ARC_CODE[arc],
-        damageText: tic.damageText,
-        heat: ticHeat(tic),
-        range: tic.range,
-        rangeText: tic.rangeText,
-        unknown: tic.weapons.some((w) => w.unknown),
-      });
-    }
+    allWeapons.push(...cardWeapons);
+    allTics.push(...groupIntoTics(cardWeapons));
   }
 
   for (const name of unknownWeapons) {
     warnings.push(`weapon not in TW damage table: "${name}" (damage set to 0)`);
   }
 
-  // Capital batteries repeat the same unknown gun many times per arc; collapse
-  // identical unknown rows into one "xN" line so the card stays readable.
-  const collapsed: VehicleWeaponRow[] = [];
-  for (const row of weapons) {
-    const prev = collapsed.find((r) => r.unknown && row.unknown && r.label.replace(/^x\d+ /, "") === row.label && r.facing === row.facing);
-    if (prev) {
-      const n = Number.parseInt(prev.label.match(/^x(\d+) /)?.[1] ?? "1", 10) + 1;
-      prev.label = `x${n} ${prev.label.replace(/^x\d+ /, "")}`;
-    } else {
-      collapsed.push({ ...row });
-    }
-  }
+  const collapsed = dropshipWeaponRows(allTics, unit.techBase);
 
   const a = unit.armor;
   const armor = {
@@ -191,6 +198,8 @@ export function convertDropship(unit: DropshipUnit): DropshipCard {
     armor,
     structure,
     weapons: collapsed,
+    weaponMounts: allWeapons,
+    tics: allTics,
     equipment: buildDropshipEquipment(otherMounts),
     bays: unit.bays,
     warnings,

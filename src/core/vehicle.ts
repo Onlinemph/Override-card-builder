@@ -22,7 +22,6 @@ import {
   WEAPON_HINTS,
 } from "./constants.js";
 import {
-  abbreviatedTicLabel,
   ammoLabel,
   convertWeapon,
   groupIntoTics,
@@ -32,10 +31,12 @@ import {
   lookupWeaponDamage,
   normalizeWeaponName,
   roundNearest,
-  ticHeat,
+  ticRow,
 } from "./convert.js";
 import type {
   CardWeapon,
+  TechBase,
+  Tic,
   VehicleCard,
   VehicleCardArmor,
   VehicleEquipment,
@@ -45,6 +46,15 @@ import type {
   VehicleWeaponRow,
   Weapon,
 } from "./types.js";
+
+/** Rebuild the per-facing weapon rows from TICs (shared by the converter and the
+ * TIC editor), in canonical facing order. */
+export function vehicleWeaponRows(tics: ReadonlyArray<Tic>, techBase: TechBase): VehicleWeaponRow[] {
+  const order = (t: Tic) => FACING_ORDER.indexOf(t.weapons[0]!.rawLocation as VehicleFacing);
+  return [...tics]
+    .sort((a, b) => order(a) - order(b))
+    .map((t) => ticRow(t, techBase, FACING_CODE[t.weapons[0]!.rawLocation as VehicleFacing]));
+}
 
 /** All vehicle weapons share one synthetic location; grouping is scoped per facing. */
 const VEHICLE_LOCATION = "CT" as const;
@@ -121,7 +131,8 @@ function buildVehicleEquipment(mounts: ReadonlyArray<VehicleMount>): VehicleEqui
 export function convertVehicle(unit: VehicleUnit): VehicleCard {
   const warnings: string[] = [];
   const otherMounts: VehicleMount[] = [];
-  const weapons: VehicleWeaponRow[] = [];
+  const allWeapons: CardWeapon[] = []; // raw mounts (carry facing in rawLocation) for the TIC editor
+  const allTics: Tic[] = [];
   const unknownWeapons = new Set<string>();
 
   for (const facing of FACING_ORDER) {
@@ -144,18 +155,11 @@ export function convertVehicle(unit: VehicleUnit): VehicleCard {
         otherMounts.push(mount);
       }
     }
-    for (const tic of groupIntoTics(cardWeapons)) {
-      weapons.push({
-        label: abbreviatedTicLabel(tic, unit.techBase),
-        facing: FACING_CODE[facing],
-        damageText: tic.damageText,
-        heat: ticHeat(tic),
-        range: tic.range,
-        rangeText: tic.rangeText,
-        unknown: tic.weapons.some((w) => w.unknown),
-      });
-    }
+    allWeapons.push(...cardWeapons);
+    allTics.push(...groupIntoTics(cardWeapons));
   }
+
+  const weapons = vehicleWeaponRows(allTics, unit.techBase);
 
   for (const name of unknownWeapons) {
     warnings.push(`weapon not in TW damage table: "${name}" (damage set to 0)`);
@@ -196,6 +200,8 @@ export function convertVehicle(unit: VehicleUnit): VehicleCard {
     hasRotor: unit.hasRotor,
     ...(unit.support ? { support: true } : {}),
     weapons,
+    weaponMounts: allWeapons,
+    tics: allTics,
     equipment: buildVehicleEquipment(otherMounts),
     warnings,
     sourceFile: unit.sourceFile,
