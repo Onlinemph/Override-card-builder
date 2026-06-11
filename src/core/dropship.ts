@@ -171,8 +171,8 @@ export function convertDropship(unit: DropshipUnit): DropshipCard {
 
   // DThr: (nose + aft + one side) of the OVERRIDE armor / 30, round nearest —
   // the already-reduced card armor (TW/4), NOT raw TW armor (~10% of a side on
-  // the Override scale).
-  const dthr = roundNearest((armor.nose + armor.aft + Math.max(armor.leftSide, armor.rightSide)) / 30);
+  // the Override scale); floored at 1.
+  const dthr = Math.max(1, roundNearest((armor.nose + armor.aft + Math.max(armor.leftSide, armor.rightSide)) / 30));
 
   return {
     kind: "dropship",

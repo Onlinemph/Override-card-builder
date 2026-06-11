@@ -181,8 +181,8 @@ export function convertFighter(unit: FighterUnit): FighterCard {
   // Damage Threshold: (nose + aft + one wing) of the OVERRIDE armor / 30, round
   // nearest. Uses the already-reduced card armor (TW/4), NOT raw TW armor — on
   // the Override scale this lands at ~10% of a side's armor, matching the TW
-  // Threshold relationship. Aeshna (21 + 14 + 16) / 30 = 1.7 -> DThr 2.
-  const dthr = roundNearest((armor.nose + armor.aft + Math.max(armor.leftWing, armor.rightWing)) / 30);
+  // Threshold relationship; floored at 1. Aeshna (21 + 14 + 16) / 30 = 1.7 -> DThr 2.
+  const dthr = Math.max(1, roundNearest((armor.nose + armor.aft + Math.max(armor.leftWing, armor.rightWing)) / 30));
 
   return {
     kind: "fighter",

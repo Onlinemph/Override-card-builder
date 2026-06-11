@@ -80,7 +80,7 @@ describe("convertFighter", () => {
     const blk = `<UnitType>\nConvFighter\n</UnitType>\n<Name>\nX\n</Name>\n<SafeThrust>\n4\n</SafeThrust>\n<heatsinks>\n10\n</heatsinks>\n<sink_type>\n0\n</sink_type>\n<armor>\n20\n10\n10\n10\n</armor>\n`;
     const conv = convertFighter(parseBlkFighter(blk, "cf.blk"));
     expect(conv.sinks).toBe(0);
-    expect(conv.dthr).toBe(0); // override armor (5 + 3 + 3) / 30 = 0.37 -> 0 (small/light fighters can floor at 0)
+    expect(conv.dthr).toBe(1); // override armor (5 + 3 + 3) / 30 = 0.37 -> floored at 1
   });
 
   it("groups identical weapons WITHIN a facing only, tagged by facing code", () => {
