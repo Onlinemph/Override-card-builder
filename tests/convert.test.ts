@@ -691,6 +691,27 @@ describe("range brackets (page 43, VERIFIED vs DFA cards)", () => {
     expect(degrade("ISBAHeavyFlamer").unk).toBe(false);
   });
 
+  it("reproduces the BA Rocket Launcher mockup (RL1-3 direct, RL4 missile, +1/+1/+3/–)", () => {
+    const degrade = (name: string) => {
+      const rep = convertWeapon({ name, location: "X", rearMounted: false }, "IS", 0);
+      return {
+        rng: rep.rangeText,
+        dmg: [6, 5, 4, 3, 2, 1].map((t) => formatDamage(scaleSquadDamage(rep, t))).join(" "),
+        unk: rep.unknown,
+      };
+    };
+    expect(degrade("ISBARL1")).toEqual({ rng: "+1 +1 +3 – –", dmg: "2 2 2 1 1 1", unk: false });
+    expect(degrade("ISBARL2")).toEqual({ rng: "+1 +1 +3 – –", dmg: "4 4 3 2 2 1", unk: false });
+    expect(degrade("ISBARL3")).toEqual({ rng: "+1 +1 +3 – –", dmg: "6 5 4 3 2 1", unk: false });
+    // RL4 prints as a missile (M dice), unlike RL1-3.
+    expect(degrade("ISBARL4")).toEqual({
+      rng: "+1 +1 +3 – –",
+      dmg: "6+M6 (8) 5+M5 (7) 4+M4 (6) 3+M3 (4) 2+M2 (3) 1+M1 (2)",
+      unk: false,
+    });
+    expect(degrade("BARL1").dmg).toBe("2 2 2 1 1 1"); // glued/no-IS spelling folds in
+  });
+
   it("applies Clan range overrides where TW ranges diverge", () => {
     const clan = (key: string) =>
       formatRangeBrackets(computeRangeBrackets(WEAPON_RANGES_CLAN[key]!));

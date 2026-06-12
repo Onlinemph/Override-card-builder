@@ -174,6 +174,7 @@ export function normalizeWeaponName(raw: string): string {
   s = s.replace(/\b(rocket launcher \d+) prototype\b/g, "$1"); // prototype RL = same stats
   s = s.replace(/\bprototype (rocket launcher \d+)\b/g, "$1"); // "Prototype Rocket Launcher 20" -> "rocket launcher 20"
   s = s.replace(/\brl\s*-?\s*(\d+)/g, "rocket launcher $1"); // glued "RL10" -> "rocket launcher 10"
+  s = s.replace(/\brocket launcher ([1-9])\b/g, "ba rl $1"); // single-digit RL = BA rocket launcher (1-5); mech RLs are 10/15/20
   s = s.replace(/\blr torpedo\s*(\d+)/g, "lrm $1").replace(/\bsr torpedo\s*(\d+)/g, "srm $1"); // LR/SR Torpedo = LRM/SRM
   s = s.replace(/\s+artillery\b/g, ""); // "Thumper Artillery" -> "thumper", "Sniper Artillery" -> "sniper"
   s = s.replace(/\b(er medium laser) prototype\b/g, "prototype $1"); // glued "CLERMediumLaserPrototype" word order

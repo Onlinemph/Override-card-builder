@@ -80,6 +80,8 @@ export const MISSILE_WEAPON_FAMILIES: ReadonlyArray<string> = [
   "advanced srm", // BA-specific SRM variant; same M-dice mechanic, shorter range
   "mrm",
   "rocket launcher",
+  "ba rl 4", // BA RL4/5 print as missiles; RL1-3 stay direct (per the DFA card)
+  "ba rl 5",
 ] as const;
 
 /**
@@ -449,6 +451,14 @@ export const WEAPON_DAMAGE: Readonly<Record<string, number>> = {
   "rocket launcher 10": 10,
   "rocket launcher 15": 15,
   "rocket launcher 20": 20,
+  // BA Rocket Launchers (per-trooper TW = tube count). VERIFIED vs DFA BA mockup:
+  // RL1/2/3 print flat (direct); RL4/5 print as a missile (M dice) — see
+  // MISSILE_WEAPON_FAMILIES.
+  "ba rl 1": 1,
+  "ba rl 2": 2,
+  "ba rl 3": 3,
+  "ba rl 4": 4,
+  "ba rl 5": 5,
 
   // --- Missiles: utility (no direct damage) ---
   narc: 0,
@@ -666,6 +676,12 @@ export const WEAPON_RANGES: Readonly<Record<string, WeaponRange>> = {
   "rocket launcher 10": { min: 0, medium: 11, long: 18, toHitMod: 1 }, // VERIFIED: +1/+1/+3/+5/–
   "rocket launcher 15": { min: 0, medium: 9, long: 15, toHitMod: 1 }, // VERIFIED: +1/+1/+3/+5/–
   "rocket launcher 20": { min: 0, medium: 7, long: 12, toHitMod: 1 }, // VERIFIED: +1/+1/+3/–/–
+  // BA Rocket Launchers — VERIFIED vs DFA BA mockup: +1/+1/+3/– (all sizes share it).
+  "ba rl 1": { min: 0, medium: 7, long: 9, toHitMod: 1 },
+  "ba rl 2": { min: 0, medium: 7, long: 9, toHitMod: 1 },
+  "ba rl 3": { min: 0, medium: 7, long: 9, toHitMod: 1 },
+  "ba rl 4": { min: 0, medium: 7, long: 9, toHitMod: 1 },
+  "ba rl 5": { min: 0, medium: 7, long: 9, toHitMod: 1 },
 
   // --- Energy: pulse lasers (IS; inherent -2 "pulse quality"; VERIFIED vs DFA card) ---
   "small pulse laser": { min: 0, medium: 2, long: 3, toHitMod: -2 }, // VERIFIED (IS SPLas): -2/-2/–/–/–
@@ -1589,6 +1605,11 @@ export const WEAPON_ABBREV: Readonly<Record<string, string>> = {
   "streak srm 2": "SSRM-2",
   "streak srm 4": "SSRM-4",
   "streak srm 6": "SSRM-6",
+  "ba rl 1": "RL1",
+  "ba rl 2": "RL2",
+  "ba rl 3": "RL3",
+  "ba rl 4": "RL4",
+  "ba rl 5": "RL5",
   "lrm 5": "LRM-5",
   "lrm 10": "LRM-10",
   "lrm 15": "LRM-15",
