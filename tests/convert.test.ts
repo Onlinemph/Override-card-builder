@@ -432,6 +432,21 @@ describe("melee (Punch/Kick auto-generated + physical weapons)", () => {
     expect(hatchet.damageText).toBe("7");
     expect(hatchet.rangeText).toBe("+0 – – – –");
   });
+
+  it("handles the rest of the physical-weapon family (blade, vibro, industrial, taser)", () => {
+    const w = (name: string, mass = 50) =>
+      convertWeapon({ name, location: "RA", rearMounted: false }, "IS", mass);
+    // Retractable Blade is mass-based (50t -> ceil(50/30) = 2), point-blank only.
+    expect(w("1 Retractable Blade")).toMatchObject({ damageText: "2", rangeText: "+0 – – – –", unknown: false });
+    // Fixed-damage melee, point-blank with the physical to-hit modifier.
+    expect(w("ISSmallVibroBlade")).toMatchObject({ damageText: "3", rangeText: "-1 – – – –" });
+    expect(w("Backhoe")).toMatchObject({ damageText: "2", rangeText: "+1 – – – –" });
+    expect(w("MiningDrill")).toMatchObject({ damageText: "2", rangeText: "+0 – – – –" });
+    // The Taser family unifies to a SPECIAL-effect weapon (incl. BA Taser).
+    for (const n of ["BattleMech Taser", "Mech Taser", "ISMekTaser", "ISBATaser"]) {
+      expect(w(n)).toMatchObject({ damageText: "SPECIAL", unknown: false });
+    }
+  });
 });
 
 describe("variable (range-dependent) damage (VERIFIED vs DFA card)", () => {

@@ -481,6 +481,21 @@ export const WEAPON_DAMAGE: Readonly<Record<string, number>> = {
   "micro pulse laser": 3, // IS TW 3 (Clan override in WEAPON_DAMAGE_CLAN)
   "support ppc": 2, // BA/support scale PPC
 
+  // --- Physical: fixed-damage melee (point-blank; brackets in WEAPON_BRACKET_
+  // OVERRIDE). TacOps values, CONFIRM vs a DFA card. Vibroblades hit -1; the
+  // industrial tools 0 (Backhoe +1). (Mass-based Hatchet/Sword/Mace/Claws/
+  // Retractable Blade live in MELEE_WEAPONS instead.) ---
+  "small vibro blade": 7, // CONFIRM
+  "medium vibro blade": 10, // CONFIRM
+  "large vibro blade": 14, // CONFIRM
+  "backhoe": 6, // CONFIRM
+  "chainsaw": 5, // CONFIRM
+  "dual saw": 7, // CONFIRM
+  "mining drill": 4, // CONFIRM
+  "rock cutter": 5, // CONFIRM
+  "combine": 3, // CONFIRM
+  "spot welder": 5, // CONFIRM
+
   // MML and ATM/iATM are range-varying MISSILE racks: their printed damage is a
   // per-bracket base PLUS M dice, so they live in WEAPON_RV_MISSILE (below)
   // rather than as a single TW number here.
@@ -762,6 +777,7 @@ export const WEAPON_RANGES: Readonly<Record<string, WeaponRange>> = {
   "plasma rifle": { min: 0, medium: 10, long: 15 }, // CONFIRM
   "plasma cannon": { min: 0, medium: 10, long: 15 }, // VERIFIED vs DFA card cPlasCannon: +0/+0/+2/+4/–
   "tsemp cannon": { min: 0, medium: 10, long: 15 }, // forged: ranges like an AC/10
+  "mech taser": { min: 0, medium: 3, long: 5 }, // short-range disruptor (CONFIRM)
   "vehicle flamer": { min: 0, medium: 2, long: 3 }, // CONFIRM
   "er flamer": { min: 0, medium: 4, long: 5 }, // CONFIRM
 
@@ -1037,6 +1053,17 @@ export const WEAPON_BRACKET_OVERRIDE: Readonly<Record<string, import("./types.js
   "firedrake needler": { pb: 0, s: null, m: null, l: null, x: null },
   "heavy grenade launcher": { pb: 0, s: null, m: null, l: null, x: null },
   "micro grenade launcher": { pb: 0, s: null, m: null, l: null, x: null },
+  // Fixed-damage melee — point-blank only, with the physical to-hit modifier.
+  "small vibro blade": { pb: -1, s: null, m: null, l: null, x: null },
+  "medium vibro blade": { pb: -1, s: null, m: null, l: null, x: null },
+  "large vibro blade": { pb: -1, s: null, m: null, l: null, x: null },
+  "backhoe": { pb: 1, s: null, m: null, l: null, x: null },
+  "chainsaw": { pb: 0, s: null, m: null, l: null, x: null },
+  "dual saw": { pb: 0, s: null, m: null, l: null, x: null },
+  "mining drill": { pb: 0, s: null, m: null, l: null, x: null },
+  "rock cutter": { pb: 0, s: null, m: null, l: null, x: null },
+  "combine": { pb: 0, s: null, m: null, l: null, x: null },
+  "spot welder": { pb: 0, s: null, m: null, l: null, x: null },
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -1050,6 +1077,7 @@ export const WEAPON_BRACKET_OVERRIDE: Readonly<Record<string, import("./types.js
 
 export const WEAPON_SPECIAL_DAMAGE: Readonly<Record<string, string>> = {
   "tsemp cannon": "SPECIAL",
+  "mech taser": "SPECIAL", // disrupts/​shuts down the target rather than dealing set damage
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -1223,6 +1251,7 @@ export const MELEE_WEAPONS: Readonly<Record<string, MeleeWeaponSpec>> = {
   sword: { divisor: 30, tnMod: -2 },
   mace: { divisor: 12, tnMod: 1 },
   claws: { divisor: 20, tnMod: 1 },
+  "retractable blade": { divisor: 30, tnMod: 0 }, // mass/10 (+1), like a Sword but +0 to-hit
 } as const;
 
 // ---------------------------------------------------------------------------

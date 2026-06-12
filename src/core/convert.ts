@@ -165,6 +165,9 @@ export function normalizeWeaponName(raw: string): string {
   s = s.replace(/\bmagshot gr\b/g, "magshot gauss rifle"); // BA "MagshotGR" -> full name
   s = s.replace(/\bmag shot\b/g, "magshot"); // "MagShot" splits to "mag shot" -> rejoin
   s = s.replace(/\bfire ?drake( incendiary)?\b/g, "firedrake"); // "FireDrake"/"Firedrake Incendiary" -> "firedrake"
+  s = s.replace(/\bvibroblade\b/g, "vibro blade"); // one-word "Vibroblade" -> "vibro blade"
+  s = s.replace(/\b(?:battle ?mech|mek) taser\b/g, "mech taser"); // BattleMech/Mek Taser -> mech taser
+  s = s.replace(/^taser$/, "mech taser"); // bare "Taser" (incl. BA Taser) -> mech taser
   s = s.replace(/\bchemical laser\b/g, "chem laser"); // "Medium Chemical Laser" -> "medium chem laser"
   s = s.replace(/\bimproved (small|medium|large) heavy laser\b/g, "improved heavy $1 laser"); // MegaMek word order
   s = s.replace(/\bi-?os\b/g, "").trim(); // strip "(I)OS" Improved-One-Shot suffix (ISSRM2IOS -> srm 2)
