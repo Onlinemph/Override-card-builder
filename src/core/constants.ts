@@ -391,6 +391,7 @@ export const WEAPON_DAMAGE: Readonly<Record<string, number>> = {
   // Firedrake Needler / Heavy & Micro Grenade Launchers -> 2|2|2|1|1|1 (TW 1);
   // Heavy Mortar -> 6|5|4|3|2|1 (TW 3).
   "firedrake needler": 1,
+  "grenade launcher": 1, // standard BA grenade launcher (VERIFIED vs DFA mockup, like Heavy/Micro)
   "heavy grenade launcher": 1,
   "micro grenade launcher": 1,
   "heavy mortar": 3,
@@ -459,6 +460,13 @@ export const WEAPON_DAMAGE: Readonly<Record<string, number>> = {
   "ba rl 3": 3,
   "ba rl 4": 4,
   "ba rl 5": 5,
+  // BA MRM (per-trooper TW = rack size). VERIFIED vs DFA BA mockup: print flat
+  // (direct), full MRM range +1/+1/+3/+5. (Mech MRMs are 10/20/30/40.)
+  "ba mrm 1": 1,
+  "ba mrm 2": 2,
+  "ba mrm 3": 3,
+  "ba mrm 4": 4,
+  "ba mrm 5": 5,
 
   // --- Missiles: utility (no direct damage) ---
   narc: 0,
@@ -682,6 +690,12 @@ export const WEAPON_RANGES: Readonly<Record<string, WeaponRange>> = {
   "ba rl 3": { min: 0, medium: 7, long: 9, toHitMod: 1 },
   "ba rl 4": { min: 0, medium: 7, long: 9, toHitMod: 1 },
   "ba rl 5": { min: 0, medium: 7, long: 9, toHitMod: 1 },
+  // BA MRM — shares the standard MRM range. VERIFIED vs DFA BA mockup: +1/+1/+3/+5.
+  "ba mrm 1": { min: 0, medium: 8, long: 15, toHitMod: 1 },
+  "ba mrm 2": { min: 0, medium: 8, long: 15, toHitMod: 1 },
+  "ba mrm 3": { min: 0, medium: 8, long: 15, toHitMod: 1 },
+  "ba mrm 4": { min: 0, medium: 8, long: 15, toHitMod: 1 },
+  "ba mrm 5": { min: 0, medium: 8, long: 15, toHitMod: 1 },
 
   // --- Energy: pulse lasers (IS; inherent -2 "pulse quality"; VERIFIED vs DFA card) ---
   "small pulse laser": { min: 0, medium: 2, long: 3, toHitMod: -2 }, // VERIFIED (IS SPLas): -2/-2/–/–/–
@@ -1067,6 +1081,7 @@ export const WEAPON_BRACKET_OVERRIDE: Readonly<Record<string, import("./types.js
   "silver bullet gauss rifle": { pb: 2, s: -1, m: -1, l: 1, x: 3 },
   // Battle Armor point-blank-only guns. VERIFIED vs DFA BA mockup: +0/–/–/–.
   "firedrake needler": { pb: 0, s: null, m: null, l: null, x: null },
+  "grenade launcher": { pb: 0, s: null, m: null, l: null, x: null },
   "heavy grenade launcher": { pb: 0, s: null, m: null, l: null, x: null },
   "micro grenade launcher": { pb: 0, s: null, m: null, l: null, x: null },
   // Fixed-damage melee — point-blank only, with the physical to-hit modifier.
@@ -1610,6 +1625,12 @@ export const WEAPON_ABBREV: Readonly<Record<string, string>> = {
   "ba rl 3": "RL3",
   "ba rl 4": "RL4",
   "ba rl 5": "RL5",
+  "ba mrm 1": "MRM-1",
+  "ba mrm 2": "MRM-2",
+  "ba mrm 3": "MRM-3",
+  "ba mrm 4": "MRM-4",
+  "ba mrm 5": "MRM-5",
+  "grenade launcher": "Grenade Launcher",
   "lrm 5": "LRM-5",
   "lrm 10": "LRM-10",
   "lrm 15": "LRM-15",

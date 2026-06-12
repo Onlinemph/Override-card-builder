@@ -712,6 +712,24 @@ describe("range brackets (page 43, VERIFIED vs DFA cards)", () => {
     expect(degrade("BARL1").dmg).toBe("2 2 2 1 1 1"); // glued/no-IS spelling folds in
   });
 
+  it("reproduces the BA Grenade Launcher + MRM mockup (direct, full MRM range)", () => {
+    const degrade = (name: string) => {
+      const rep = convertWeapon({ name, location: "X", rearMounted: false }, "IS", 0);
+      return {
+        rng: rep.rangeText,
+        dmg: [6, 5, 4, 3, 2, 1].map((t) => formatDamage(scaleSquadDamage(rep, t))).join(" "),
+        unk: rep.unknown,
+      };
+    };
+    expect(degrade("ISBAGrenadeLauncher")).toEqual({ rng: "+0 – – – –", dmg: "2 2 2 1 1 1", unk: false });
+    expect(degrade("ISBAMRM1")).toEqual({ rng: "+1 +1 +3 +5 –", dmg: "2 2 2 1 1 1", unk: false });
+    expect(degrade("ISBAMRM2")).toEqual({ rng: "+1 +1 +3 +5 –", dmg: "4 4 3 2 2 1", unk: false });
+    expect(degrade("ISBAMRM3")).toEqual({ rng: "+1 +1 +3 +5 –", dmg: "6 5 4 3 2 1", unk: false });
+    // The single-digit remap must NOT touch full-size 'Mech MRMs (still a missile).
+    expect(normalizeWeaponName("MRM 10")).toBe("mrm 10");
+    expect(degrade("MRM 10").dmg).toContain("+M"); // mech MRM keeps its M dice
+  });
+
   it("applies Clan range overrides where TW ranges diverge", () => {
     const clan = (key: string) =>
       formatRangeBrackets(computeRangeBrackets(WEAPON_RANGES_CLAN[key]!));
