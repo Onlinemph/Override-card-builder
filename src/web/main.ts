@@ -690,11 +690,11 @@ function renderForce(): void {
 const pageStyle = document.createElement("style");
 document.head.appendChild(pageStyle);
 
-/** The selected print layout. All are PORTRAIT (the cards are taller than wide):
- * "fit" = 2×2 scaled per page, "p2" = 2 per row, "p1" = 1 per row. */
-function forceMode(): "fit" | "p2" | "p1" {
+/** The selected print layout: "fit" = 2×2 portrait, "fitL" = 2×2 landscape,
+ * "p2" = 2 per row (portrait), "p1" = 1 per row (portrait). */
+function forceMode(): "fit" | "fitL" | "p2" | "p1" {
   const v = (document.getElementById("force-cols") as HTMLSelectElement | null)?.value;
-  return v === "p2" || v === "p1" ? v : "fit";
+  return v === "fitL" || v === "p2" || v === "p1" ? v : "fit";
 }
 
 /** Convert one force unit to card HTML (or its error card). */
@@ -703,25 +703,39 @@ function forceCardHtml(u: ForceUnit): string {
   return r.ok ? cardHtml(r.result) : r.html;
 }
 
-/** Scale every card to best fill its fixed quarter-page cell, measured
- * off-screen. Each card is uniformly scaled (aspect preserved): tall cards
- * shrink, small cards grow to use the space. A safety factor leaves a little
- * headroom so print-vs-screen metric differences never clip the bottom; a cap
- * avoids blowing tiny cards up too far. */
+/** Fit every card into its fixed quarter-page cell, measured off-screen.
+ *
+ * Cards are tall, so the cell aspect rarely matches the card's natural aspect.
+ * But a card rendered WIDER wraps less and gets shorter — so for each card we
+ * try a range of render widths and keep the one whose scaled result fills the
+ * most cell area. That both avoids the 2-column collision (the narrow widths
+ * lose) and uses nearly the whole cell. The winner is centered and uniformly
+ * scaled (with a little headroom so print metric drift never clips). */
 function fitCardsToCells(area: HTMLElement): void {
   const SAFETY = 0.96; // headroom against print font-metric drift
-  const MAX_SCALE = 1.6; // don't over-enlarge a small card
+  const WIDTHS_MM = [130, 145, 160, 175, 190, 205]; // render widths to try
   // Lay the sheet out off-screen so offset/scroll sizes are real (it is
   // display:none in normal flow); mm → px is the 96dpi CSS constant either way.
   area.style.cssText = "display:block;position:fixed;left:-10000px;top:0;";
   for (const cell of Array.from(area.querySelectorAll<HTMLElement>(".fit-cell"))) {
-    const scale = cell.querySelector<HTMLElement>(".fit-scale");
-    if (!scale) continue;
-    const raw = Math.min(
-      cell.clientWidth / (scale.scrollWidth || 1),
-      cell.clientHeight / (scale.scrollHeight || 1),
-    );
-    scale.style.transform = `scale(${Math.min(raw * SAFETY, MAX_SCALE)})`;
+    const el = cell.querySelector<HTMLElement>(".fit-scale");
+    if (!el) continue;
+    const cw = cell.clientWidth;
+    const ch = cell.clientHeight;
+    let best: { wmm: number; w: number; h: number; s: number; area: number } | null = null;
+    for (const wmm of WIDTHS_MM) {
+      el.style.width = `${wmm}mm`;
+      const w = el.scrollWidth || 1;
+      const h = el.scrollHeight || 1;
+      const s = Math.min(cw / w, ch / h);
+      const filled = w * h * s * s; // printed area in the cell
+      if (!best || filled > best.area) best = { wmm, w, h, s, area: filled };
+    }
+    el.style.width = `${best!.wmm}mm`;
+    const s = best!.s * SAFETY;
+    const tx = Math.max(0, (cw - best!.w * s) / 2);
+    const ty = Math.max(0, (ch - best!.h * s) / 2);
+    el.style.transform = `translate(${tx}px, ${ty}px) scale(${s})`;
   }
   area.style.cssText = ""; // hand display back to the stylesheet (#print-area)
 }
@@ -732,18 +746,19 @@ function printForceSheet(): void {
   const area = document.getElementById("print-area");
   if (!area) return;
   const mode = forceMode();
-  // The 2×2 (fit) sheet is landscape — wide cells give the cards' two columns
-  // room. The plain "N per row" layouts stay portrait.
-  pageStyle.textContent = `@page { size: ${mode === "fit" ? "landscape" : "portrait"}; margin: 10mm; }`;
-  if (mode === "fit") {
+  const isFit = mode === "fit" || mode === "fitL";
+  const orientation = mode === "fitL" ? "landscape" : "portrait";
+  pageStyle.textContent = `@page { size: ${orientation}; margin: 10mm; }`;
+  if (isFit) {
     // 2×2 per page: chunk into fours, each its own page, each card fit to a cell.
+    const sheetClass = mode === "fitL" ? "sheet fit-landscape" : "sheet fit-portrait";
     const pages: string[] = [];
     for (let i = 0; i < force.length; i += 4) {
       const cells = force
         .slice(i, i + 4)
         .map((u) => `<div class="fit-cell"><div class="fit-scale">${forceCardHtml(u)}</div></div>`)
         .join("");
-      pages.push(`<div class="print-page"><div class="sheet fit2x2">${cells}</div></div>`);
+      pages.push(`<div class="print-page"><div class="${sheetClass}">${cells}</div></div>`);
     }
     area.innerHTML = pages.join("");
     fitCardsToCells(area);
