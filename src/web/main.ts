@@ -540,6 +540,17 @@ function withBv(html: string, bv: number | undefined): string {
   return html.replace(/(<div class="(?:ms-title|ba-title)\b[^>]*>[\s\S]*?<\/div>)/, `$1${badge}`);
 }
 
+/** Fill the card's (blank) skill boxes — first = Gunnery, second = Piloting (or
+ * the unit's second skill, e.g. Anti-'Mech). Pass undefined to leave a box blank. */
+function withSkills(html: string, gunnery?: number, piloting?: number): string {
+  const vals = [gunnery, piloting];
+  let i = 0;
+  return html.replace(/<div class="(ms-skill-box|ba-skill-box)">\s*<\/div>/g, (m, cls: string) => {
+    const v = vals[i++];
+    return v === undefined || v === null ? m : `<div class="${cls}">${v}</div>`;
+  });
+}
+
 /** Parse + convert one source, auto-detecting MTF ('Mech) vs BLK (Battle Armor).
  * `file` is the source filename/path when known — used for the BV lookup. */
 function convertOne(text: string, file: string): ConvertResult {
@@ -554,24 +565,26 @@ function convertOne(text: string, file: string): ConvertResult {
   }
 }
 
-/** HTML for a successfully converted card, dispatched on unit kind, with BV. */
+/** Raw card HTML, dispatched on unit kind (no BV/skills injected). */
+function rawCardHtml(result: AnyCard): string {
+  return result.kind === "battlearmor"
+    ? renderBACard(result.card)
+    : result.kind === "vehicle"
+      ? renderVehicleCard(result.card)
+      : result.kind === "fighter"
+        ? renderFighterCard(result.card)
+        : result.kind === "infantry"
+          ? renderInfantryCard(result.card)
+          : result.kind === "protomech"
+            ? renderProtoCard(result.card)
+            : result.kind === "dropship"
+              ? renderDropshipCard(result.card)
+              : renderMechCard(result.card);
+}
+
+/** Card HTML with the BV badge (used for the single preview). */
 function cardHtml(result: AnyCard): string {
-  const bv = (result.card as { bv?: number }).bv;
-  const html =
-    result.kind === "battlearmor"
-      ? renderBACard(result.card)
-      : result.kind === "vehicle"
-        ? renderVehicleCard(result.card)
-        : result.kind === "fighter"
-          ? renderFighterCard(result.card)
-          : result.kind === "infantry"
-            ? renderInfantryCard(result.card)
-            : result.kind === "protomech"
-              ? renderProtoCard(result.card)
-              : result.kind === "dropship"
-                ? renderDropshipCard(result.card)
-                : renderMechCard(result.card);
-  return withBv(html, bv);
+  return withBv(rawCardHtml(result), (result.card as { bv?: number }).bv);
 }
 
 // ---- Manual TIC editor wiring ---------------------------------------------
@@ -587,6 +600,9 @@ interface EditSession {
   renderCard: () => string;
 }
 let edit: EditSession | null = null;
+// When set, the active edit session belongs to force[editingForceIdx]; TIC moves
+// and skills are persisted back onto that force unit (not just the transient card).
+let editingForceIdx: number | null = null;
 
 // 'Mech locations collapse the torso; the facet key matches isLegalTic's rule.
 const mechFacets: EditorFacets = {
@@ -634,6 +650,7 @@ function makeSession(r: AnyCard): EditSession | null {
 /** Render the converted cards, attaching the TIC editor for a single editable unit. */
 function showResults(results: ConvertResult[]): void {
   edit = null;
+  editingForceIdx = null; // a normal preview exits force-edit mode
   if (results.length === 0) {
     output.innerHTML = `<p class="muted">Nothing to convert.</p>`;
     return;
@@ -656,20 +673,115 @@ function renderEdit(): void {
   output.innerHTML = edit.renderCard() + renderTicEditorHtml(edit.weapons, edit.grouping, edit.facets);
 }
 
+// ---- Editing a unit that's in the force (TICs + skills, persisted) --------
+
+/** Apply a force unit's saved TIC grouping onto a freshly converted card. */
+function applySavedGrouping(result: AnyCard, grouping?: number[][]): void {
+  if (!grouping) return;
+  const session = makeSession(result);
+  if (!session || session.weapons.length === 0) return;
+  if (grouping.flat().length !== session.weapons.length) return; // stale grouping — ignore
+  session.apply(ticsFromGrouping(session.weapons, grouping as Grouping));
+}
+
+const clampSkill = (v: string): number | undefined => {
+  const n = Number(v);
+  return Number.isFinite(n) ? Math.max(0, Math.min(8, Math.round(n))) : undefined;
+};
+
+function forceEditBar(u: ForceUnit): string {
+  return `<div class="force-edit-bar">Editing <b>${esc(u.name)}</b> in your force <button id="force-edit-done" type="button">Done</button></div>`;
+}
+
+function skillsEditorHtml(u: ForceUnit): string {
+  return `<div class="skills-editor">
+    <label>Gunnery <input type="number" id="sk-gun" min="0" max="8" step="1" value="${u.gunnery ?? 4}"></label>
+    <label>Piloting <input type="number" id="sk-pil" min="0" max="8" step="1" value="${u.piloting ?? 5}"></label>
+  </div>`;
+}
+
+/** Open the TIC + skills editor for a force unit. */
+function openForceEditor(i: number): void {
+  if (i < 0 || i >= force.length) return;
+  editingForceIdx = i;
+  renderForceEdit();
+  output.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+/** Render the force unit's card (with its saved TICs + skills) plus the editors. */
+function renderForceEdit(): void {
+  const fi = editingForceIdx;
+  if (fi == null) return;
+  const u = force[fi];
+  const r = convertOne(u.text, u.file ?? u.name);
+  if (!r.ok) {
+    edit = null;
+    output.innerHTML = forceEditBar(u) + r.html;
+    return;
+  }
+  let raw: string;
+  let ticEditorHtml = "";
+  const session = makeSession(r.result);
+  if (session && session.weapons.length > 0) {
+    if (u.grouping && u.grouping.flat().length === session.weapons.length) {
+      session.grouping = u.grouping.map((g) => [...g]) as Grouping;
+    }
+    session.apply(ticsFromGrouping(session.weapons, session.grouping));
+    edit = session; // the shared TIC-move/reset listeners act on this
+    raw = session.renderCard();
+    ticEditorHtml = renderTicEditorHtml(session.weapons, session.grouping, session.facets);
+  } else {
+    edit = null; // BA / infantry: skills only, no TICs
+    raw = rawCardHtml(r.result);
+  }
+  const card = withSkills(withBv(raw, lookupBv(u.name, u.file)), u.gunnery ?? 4, u.piloting ?? 5);
+  output.innerHTML = forceEditBar(u) + skillsEditorHtml(u) + card + ticEditorHtml;
+}
+
+/** Persist + re-render after a TIC move/reset, in force-edit mode or the plain preview. */
+function afterTicChange(): void {
+  if (editingForceIdx != null && edit) {
+    force[editingForceIdx]!.grouping = edit.grouping.map((g) => [...g]);
+    saveForce();
+    renderForceEdit();
+  } else {
+    renderEdit();
+  }
+}
+
 // Delegated editor controls (the panel is re-rendered on each change, so listen
 // on the stable `output` container rather than the transient selects/buttons).
 output.addEventListener("change", (e) => {
-  const sel = (e.target as HTMLElement).closest<HTMLSelectElement>("select.tic-move");
+  const target = e.target as HTMLElement;
+  // Skill inputs (force editor): persist onto the force unit.
+  if (editingForceIdx != null && (target.id === "sk-gun" || target.id === "sk-pil")) {
+    const val = clampSkill((target as HTMLInputElement).value);
+    if (target.id === "sk-gun") force[editingForceIdx]!.gunnery = val;
+    else force[editingForceIdx]!.piloting = val;
+    saveForce();
+    renderForceEdit();
+    renderForce();
+    return;
+  }
+  const sel = target.closest<HTMLSelectElement>("select.tic-move");
   if (!sel || !edit || !sel.value) return;
   const wi = Number(sel.dataset.wi);
-  const target = sel.value === "new" ? "new" : Number(sel.value.replace(/^g:/, ""));
-  edit.grouping = applyMove(edit.grouping, wi, target);
-  renderEdit();
+  const tgt = sel.value === "new" ? "new" : Number(sel.value.replace(/^g:/, ""));
+  edit.grouping = applyMove(edit.grouping, wi, tgt);
+  afterTicChange();
 });
 output.addEventListener("click", (e) => {
-  if (!(e.target as HTMLElement).closest("#tic-reset") || !edit) return;
+  const target = e.target as HTMLElement;
+  if (target.closest("#force-edit-done")) {
+    editingForceIdx = null;
+    edit = null;
+    output.innerHTML = "";
+    return;
+  }
+  if (!target.closest("#tic-reset") || !edit) return;
   edit.grouping = edit.autoGrouping.map((g) => [...g]);
-  renderEdit();
+  if (editingForceIdx != null) delete force[editingForceIdx]!.grouping;
+  afterTicChange();
 });
 
 // ---- Force builder + print sheet ------------------------------------------
@@ -678,7 +790,16 @@ output.addEventListener("click", (e) => {
 // Stored as SOURCE text (not converted cards) so it survives reloads and stays
 // independent of any in-progress TIC edits.
 
-interface ForceUnit { name: string; text: string; file?: string; }
+interface ForceUnit {
+  name: string;
+  text: string;
+  file?: string;
+  /** Pilot skills (default 4 / 5 when unset). */
+  gunnery?: number;
+  piloting?: number;
+  /** Saved TIC grouping override (weapon-index groups) from the editor. */
+  grouping?: number[][];
+}
 const FORCE_KEY = "mtf2override.force";
 
 function loadForce(): ForceUnit[] {
@@ -737,7 +858,7 @@ function renderForce(): void {
           }
           const bvTag = bv ? `<span class="force-item-bv">${bv.toLocaleString()}</span>` : "";
           return (
-            `<div class="force-item"><span class="force-item-name">${esc(u.name)}</span>${bvTag}` +
+            `<div class="force-item"><button class="force-item-name" type="button" data-i="${i}" title="Edit TICs / skills for ${esc(u.name)}">${esc(u.name)}</button>${bvTag}` +
             `<button class="force-remove" type="button" data-i="${i}" title="Remove" aria-label="Remove ${esc(u.name)}">✕</button></div>`
           );
         })
@@ -766,11 +887,13 @@ function forceMode(): "fit" | "fitL" | "p2" | "p1" {
   return v === "fitL" || v === "p2" || v === "p1" ? v : "fit";
 }
 
-/** Convert one force unit to card HTML (or its error card). Uses the stored
- * filename when present so the BV badge matches by file (else by name). */
+/** Convert one force unit to card HTML (or its error card), applying its saved
+ * TIC grouping + pilot skills + BV. Uses the stored filename for the BV match. */
 function forceCardHtml(u: ForceUnit): string {
   const r = convertOne(u.text, u.file ?? u.name);
-  return r.ok ? cardHtml(r.result) : r.html;
+  if (!r.ok) return r.html;
+  applySavedGrouping(r.result, u.grouping);
+  return withSkills(cardHtml(r.result), u.gunnery ?? 4, u.piloting ?? 5);
 }
 
 /** Fit every card into its fixed quarter-page cell, measured off-screen.
@@ -848,16 +971,30 @@ function printForceSheet(): void {
 // Force-panel controls.
 $("add-force").addEventListener("click", addCurrentToForce);
 $("force-print").addEventListener("click", printForceSheet);
+function exitForceEditor(): void {
+  if (editingForceIdx == null) return;
+  editingForceIdx = null;
+  edit = null;
+  output.innerHTML = "";
+}
 $("force-clear").addEventListener("click", () => {
   if (force.length === 0) return;
   force = [];
+  exitForceEditor();
   saveForce();
   renderForce();
 });
 $("force-list").addEventListener("click", (e) => {
-  const btn = (e.target as HTMLElement).closest<HTMLElement>(".force-remove");
+  const target = e.target as HTMLElement;
+  const nameBtn = target.closest<HTMLElement>(".force-item-name");
+  if (nameBtn) {
+    openForceEditor(Number(nameBtn.dataset.i));
+    return;
+  }
+  const btn = target.closest<HTMLElement>(".force-remove");
   if (!btn) return;
   force.splice(Number(btn.dataset.i), 1);
+  exitForceEditor(); // indices shifted — close the editor to avoid a stale target
   saveForce();
   renderForce();
 });
