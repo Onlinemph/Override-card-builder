@@ -629,6 +629,9 @@ let edit: EditSession | null = null;
 // When set, the active edit session belongs to force[editingForceIdx]; TIC moves
 // and skills are persisted back onto that force unit (not just the transient card).
 let editingForceIdx: number | null = null;
+// Whether the unit being edited has a torso-mounted cockpit (head loss ≠ pilot
+// death). Set per render; read by the damage pass.
+let editTorsoCockpit = false;
 
 // 'Mech locations collapse the torso; the facet key matches isLegalTic's rule.
 const mechFacets: EditorFacets = {
@@ -750,6 +753,8 @@ function renderForceEdit(): void {
     output.innerHTML = forceEditBar(u) + r.html;
     return;
   }
+  editTorsoCockpit =
+    r.result.kind === "mech" && r.result.card.equipment.some((e) => /torso-mounted cockpit/i.test(e.label));
   let raw: string;
   let ticEditorHtml = "";
   const session = makeSession(r.result);
@@ -824,9 +829,19 @@ function applyDamageMarks(): void {
     const area = LOC_TO_AREA[loc];
     tr.classList.toggle("tic-dead", (!!area && destroyed.has(area)) || manual.has(ti));
   });
-  // Whole 'Mech destroyed if torso (center) or head structure is gone.
+  // Unit status banner. DESTROYED (mech wrecked): center torso gone or 2 engine
+  // hits. KIA (pilot dead): consciousness track fully marked, or head destroyed
+  // unless a torso-mounted cockpit keeps the pilot alive. Wreck outranks KIA.
   const sheet = output.querySelector<HTMLElement>(".mech-sheet");
-  if (sheet) sheet.classList.toggle("unit-dead", destroyed.has("ct") || destroyed.has("hd"));
+  if (sheet) {
+    const condTotal = output.querySelectorAll(".condmon .cm-pip").length;
+    const pilotDead = condTotal > 0 && (dmg.condition ?? 0) >= condTotal;
+    const wrecked = destroyed.has("ct") || (dmg.engine ?? 0) >= 2;
+    const kia = pilotDead || (destroyed.has("hd") && !editTorsoCockpit);
+    const status = wrecked ? "DESTROYED" : kia ? "KIA" : "";
+    if (status) sheet.dataset.dead = status;
+    else delete sheet.dataset.dead;
+  }
 }
 
 // Weapon-row location code (the .loc cell) -> paper-doll area class.

@@ -1226,10 +1226,11 @@ footer {
 .tic-dead .wname { text-decoration: line-through; }
 .tic-dead td { color: #8a3a30; }
 
-/* Whole-unit destroyed (torso/head structure gone): big red banner over the card. */
-.mech-sheet.unit-dead { position: relative; }
-.mech-sheet.unit-dead::after {
-  content: "DESTROYED";
+/* Unit status banner — big red DESTROYED / KIA across the card (text from the
+   data-dead attribute set by the damage tracker). */
+.mech-sheet[data-dead] { position: relative; }
+.mech-sheet[data-dead]::after {
+  content: attr(data-dead);
   position: absolute;
   inset: 0;
   display: flex;
