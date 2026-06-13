@@ -702,6 +702,31 @@ function forceLayout(): { cols: "1" | "2"; orientation: "portrait" | "landscape"
   }
 }
 
+/** Convert one force unit to card HTML (or its error card). */
+function forceCardHtml(u: ForceUnit): string {
+  const r = convertOne(u.text, u.name);
+  return r.ok ? cardHtml(r.result) : r.html;
+}
+
+/** Scale each card down to fit its fixed quarter-page cell, measured off-screen.
+ * Cards are uniformly scaled (aspect preserved) so a tall card shrinks to fit
+ * the cell height; cards that already fit are left at full size. */
+function fitCardsToCells(area: HTMLElement): void {
+  // Lay the sheet out off-screen so offset/scroll sizes are real (it is
+  // display:none in normal flow); mm → px is the 96dpi CSS constant either way.
+  area.style.cssText = "display:block;position:fixed;left:-10000px;top:0;";
+  for (const cell of Array.from(area.querySelectorAll<HTMLElement>(".fit-cell"))) {
+    const scale = cell.querySelector<HTMLElement>(".fit-scale");
+    if (!scale) continue;
+    const fit = Math.min(
+      cell.clientWidth / (scale.scrollWidth || 1),
+      cell.clientHeight / (scale.scrollHeight || 1),
+    );
+    if (fit < 1) scale.style.transform = `scale(${fit})`;
+  }
+  area.style.cssText = ""; // hand display back to the stylesheet (#print-area)
+}
+
 /** Build all force cards, swap the page to the print container, and print. */
 function printForceSheet(): void {
   if (force.length === 0) return;
@@ -709,13 +734,21 @@ function printForceSheet(): void {
   if (!area) return;
   const { cols, orientation } = forceLayout();
   pageStyle.textContent = `@page { size: ${orientation}; margin: 10mm; }`;
-  const cards = force
-    .map((u) => {
-      const r = convertOne(u.text, u.name);
-      return r.ok ? cardHtml(r.result) : r.html;
-    })
-    .join("");
-  area.innerHTML = `<div class="sheet cols-${cols}">${cards}</div>`;
+  if (orientation === "landscape") {
+    // 2×2 per page: chunk into fours, each its own page, each card fit to a cell.
+    const pages: string[] = [];
+    for (let i = 0; i < force.length; i += 4) {
+      const cells = force
+        .slice(i, i + 4)
+        .map((u) => `<div class="fit-cell"><div class="fit-scale">${forceCardHtml(u)}</div></div>`)
+        .join("");
+      pages.push(`<div class="print-page"><div class="sheet fit2x2">${cells}</div></div>`);
+    }
+    area.innerHTML = pages.join("");
+    fitCardsToCells(area);
+  } else {
+    area.innerHTML = `<div class="sheet cols-${cols}">${force.map(forceCardHtml).join("")}</div>`;
+  }
   document.body.classList.add("print-mode");
   const cleanup = (): void => {
     document.body.classList.remove("print-mode");

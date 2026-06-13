@@ -1172,6 +1172,16 @@ footer {
 .sheet.cols-1 { grid-template-columns: 1fr; }
 .sheet.cols-2 { grid-template-columns: 1fr 1fr; }
 
+/* Landscape "2 × 2 (fit)": four fixed quarter-page cells per page. Cell sizes
+   are chosen to fit Letter AND A4 landscape (10mm margins); each card is scaled
+   by JS to fit its cell. One .print-page per sheet of four, with a hard break. */
+.sheet.fit2x2 {
+  grid-template-columns: repeat(2, 125mm);
+  grid-template-rows: repeat(2, 90mm);
+}
+.fit-cell { width: 125mm; height: 90mm; overflow: hidden; }
+.fit-scale { width: 125mm; transform-origin: top center; }
+
 /* Print: keep an arc's header with at least its first rows, avoid mid-arc breaks. */
 @media print {
   .dropship-weapons .arc-head { break-after: avoid; }
@@ -1182,6 +1192,9 @@ footer {
   body.print-mode #app { display: none; }
   body.print-mode #print-area { display: block; }
   body.print-mode .card { break-inside: avoid; page-break-inside: avoid; box-shadow: none; }
+  /* Each sheet of four lands on its own page in the 2×2 layout. */
+  body.print-mode .print-page { break-after: page; break-inside: avoid; }
+  body.print-mode .print-page:last-child { break-after: auto; }
   /* Print the card fills/banners faithfully (browsers omit backgrounds otherwise). */
   body.print-mode .card,
   body.print-mode .card * {
