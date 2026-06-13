@@ -703,21 +703,25 @@ function forceCardHtml(u: ForceUnit): string {
   return r.ok ? cardHtml(r.result) : r.html;
 }
 
-/** Scale each card down to fit its fixed quarter-page cell, measured off-screen.
- * Cards are uniformly scaled (aspect preserved) so a tall card shrinks to fit
- * the cell height; cards that already fit are left at full size. */
+/** Scale every card to best fill its fixed quarter-page cell, measured
+ * off-screen. Each card is uniformly scaled (aspect preserved): tall cards
+ * shrink, small cards grow to use the space. A safety factor leaves a little
+ * headroom so print-vs-screen metric differences never clip the bottom; a cap
+ * avoids blowing tiny cards up too far. */
 function fitCardsToCells(area: HTMLElement): void {
+  const SAFETY = 0.96; // headroom against print font-metric drift
+  const MAX_SCALE = 1.6; // don't over-enlarge a small card
   // Lay the sheet out off-screen so offset/scroll sizes are real (it is
   // display:none in normal flow); mm → px is the 96dpi CSS constant either way.
   area.style.cssText = "display:block;position:fixed;left:-10000px;top:0;";
   for (const cell of Array.from(area.querySelectorAll<HTMLElement>(".fit-cell"))) {
     const scale = cell.querySelector<HTMLElement>(".fit-scale");
     if (!scale) continue;
-    const fit = Math.min(
+    const raw = Math.min(
       cell.clientWidth / (scale.scrollWidth || 1),
       cell.clientHeight / (scale.scrollHeight || 1),
     );
-    if (fit < 1) scale.style.transform = `scale(${fit})`;
+    scale.style.transform = `scale(${Math.min(raw * SAFETY, MAX_SCALE)})`;
   }
   area.style.cssText = ""; // hand display back to the stylesheet (#print-area)
 }

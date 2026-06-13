@@ -1178,9 +1178,9 @@ footer {
    its cell. One .print-page per sheet of four, with a hard break. */
 .sheet.fit2x2 {
   grid-template-columns: repeat(2, 90mm);
-  grid-template-rows: repeat(2, 125mm);
+  grid-template-rows: repeat(2, 120mm);
 }
-.fit-cell { width: 90mm; height: 125mm; overflow: hidden; }
+.fit-cell { width: 90mm; height: 120mm; overflow: hidden; }
 .fit-scale { width: 90mm; transform-origin: top center; }
 
 /* Print: keep an arc's header with at least its first rows, avoid mid-arc breaks. */
