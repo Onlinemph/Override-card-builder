@@ -115,7 +115,8 @@ async function initBrowser(): Promise<void> {
       if (!resp.ok) throw new Error(`HTTP ${resp.status} fetching ${url}`);
       const text = await resp.text();
       textarea.value = text;
-      showResults([convertOne(text, name)]);
+      // Pass the path (not the display name) so the BV lookup matches by filename.
+      showResults([convertOne(text, path)]);
       textarea.scrollIntoView({ behavior: "smooth", block: "start" });
       statusEl!.textContent = "";
     } catch (err) {
@@ -128,7 +129,7 @@ async function initBrowser(): Promise<void> {
     try {
       const resp = await fetch(`./units/${path}`);
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-      addToForce(name, await resp.text());
+      addToForce(name, await resp.text(), path); // path enables filename-based BV match
       statusEl!.textContent = `Added ${name} to force.`;
     } catch (err) {
       statusEl!.textContent = `Error adding ${name}: ${err instanceof Error ? err.message : String(err)}`;
@@ -501,10 +502,51 @@ function errorCard(file: string, message: string): string {
 
 type ConvertResult = { ok: true; result: AnyCard } | { ok: false; html: string };
 
-/** Parse + convert one source, auto-detecting MTF ('Mech) vs BLK (Battle Armor). */
+// ---- Battle Value (official MUL BV2) --------------------------------------
+// A static { key -> BV } lookup (public/bv-index.json, built by
+// scripts/build-bv-index.mjs from a Master Unit List export). Keyed by both the
+// normalized source FILENAME (matches ~98% of the bundled MegaMek files) and the
+// normalized "Chassis Model" name (fallback for pasted text). BV is a web-only
+// concern sourced from this file, so it never touches the pure core/converter.
+let bvIndex: Record<string, number> = {};
+const bvKey = (s: string): string => s.toLowerCase().replace(/\s+/g, " ").trim();
+const fileStem = (p: string): string =>
+  (p.replace(/\\/g, "/").split("/").pop() ?? "").replace(/\.(mtf|blk)$/i, "");
+
+async function loadBvIndex(): Promise<void> {
+  try {
+    const resp = await fetch("./bv-index.json");
+    if (resp.ok) bvIndex = (await resp.json()) as Record<string, number>;
+  } catch {
+    /* no BV index — cards/force just omit BV */
+  }
+}
+
+/** Official BV for a unit: try the source filename first (best match), then the
+ * display name. Returns undefined when the unit isn't in the MUL dataset. */
+function lookupBv(name: string, file?: string): number | undefined {
+  if (file) {
+    const byFile = bvIndex[bvKey(fileStem(file))];
+    if (byFile) return byFile;
+  }
+  return bvIndex[bvKey(name)];
+}
+
+/** Inject a BV badge just after the card's title (works for every card kind:
+ * .ms-title for most, .ba-title for Battle Armor). */
+function withBv(html: string, bv: number | undefined): string {
+  if (!bv) return html;
+  const badge = `<div class="card-bv">BV <b>${bv.toLocaleString()}</b></div>`;
+  return html.replace(/(<div class="(?:ms-title|ba-title)\b[^>]*>[\s\S]*?<\/div>)/, `$1${badge}`);
+}
+
+/** Parse + convert one source, auto-detecting MTF ('Mech) vs BLK (Battle Armor).
+ * `file` is the source filename/path when known — used for the BV lookup. */
 function convertOne(text: string, file: string): ConvertResult {
   try {
-    return { ok: true, result: convertAny(text, file) };
+    const result = convertAny(text, file);
+    (result.card as { bv?: number }).bv = lookupBv(result.card.name, file);
+    return { ok: true, result };
   } catch (err) {
     const message =
       err instanceof ParseError ? err.message : err instanceof Error ? err.message : String(err);
@@ -512,15 +554,24 @@ function convertOne(text: string, file: string): ConvertResult {
   }
 }
 
-/** HTML for a successfully converted card, dispatched on unit kind. */
+/** HTML for a successfully converted card, dispatched on unit kind, with BV. */
 function cardHtml(result: AnyCard): string {
-  if (result.kind === "battlearmor") return renderBACard(result.card);
-  if (result.kind === "vehicle") return renderVehicleCard(result.card);
-  if (result.kind === "fighter") return renderFighterCard(result.card);
-  if (result.kind === "infantry") return renderInfantryCard(result.card);
-  if (result.kind === "protomech") return renderProtoCard(result.card);
-  if (result.kind === "dropship") return renderDropshipCard(result.card);
-  return renderMechCard(result.card);
+  const bv = (result.card as { bv?: number }).bv;
+  const html =
+    result.kind === "battlearmor"
+      ? renderBACard(result.card)
+      : result.kind === "vehicle"
+        ? renderVehicleCard(result.card)
+        : result.kind === "fighter"
+          ? renderFighterCard(result.card)
+          : result.kind === "infantry"
+            ? renderInfantryCard(result.card)
+            : result.kind === "protomech"
+              ? renderProtoCard(result.card)
+              : result.kind === "dropship"
+                ? renderDropshipCard(result.card)
+                : renderMechCard(result.card);
+  return withBv(html, bv);
 }
 
 // ---- Manual TIC editor wiring ---------------------------------------------
@@ -627,7 +678,7 @@ output.addEventListener("click", (e) => {
 // Stored as SOURCE text (not converted cards) so it survives reloads and stays
 // independent of any in-progress TIC edits.
 
-interface ForceUnit { name: string; text: string; }
+interface ForceUnit { name: string; text: string; file?: string; }
 const FORCE_KEY = "mtf2override.force";
 
 function loadForce(): ForceUnit[] {
@@ -649,8 +700,8 @@ function saveForce(): void {
   }
 }
 
-function addToForce(name: string, text: string): void {
-  force.push({ name: name || "Unit", text });
+function addToForce(name: string, text: string, file?: string): void {
+  force.push({ name: name || "Unit", text, file });
   saveForce();
   renderForce();
 }
@@ -663,26 +714,44 @@ function addCurrentToForce(): void {
     return;
   }
   const r = convertOne(text, "pasted");
-  addToForce(r.ok ? r.result.card.name : "Pasted unit", text);
+  addToForce(r.ok ? r.result.card.name : "Pasted unit", text); // pasted: no filename, BV matches by name
 }
 
-/** Render the force list panel and toggle the Print button. */
+/** Render the force list panel (with per-unit BV + total) and toggle Print. */
 function renderForce(): void {
   const listEl = document.getElementById("force-list");
   const countEl = document.getElementById("force-count");
   const printBtn = document.getElementById("force-print") as HTMLButtonElement | null;
   if (!listEl) return;
-  if (countEl) countEl.textContent = force.length ? `(${force.length})` : "";
   if (printBtn) printBtn.disabled = force.length === 0;
+  let total = 0;
+  let withBvCount = 0;
+  if (countEl) countEl.textContent = force.length ? `(${force.length})` : "";
   listEl.innerHTML = force.length
     ? force
-        .map(
-          (u, i) =>
-            `<div class="force-item"><span class="force-item-name">${esc(u.name)}</span>` +
-            `<button class="force-remove" type="button" data-i="${i}" title="Remove" aria-label="Remove ${esc(u.name)}">✕</button></div>`,
-        )
+        .map((u, i) => {
+          const bv = lookupBv(u.name, u.file);
+          if (bv) {
+            total += bv;
+            withBvCount += 1;
+          }
+          const bvTag = bv ? `<span class="force-item-bv">${bv.toLocaleString()}</span>` : "";
+          return (
+            `<div class="force-item"><span class="force-item-name">${esc(u.name)}</span>${bvTag}` +
+            `<button class="force-remove" type="button" data-i="${i}" title="Remove" aria-label="Remove ${esc(u.name)}">✕</button></div>`
+          );
+        })
         .join("")
     : `<p class="muted force-empty">No units yet. Add units from the browser (＋) or the input area below.</p>`;
+  // Total BV line (notes if some units had no BV match).
+  const totalEl = document.getElementById("force-total");
+  if (totalEl) {
+    totalEl.innerHTML =
+      force.length && total
+        ? `Total BV <b>${total.toLocaleString()}</b>` +
+          (withBvCount < force.length ? ` <span class="muted">(${force.length - withBvCount} without BV)</span>` : "")
+        : "";
+  }
 }
 
 // A dedicated <style> whose @page rule sets the print orientation (CSS @page
@@ -697,9 +766,10 @@ function forceMode(): "fit" | "fitL" | "p2" | "p1" {
   return v === "fitL" || v === "p2" || v === "p1" ? v : "fit";
 }
 
-/** Convert one force unit to card HTML (or its error card). */
+/** Convert one force unit to card HTML (or its error card). Uses the stored
+ * filename when present so the BV badge matches by file (else by name). */
 function forceCardHtml(u: ForceUnit): string {
-  const r = convertOne(u.text, u.name);
+  const r = convertOne(u.text, u.file ?? u.name);
   return r.ok ? cardHtml(r.result) : r.html;
 }
 
@@ -792,6 +862,8 @@ $("force-list").addEventListener("click", (e) => {
   renderForce();
 });
 renderForce();
+// Load the BV index, then refresh the force panel so totals appear once it's in.
+void loadBvIndex().then(renderForce);
 
 $("convert").addEventListener("click", () => {
   const text = textarea.value.trim();

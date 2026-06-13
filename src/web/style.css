@@ -1161,6 +1161,24 @@ footer {
   border-radius: 999px;
 }
 .force-remove:hover { background: var(--line); color: var(--ink); }
+.force-item-bv {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+.force-total { margin: 0.6rem 0 0; font-size: 0.85rem; color: var(--muted); }
+.force-total b { font-size: 1rem; color: var(--accent); font-variant-numeric: tabular-nums; }
+
+/* BV badge injected just under a card's title (BV2 from the MUL lookup). */
+.card-bv {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #6c4f9e;
+  margin: -0.15rem 0 0.4rem;
+}
+.card-bv b { font-size: 0.85rem; }
 
 /* The print sheet: a grid of cards, swapped in for the whole page when printing. */
 #print-area { display: none; }
