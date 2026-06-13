@@ -690,16 +690,11 @@ function renderForce(): void {
 const pageStyle = document.createElement("style");
 document.head.appendChild(pageStyle);
 
-/** Map the layout selector to columns + page orientation. */
-function forceLayout(): { cols: "1" | "2"; orientation: "portrait" | "landscape" } {
-  switch ((document.getElementById("force-cols") as HTMLSelectElement | null)?.value) {
-    case "p1":
-      return { cols: "1", orientation: "portrait" };
-    case "l2":
-      return { cols: "2", orientation: "landscape" }; // 2 columns on a sideways page ≈ a 2×2 grid
-    default:
-      return { cols: "2", orientation: "portrait" };
-  }
+/** The selected print layout. All are PORTRAIT (the cards are taller than wide):
+ * "fit" = 2×2 scaled per page, "p2" = 2 per row, "p1" = 1 per row. */
+function forceMode(): "fit" | "p2" | "p1" {
+  const v = (document.getElementById("force-cols") as HTMLSelectElement | null)?.value;
+  return v === "p2" || v === "p1" ? v : "fit";
 }
 
 /** Convert one force unit to card HTML (or its error card). */
@@ -732,9 +727,9 @@ function printForceSheet(): void {
   if (force.length === 0) return;
   const area = document.getElementById("print-area");
   if (!area) return;
-  const { cols, orientation } = forceLayout();
-  pageStyle.textContent = `@page { size: ${orientation}; margin: 10mm; }`;
-  if (orientation === "landscape") {
+  const mode = forceMode();
+  pageStyle.textContent = `@page { size: portrait; margin: 10mm; }`;
+  if (mode === "fit") {
     // 2×2 per page: chunk into fours, each its own page, each card fit to a cell.
     const pages: string[] = [];
     for (let i = 0; i < force.length; i += 4) {
@@ -747,7 +742,7 @@ function printForceSheet(): void {
     area.innerHTML = pages.join("");
     fitCardsToCells(area);
   } else {
-    area.innerHTML = `<div class="sheet cols-${cols}">${force.map(forceCardHtml).join("")}</div>`;
+    area.innerHTML = `<div class="sheet cols-${mode === "p1" ? "1" : "2"}">${force.map(forceCardHtml).join("")}</div>`;
   }
   document.body.classList.add("print-mode");
   const cleanup = (): void => {
