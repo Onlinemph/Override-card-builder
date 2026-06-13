@@ -1217,6 +1217,30 @@ footer {
   background-image: linear-gradient(135deg, transparent 38%, #c0392b 38%, #c0392b 62%, transparent 62%) !important;
 }
 .cm-pip.pip-hit { background: #c0392b; color: #fff; }
+
+/* A TIC whose limb is destroyed: struck out and dimmed. */
+.tic-dead { opacity: 0.5; }
+.tic-dead .wname { text-decoration: line-through; }
+.tic-dead td { color: #8a3a30; }
+
+/* Whole-unit destroyed (torso/head structure gone): big red banner over the card. */
+.mech-sheet.unit-dead { position: relative; }
+.mech-sheet.unit-dead::after {
+  content: "DESTROYED";
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.8rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  color: rgba(192, 57, 24, 0.62);
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.5);
+  transform: rotate(-14deg);
+  pointer-events: none; /* keep pips clickable to undo */
+  z-index: 5;
+}
 .skills-editor {
   display: flex;
   gap: 1.2rem;

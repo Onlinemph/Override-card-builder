@@ -776,24 +776,51 @@ function renderForceEdit(): void {
 // position on the card (stable across re-renders) and mark the first N pips as
 // hit from the unit's saved state. Crew condition is a single track.
 
-/** (Re)apply the active force unit's damage marks to the rendered card. */
+/** (Re)apply the active force unit's damage marks to the rendered card, and
+ * (for 'Mechs) disable TICs in destroyed limbs + flag the unit destroyed. */
 function applyDamageMarks(): void {
   if (editingForceIdx == null) return;
   const dmg = force[editingForceIdx]!.damage ?? {};
+  const destroyed = new Set<string>(); // paper-doll area codes whose STRUCTURE is gone
   Array.from(output.querySelectorAll<HTMLElement>(".hexrow, .ba-armor-pips .pips")).forEach((g, gi) => {
     g.dataset.dg = String(gi);
+    const pips = Array.from(g.children) as HTMLElement[];
     const hit = dmg.groups?.[`g${gi}`] ?? 0;
-    Array.from(g.children).forEach((p, i) => {
-      const el = p as HTMLElement;
-      el.dataset.di = String(i);
-      el.classList.toggle("pip-hit", i < hit);
+    pips.forEach((p, i) => {
+      p.dataset.di = String(i);
+      p.classList.toggle("pip-hit", i < hit);
     });
+    // A fully-marked STRUCTURE row destroys its paper-doll location ('Mech).
+    if (pips.length > 0 && pips[0]!.classList.contains("struct") && hit >= pips.length) {
+      const mloc = g.closest<HTMLElement>(".mloc");
+      const area = mloc && [...mloc.classList].find((c) => c !== "mloc");
+      if (area) destroyed.add(area);
+    }
   });
   const cond = dmg.condition ?? 0;
   Array.from(output.querySelectorAll<HTMLElement>(".condmon .cm-pip")).forEach((p, i) => {
     p.dataset.dc = String(i);
     p.classList.toggle("pip-hit", i < cond);
   });
+  applyMechDestruction(destroyed);
+}
+
+// Weapon-row location code (the .loc cell) -> paper-doll area class.
+const LOC_TO_AREA: Readonly<Record<string, string>> = {
+  LA: "la", RA: "ra", LL: "ll", RL: "rl", H: "hd", T: "ct", CL: "cl",
+};
+
+/** 'Mech destruction: strike out TICs mounted in a destroyed limb, and overlay
+ * DESTROYED on the whole card when the torso or head structure is gone. */
+function applyMechDestruction(destroyed: Set<string>): void {
+  const sheet = output.querySelector<HTMLElement>(".mech-sheet");
+  if (!sheet) return; // 'Mech-only for now
+  output.querySelectorAll<HTMLElement>(".mweapons tbody tr").forEach((tr) => {
+    const loc = (tr.querySelector(".loc")?.textContent ?? "").replace(/\(R\)/, "").trim();
+    const area = LOC_TO_AREA[loc];
+    tr.classList.toggle("tic-dead", !!area && destroyed.has(area));
+  });
+  sheet.classList.toggle("unit-dead", destroyed.has("ct") || destroyed.has("hd"));
 }
 
 /** A click toggles a pip "level": clicking the last-hit pip un-marks it. */
