@@ -1172,16 +1172,18 @@ footer {
 .sheet.cols-1 { grid-template-columns: 1fr; }
 .sheet.cols-2 { grid-template-columns: 1fr 1fr; }
 
-/* "2 × 2 (fit)": four fixed quarter-page cells per PORTRAIT page. Cells are
-   portrait-shaped (taller than wide) to match the cards' aspect, sized to fit
-   both Letter AND A4 portrait (10mm margins); each card is scaled by JS to fit
-   its cell. One .print-page per sheet of four, with a hard break. */
+/* "2 × 2 (fit)": four fixed quarter-page cells per LANDSCAPE page. The cells are
+   wide (122 × 88 mm) so the card's two columns (data | armor diagram) have room
+   to sit side-by-side without colliding; sized to fit both Letter AND A4
+   landscape (10mm margins). Each card renders at the full cell WIDTH (so its
+   2-column layout is roomy) and is scaled by JS to fit the cell height. One
+   .print-page per sheet of four, with a hard break. */
 .sheet.fit2x2 {
-  grid-template-columns: repeat(2, 90mm);
-  grid-template-rows: repeat(2, 120mm);
+  grid-template-columns: repeat(2, 122mm);
+  grid-template-rows: repeat(2, 88mm);
 }
-.fit-cell { width: 90mm; height: 120mm; overflow: hidden; }
-.fit-scale { width: 90mm; transform-origin: top center; }
+.fit-cell { width: 122mm; height: 88mm; overflow: hidden; }
+.fit-scale { width: 122mm; transform-origin: top center; }
 
 /* Keep print cards in their full multi-column layout. A single card is ~340px
    (≈ 90mm) wide on the site, where the 2-column layout (data | armor diagram)

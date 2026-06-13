@@ -732,7 +732,9 @@ function printForceSheet(): void {
   const area = document.getElementById("print-area");
   if (!area) return;
   const mode = forceMode();
-  pageStyle.textContent = `@page { size: portrait; margin: 10mm; }`;
+  // The 2×2 (fit) sheet is landscape — wide cells give the cards' two columns
+  // room. The plain "N per row" layouts stay portrait.
+  pageStyle.textContent = `@page { size: ${mode === "fit" ? "landscape" : "portrait"}; margin: 10mm; }`;
   if (mode === "fit") {
     // 2×2 per page: chunk into fours, each its own page, each card fit to a cell.
     const pages: string[] = [];
