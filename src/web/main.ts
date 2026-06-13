@@ -826,25 +826,75 @@ interface ForceUnit {
   /** Saved TIC grouping override (weapon-index groups) from the editor. */
   grouping?: number[][];
 }
-const FORCE_KEY = "mtf2override.force";
+/** A named force: a roster of units the user can save, switch, export, share. */
+interface SavedForce { name: string; units: ForceUnit[]; }
+const FORCE_KEY = "mtf2override.force"; // legacy single-force key (migrated once)
+const FORCES_KEY = "mtf2override.forces"; // { active, forces: SavedForce[] }
 
-function loadForce(): ForceUnit[] {
+function loadForces(): { active: number; forces: SavedForce[] } {
   try {
-    const raw = localStorage.getItem(FORCE_KEY);
-    const parsed = raw ? (JSON.parse(raw) as unknown) : [];
-    return Array.isArray(parsed) ? (parsed as ForceUnit[]) : [];
+    const raw = localStorage.getItem(FORCES_KEY);
+    if (raw) {
+      const p = JSON.parse(raw) as { active?: number; forces?: SavedForce[] };
+      if (Array.isArray(p.forces) && p.forces.length) {
+        const fs = p.forces.map((f) => ({ name: f.name || "Force", units: Array.isArray(f.units) ? f.units : [] }));
+        return { active: Math.max(0, Math.min(fs.length - 1, p.active ?? 0)), forces: fs };
+      }
+    }
+    // Migrate a legacy single force (old key), if present.
+    const old = localStorage.getItem(FORCE_KEY);
+    const units = old ? (JSON.parse(old) as ForceUnit[]) : [];
+    return { active: 0, forces: [{ name: "My Force", units: Array.isArray(units) ? units : [] }] };
   } catch {
-    return [];
+    return { active: 0, forces: [{ name: "My Force", units: [] }] };
   }
 }
-let force: ForceUnit[] = loadForce();
+
+const _forceState = loadForces();
+let forces: SavedForce[] = _forceState.forces;
+let activeForce = _forceState.active;
+let force: ForceUnit[] = forces[activeForce]!.units; // the active roster (mutated in place)
 
 function saveForce(): void {
   try {
-    localStorage.setItem(FORCE_KEY, JSON.stringify(force));
+    localStorage.setItem(FORCES_KEY, JSON.stringify({ active: activeForce, forces }));
   } catch {
-    /* storage may be unavailable (private mode / quota) — the in-memory force still works */
+    /* storage may be unavailable (private mode / quota) — the in-memory forces still work */
   }
+}
+
+/** Switch the active force (rebinding `force` to its roster, in place). */
+function setActiveForce(i: number): void {
+  if (i < 0 || i >= forces.length) return;
+  exitForceEditor();
+  activeForce = i;
+  force = forces[activeForce]!.units;
+  saveForce();
+  renderForce();
+}
+function newForce(): void {
+  const name = (prompt("Name for the new force:", `Force ${forces.length + 1}`) ?? "").trim();
+  if (!name) return;
+  forces.push({ name, units: [] });
+  setActiveForce(forces.length - 1);
+}
+function renameForce(): void {
+  const cur = forces[activeForce]!;
+  const name = (prompt("Rename force:", cur.name) ?? "").trim();
+  if (!name) return;
+  cur.name = name;
+  saveForce();
+  renderForce();
+}
+function deleteForce(): void {
+  if (!confirm(`Delete force "${forces[activeForce]!.name}"? This can't be undone.`)) return;
+  exitForceEditor();
+  forces.splice(activeForce, 1);
+  if (forces.length === 0) forces.push({ name: "My Force", units: [] });
+  activeForce = Math.max(0, Math.min(forces.length - 1, activeForce));
+  force = forces[activeForce]!.units;
+  saveForce();
+  renderForce();
 }
 
 function addToForce(name: string, text: string, file?: string): void {
@@ -865,7 +915,17 @@ function addCurrentToForce(): void {
 }
 
 /** Render the force list panel (with per-unit BV + total) and toggle Print. */
+/** Rebuild the force-picker dropdown (names + unit counts). */
+function renderForcePicker(): void {
+  const pick = document.getElementById("force-pick") as HTMLSelectElement | null;
+  if (!pick) return;
+  pick.innerHTML = forces
+    .map((f, i) => `<option value="${i}"${i === activeForce ? " selected" : ""}>${esc(f.name)} (${f.units.length})</option>`)
+    .join("");
+}
+
 function renderForce(): void {
+  renderForcePicker();
   const listEl = document.getElementById("force-list");
   const countEl = document.getElementById("force-count");
   const printBtn = document.getElementById("force-print") as HTMLButtonElement | null;
@@ -1006,7 +1066,8 @@ function exitForceEditor(): void {
 }
 $("force-clear").addEventListener("click", () => {
   if (force.length === 0) return;
-  force = [];
+  if (!confirm(`Remove all units from "${forces[activeForce]!.name}"?`)) return;
+  force.length = 0; // clear in place — keep the reference into forces[activeForce]
   exitForceEditor();
   saveForce();
   renderForce();
@@ -1025,9 +1086,109 @@ $("force-list").addEventListener("click", (e) => {
   saveForce();
   renderForce();
 });
+// ---- Force management: switch / new / rename / delete / export / import / share
+
+$("force-pick").addEventListener("change", (e) =>
+  setActiveForce(Number((e.target as HTMLSelectElement).value)),
+);
+$("force-new").addEventListener("click", newForce);
+$("force-rename").addEventListener("click", renameForce);
+$("force-delete").addEventListener("click", deleteForce);
+
+/** Trigger a browser download of an object as pretty JSON. */
+function downloadJson(filename: string, obj: unknown): void {
+  const url = URL.createObjectURL(new Blob([JSON.stringify(obj, null, 2)], { type: "application/json" }));
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+$("force-export").addEventListener("click", () => {
+  const f = forces[activeForce]!;
+  downloadJson(`${(f.name.replace(/[^\w.-]+/g, "_") || "force")}.json`, { name: f.name, units: f.units });
+});
+
+/** Add a parsed force object (or bare units array) as a new active force. */
+function importForceObj(obj: unknown): void {
+  const o = obj as { name?: unknown; units?: unknown };
+  const units = (Array.isArray(o?.units) ? o.units : Array.isArray(obj) ? obj : null) as ForceUnit[] | null;
+  if (!units || !units.every((u) => u && typeof u.text === "string")) {
+    alert("That doesn't look like a valid force file.");
+    return;
+  }
+  forces.push({ name: String(o?.name ?? "Imported Force"), units });
+  setActiveForce(forces.length - 1);
+}
+$("force-import").addEventListener("click", () => $("force-import-file").click());
+$("force-import-file").addEventListener("change", async (e) => {
+  const input = e.target as HTMLInputElement;
+  const file = input.files?.[0];
+  if (file) {
+    try {
+      importForceObj(JSON.parse(await file.text()));
+    } catch {
+      alert("Could not read that force file.");
+    }
+  }
+  input.value = "";
+});
+
+// Share link: the active force, gzip-compressed (raw fallback) into the URL hash.
+const toB64url = (b: Uint8Array): string =>
+  btoa(String.fromCharCode(...b)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+const fromB64url = (s: string): Uint8Array => {
+  const bin = atob(s.replace(/-/g, "+").replace(/_/g, "/"));
+  return Uint8Array.from(bin, (c) => c.charCodeAt(0));
+};
+async function gzip(str: string): Promise<Uint8Array> {
+  const stream = new Blob([str]).stream().pipeThrough(new CompressionStream("gzip"));
+  return new Uint8Array(await new Response(stream).arrayBuffer());
+}
+async function gunzip(bytes: Uint8Array): Promise<string> {
+  const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"));
+  return new Response(stream).text();
+}
+$("force-share").addEventListener("click", () => {
+  void (async () => {
+    const f = forces[activeForce]!;
+    const json = JSON.stringify({ name: f.name, units: f.units });
+    let payload: string;
+    try {
+      payload = "g" + toB64url(await gzip(json)); // 'g' = gzip
+    } catch {
+      payload = "r" + toB64url(new TextEncoder().encode(json)); // 'r' = raw (no CompressionStream)
+    }
+    const url = `${location.origin}${location.pathname}#f=${payload}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      alert("Share link copied to clipboard.");
+    } catch {
+      prompt("Copy this share link:", url);
+    }
+  })();
+});
+
+/** Import a force from a #f=… share link, then strip it from the URL. */
+async function importFromHash(): Promise<void> {
+  const m = location.hash.match(/[#&]f=([^&]+)/);
+  if (!m) return;
+  try {
+    const payload = m[1]!;
+    const bytes = fromB64url(payload.slice(1));
+    const json = payload[0] === "g" ? await gunzip(bytes) : new TextDecoder().decode(bytes);
+    importForceObj(JSON.parse(json));
+  } catch {
+    /* ignore a malformed share link */
+  }
+  history.replaceState(null, "", location.pathname + location.search);
+}
+
 renderForce();
 // Load the BV index, then refresh the force panel so totals appear once it's in.
 void loadBvIndex().then(renderForce);
+// Import a shared force from the URL hash, if present.
+void importFromHash();
 
 $("convert").addEventListener("click", () => {
   const text = textarea.value.trim();

@@ -1135,6 +1135,17 @@ footer {
   font-weight: 600;
 }
 .force-count { font-size: 0.82rem; font-weight: 400; }
+.force-pick {
+  background: var(--panel-2);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 0.3rem 0.5rem;
+  font: inherit;
+  font-size: 0.9rem;
+  max-width: 240px;
+}
+.force-manage { margin-left: auto; display: flex; gap: 0.4rem; flex-wrap: wrap; }
 .force-actions {
   margin-left: auto;
   display: flex;
