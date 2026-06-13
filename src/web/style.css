@@ -955,6 +955,17 @@ footer {
 .dloc.drs { grid-area: rs; }
 .dloc.daft { grid-area: aft; }
 .dloc.dsi { grid-area: si; background: #d7d7cf; border-style: dashed; }
+/* WarShip: six hex sides (nose / fore-L,R / aft-L,R / aft) around the SI core. */
+.ddoll.warship {
+  grid-template-areas:
+    "fl nose fr"
+    "al si   ar"
+    ".  aft  .";
+}
+.dloc.dfl { grid-area: fl; }
+.dloc.dfr { grid-area: fr; }
+.dloc.dal { grid-area: al; }
+.dloc.dar { grid-area: ar; }
 .dloc-name { font-weight: 700; font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.02em; }
 .dloc-val { font-weight: 800; font-size: 1.5rem; color: #6c4f9e; font-variant-numeric: tabular-nums; }
 .dloc-val.si { color: #c0392b; }

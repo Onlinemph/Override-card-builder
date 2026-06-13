@@ -514,6 +514,56 @@ export const WEAPON_DAMAGE: Readonly<Record<string, number>> = {
   "combine": 3, // CONFIRM
   "spot welder": 5, // CONFIRM
 
+  // --- CAPITAL / NAVAL / SUB-CAPITAL weapons (DropShip & WarShip bays) ---
+  // Values are the CAPITAL-scale damage points from MegaMek's weapon table (1/10
+  // of standard TW). The bay pipeline sums these and divides by 3 (the Override
+  // damage divisor), so a bay of capital guns lands on the same scale as WarShip
+  // armor (capital ÷ 3) — a few focused bays crack a facing, as intended.
+  // Capital missiles (AR10 fires these warheads; tele-operated "-T" share stats).
+  "ar10": 2,
+  "barracuda": 2,
+  "killer whale": 4,
+  "white shark": 3,
+  "kraken": 10,
+  // Sub-capital missiles.
+  "manta ray": 5,
+  "piranha": 3,
+  "stingray": 3,
+  "swordfish": 4,
+  // Mass drivers (spinal-mount kinetic kill).
+  "mass driver light": 60,
+  "mass driver medium": 100,
+  "mass driver heavy": 140,
+  // Screen launcher (deploys a defensive debris screen; CSV lists 15).
+  "screen launcher": 15,
+  // Naval Autocannon (NAC/N): N capital damage points.
+  "nac/10": 10,
+  "nac/20": 20,
+  "nac/25": 25,
+  "nac/30": 30,
+  "nac/35": 35,
+  "nac/40": 40,
+  // Naval Gauss.
+  "naval gauss light": 15,
+  "naval gauss medium": 25,
+  "naval gauss heavy": 30,
+  // Naval Laser (NL35/45/55 -> 3/4/5 capital points).
+  "naval laser 35": 3,
+  "naval laser 45": 4,
+  "naval laser 55": 5,
+  // Naval PPC.
+  "naval ppc light": 7,
+  "naval ppc medium": 9,
+  "naval ppc heavy": 15,
+  // Sub-capital cannons.
+  "sub-capital cannon light": 2,
+  "sub-capital cannon medium": 5,
+  "sub-capital cannon heavy": 7,
+  // Sub-capital lasers.
+  "sub-capital laser 1": 1,
+  "sub-capital laser 2": 2,
+  "sub-capital laser 3": 3,
+
   // MML and ATM/iATM are range-varying MISSILE racks: their printed damage is a
   // per-bracket base PLUS M dice, so they live in WEAPON_RV_MISSILE (below)
   // rather than as a single TW number here.
@@ -842,6 +892,44 @@ export const WEAPON_RANGES: Readonly<Record<string, WeaponRange>> = {
 
   // Support PPC (BA/support scale; sh 2 / med 5 / lg 7).
   "support ppc": { min: 0, medium: 5, long: 7 },
+
+  // --- CAPITAL / NAVAL / SUB-CAPITAL weapons ---
+  // medium/long from MegaMek's range table (no minimum range). The bracket math
+  // pushes these long-reaching guns to low penalties up close and +2 at extreme.
+  "ar10": { min: 0, medium: 30, long: 40 },
+  "barracuda": { min: 0, medium: 30, long: 40 },
+  "killer whale": { min: 0, medium: 14, long: 21 },
+  "white shark": { min: 0, medium: 24, long: 36 },
+  "kraken": { min: 0, medium: 22, long: 34 },
+  "manta ray": { min: 0, medium: 14, long: 21 },
+  "piranha": { min: 0, medium: 14, long: 21 },
+  "stingray": { min: 0, medium: 14, long: 21 },
+  "swordfish": { min: 0, medium: 14, long: 21 },
+  "mass driver light": { min: 0, medium: 24, long: 40 },
+  "mass driver medium": { min: 0, medium: 24, long: 40 },
+  "mass driver heavy": { min: 0, medium: 24, long: 40 },
+  "screen launcher": { min: 0, medium: 6, long: 9 },
+  "nac/10": { min: 0, medium: 22, long: 33 },
+  "nac/20": { min: 0, medium: 21, long: 31 },
+  "nac/25": { min: 0, medium: 20, long: 30 },
+  "nac/30": { min: 0, medium: 18, long: 27 },
+  "nac/35": { min: 0, medium: 14, long: 21 },
+  "nac/40": { min: 0, medium: 12, long: 18 },
+  "naval gauss light": { min: 0, medium: 28, long: 40 },
+  "naval gauss medium": { min: 0, medium: 26, long: 39 },
+  "naval gauss heavy": { min: 0, medium: 24, long: 36 },
+  "naval laser 35": { min: 0, medium: 22, long: 33 },
+  "naval laser 45": { min: 0, medium: 24, long: 36 },
+  "naval laser 55": { min: 0, medium: 26, long: 39 },
+  "naval ppc light": { min: 0, medium: 22, long: 33 },
+  "naval ppc medium": { min: 0, medium: 24, long: 36 },
+  "naval ppc heavy": { min: 0, medium: 26, long: 39 },
+  "sub-capital cannon light": { min: 0, medium: 22, long: 33 },
+  "sub-capital cannon medium": { min: 0, medium: 22, long: 33 },
+  "sub-capital cannon heavy": { min: 0, medium: 22, long: 33 },
+  "sub-capital laser 1": { min: 0, medium: 22, long: 33 },
+  "sub-capital laser 2": { min: 0, medium: 22, long: 33 },
+  "sub-capital laser 3": { min: 0, medium: 22, long: 33 },
 } as const;
 
 /**
@@ -1029,6 +1117,42 @@ export const WEAPON_HEAT: Readonly<Record<string, number>> = {
   "atm 12": 8,
   "arrow iv": 10, // round(10/5) -> 2
   "tsemp cannon": 10, // round(10/5) -> 2 (forged: 2 heat to fire)
+
+  // --- CAPITAL / NAVAL / SUB-CAPITAL weapons (TW heat; ticHeat divides by 5) ---
+  "ar10": 20,
+  "barracuda": 10,
+  "killer whale": 20,
+  "white shark": 15,
+  "kraken": 50,
+  "manta ray": 21,
+  "piranha": 9,
+  "stingray": 9,
+  "swordfish": 15,
+  "mass driver light": 30,
+  "mass driver medium": 60,
+  "mass driver heavy": 90,
+  "screen launcher": 10,
+  "nac/10": 30,
+  "nac/20": 60,
+  "nac/25": 85,
+  "nac/30": 100,
+  "nac/35": 120,
+  "nac/40": 135,
+  "naval gauss light": 9,
+  "naval gauss medium": 15,
+  "naval gauss heavy": 18,
+  "naval laser 35": 52,
+  "naval laser 45": 70,
+  "naval laser 55": 85,
+  "naval ppc light": 105,
+  "naval ppc medium": 135,
+  "naval ppc heavy": 225,
+  "sub-capital cannon light": 12,
+  "sub-capital cannon medium": 30,
+  "sub-capital cannon heavy": 42,
+  "sub-capital laser 1": 24,
+  "sub-capital laser 2": 28,
+  "sub-capital laser 3": 32,
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -1673,6 +1797,41 @@ export const WEAPON_ABBREV: Readonly<Record<string, string>> = {
   "mrm 20": "MRM-20",
   "mrm 30": "MRM-30",
   "mrm 40": "MRM-40",
+  // --- Capital / naval / sub-capital (keep the caliber/warhead visible) ---
+  "nac/10": "NAC/10",
+  "nac/20": "NAC/20",
+  "nac/25": "NAC/25",
+  "nac/30": "NAC/30",
+  "nac/35": "NAC/35",
+  "nac/40": "NAC/40",
+  "naval gauss light": "N-Gauss(L)",
+  "naval gauss medium": "N-Gauss(M)",
+  "naval gauss heavy": "N-Gauss(H)",
+  "naval laser 35": "NL35",
+  "naval laser 45": "NL45",
+  "naval laser 55": "NL55",
+  "naval ppc light": "N-PPC(L)",
+  "naval ppc medium": "N-PPC(M)",
+  "naval ppc heavy": "N-PPC(H)",
+  "mass driver light": "MassDrv(L)",
+  "mass driver medium": "MassDrv(M)",
+  "mass driver heavy": "MassDrv(H)",
+  "screen launcher": "Screen",
+  "ar10": "AR10",
+  "barracuda": "Barracuda",
+  "killer whale": "Killer Whale",
+  "white shark": "White Shark",
+  "kraken": "Kraken",
+  "manta ray": "Manta Ray",
+  "piranha": "Piranha",
+  "stingray": "Stingray",
+  "swordfish": "Swordfish",
+  "sub-capital cannon light": "SCC(L)",
+  "sub-capital cannon medium": "SCC(M)",
+  "sub-capital cannon heavy": "SCC(H)",
+  "sub-capital laser 1": "SCL/1",
+  "sub-capital laser 2": "SCL/2",
+  "sub-capital laser 3": "SCL/3",
 } as const;
 
 // ---------------------------------------------------------------------------

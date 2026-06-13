@@ -191,11 +191,16 @@ export function convertDropship(unit: DropshipUnit): DropshipCard {
 
   const a = unit.armor;
   const armorDivisor = unit.shipClass === "WarShip" ? 3 : VEHICLE_ARMOR_DIVISOR;
+  const conv = (tw: number | undefined) => (tw === undefined ? undefined : convertArmor(tw, armorDivisor));
   const armor = {
     nose: convertArmor(a.nose, armorDivisor),
     leftSide: convertArmor(a.leftSide, armorDivisor),
     rightSide: convertArmor(a.rightSide, armorDivisor),
     aft: convertArmor(a.aft, armorDivisor),
+    foreLeft: conv(a.foreLeft),
+    foreRight: conv(a.foreRight),
+    aftLeft: conv(a.aftLeft),
+    aftRight: conv(a.aftRight),
   };
 
   // SI: the BLK carries the TW value; card scale = /3 round nearest, min 1.

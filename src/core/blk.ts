@@ -623,16 +623,28 @@ const DROPSHIP_BAY_LABELS: Readonly<Record<string, { label: string; tons?: boole
 };
 
 /**
- * Armor block facings. DropShip order: nose, left side, right side, aft (4
- * values). WarShip order (6 values): nose, fore-left, fore-right, aft-left,
- * aft-right, aft — we surface nose / fore-sides / aft on the 4-box diagram (the
- * aft-side and broadside arcs still appear in the weapon table).
+ * Armor block facings. DropShip order (4 values): nose, left side, right side,
+ * aft. WarShip order (6 values): nose, fore-left, fore-right, AFT, aft-left,
+ * aft-right — the aft (the thin rear facing) is index 3, NOT index 5. We surface
+ * all six on the WarShip diagram; leftSide / rightSide mirror the fore sides so
+ * the DThr math and the 4-box code keep working.
  */
 function parseDropshipArmor(blocks: Block[]): DropshipArmorRaw {
   const block = blocks.find((b) => b.key === "armor");
   const v = (block?.lines ?? []).map((l) => Number.parseInt(l, 10)).filter((n) => Number.isFinite(n));
   const at = (i: number) => v[i] ?? 0;
-  if (v.length >= 6) return { nose: at(0), leftSide: at(1), rightSide: at(2), aft: at(5) }; // WarShip
+  if (v.length >= 6) {
+    return {
+      nose: at(0),
+      leftSide: at(1), // = fore-left
+      rightSide: at(2), // = fore-right
+      aft: at(3),
+      foreLeft: at(1),
+      foreRight: at(2),
+      aftLeft: at(4),
+      aftRight: at(5),
+    };
+  }
   return { nose: at(0), leftSide: at(1), rightSide: at(2), aft: at(3) };
 }
 

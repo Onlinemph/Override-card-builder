@@ -37,20 +37,47 @@ function arcBox(area: string, label: string, hits: string, armor: number): strin
   </div>`;
 }
 
-/** Arc armor diamond: Nose top, sides flanking SI, Aft bottom. */
+/** One WarShip arc box: label over a numeric armor value (no 2d6 hit row —
+ * capital combat selects the firing arc rather than rolling a 2d6 hit table). */
+function wsArcBox(area: string, label: string, armor: number): string {
+  return `<div class="dloc ${area}">
+    <div class="dloc-name">${esc(label)}</div>
+    <div class="dloc-val">${esc(armor)}</div>
+  </div>`;
+}
+
+/** SI core box, shared by both diagrams. */
+function siBox(card: DropshipCard): string {
+  return `<div class="dloc dsi">
+      <div class="dloc-name">SI</div>
+      <div class="dloc-val si">${esc(card.structure)}</div>
+    </div>`;
+}
+
+/** Arc armor diagram. DropShips: a 4-arc diamond with 2d6 hit numbers. WarShips:
+ * the SIX hex sides (nose / fore-L/R / aft-L/R / aft) around the SI core. */
 function armorDiagram(card: DropshipCard): string {
   const a = card.armor;
+  if (card.shipClass === "WarShip") {
+    return `<div class="ddoll warship">
+    ${wsArcBox("dfl", "Fore-Left", a.foreLeft ?? a.leftSide)}
+    ${wsArcBox("dnose", "Nose", a.nose)}
+    ${wsArcBox("dfr", "Fore-Right", a.foreRight ?? a.rightSide)}
+    ${wsArcBox("dal", "Aft-Left", a.aftLeft ?? a.leftSide)}
+    ${siBox(card)}
+    ${wsArcBox("dar", "Aft-Right", a.aftRight ?? a.rightSide)}
+    ${wsArcBox("daft", "Aft", a.aft)}
+  </div>
+  <p class="mdoll-legend">Armor per hex side (capital ÷ 3) · SI = structural integrity</p>`;
+  }
   return `<div class="ddoll">
     ${arcBox("dnose", "Nose", "6,7,8", a.nose)}
     ${arcBox("dls", "Left Side", "9,10,11", a.leftSide)}
-    <div class="dloc dsi">
-      <div class="dloc-name">SI</div>
-      <div class="dloc-val si">${esc(card.structure)}</div>
-    </div>
+    ${siBox(card)}
     ${arcBox("drs", "Right Side", "3,4,5", a.rightSide)}
     ${arcBox("daft", "Aft", "2,12", a.aft)}
   </div>
-  <p class="mdoll-legend">Armor per arc (${card.shipClass === "WarShip" ? "capital ÷ 3" : "TW ÷ 4"}) · SI = structural integrity</p>`;
+  <p class="mdoll-legend">Armor per arc (TW ÷ 4) · SI = structural integrity</p>`;
 }
 
 /** The weapons table: one row per arc TIC. */

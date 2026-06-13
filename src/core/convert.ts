@@ -125,7 +125,38 @@ export function lookupTmm(runMP: number): number {
  *   - MG abbreviation ("heavy mg" -> "heavy machine gun")
  *   - trailing OS suffix ("advanced srm 2 os" -> "advanced srm 2")
  */
+/**
+ * Map a capital / naval / sub-capital weapon name to a stable key. These carry
+ * their discriminator INSIDE a parenthetical ("Naval Autocannon (NAC/10)",
+ * "Capital Missile Launcher (Killer Whale)") that the generic qualifier-strip in
+ * normalizeWeaponName would discard — so they are resolved first, with an early
+ * return that skips the camelCase/digit splitting (which would mangle "nac/10").
+ * Tele-operated "-T" variants collapse to their base warhead (identical stats).
+ */
+function capitalWeaponKey(raw: string): string | null {
+  const s = raw.trim().toLowerCase();
+  let m: RegExpMatchArray | null;
+  if ((m = s.match(/naval autocannon\s*\(nac\/(\d+)\)/)) || (m = s.match(/^nac[\s/-]?(\d+)/)))
+    return `nac/${m[1]}`;
+  if ((m = s.match(/naval gauss\s*\((light|medium|heavy)\)/))) return `naval gauss ${m[1]}`;
+  if ((m = s.match(/naval laser\s*(\d+)/))) return `naval laser ${m[1]}`;
+  if ((m = s.match(/naval ppc\s*\((light|medium|heavy)\)/))) return `naval ppc ${m[1]}`;
+  if ((m = s.match(/mass driver\s*\((light|medium|heavy)\)/))) return `mass driver ${m[1]}`;
+  if (/screen launcher/.test(s)) return "screen launcher";
+  if ((m = s.match(/sub-?capital cannon\s*\((light|medium|heavy)\)/))) return `sub-capital cannon ${m[1]}`;
+  if ((m = s.match(/sub-?capital laser\s*\/?\s*(\d)/))) return `sub-capital laser ${m[1]}`;
+  // Capital & sub-capital missiles: the warhead name lives in the parenthetical.
+  if (
+    (m = s.match(/(?:sub-?)?capital missile launcher\s*\(([^)]+?)(?: launcher)?\)/)) ||
+    (m = s.match(/tele-?operated missile\s*\(([^)]+?)\)/))
+  )
+    return m[1]!.replace(/[\s-]?t$/, "").trim(); // strip the tele "-T" suffix to the base warhead
+  return null;
+}
+
 export function normalizeWeaponName(raw: string): string {
+  const cap = capitalWeaponKey(raw);
+  if (cap) return cap;
   let s = raw.trim();
   s = s.replace(/:[A-Za-z0-9]+$/, ""); // drop a trailing mount/omni tag ("...:OMNI", "...:LA")
   s = s.replace(/\s*\([^)]*\)/g, ""); // drop qualifiers like "(OS)", "(I-OS)", "(Clan)"

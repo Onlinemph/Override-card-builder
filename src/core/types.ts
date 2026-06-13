@@ -968,12 +968,22 @@ export interface DropshipMount {
   bay?: number;
 }
 
-/** Raw per-arc TW armor from the BLK `<armor>` block (nose, left, right, aft). */
+/**
+ * Per-arc armor. DropShips carry four facings (nose / left / right / aft).
+ * WarShips have SIX hex sides — nose, fore-left, fore-right, aft-left,
+ * aft-right, aft — so the four corner facings are filled too (leftSide /
+ * rightSide mirror the fore sides for DThr + the 4-box fallback).
+ */
 export interface DropshipArmorRaw {
   nose: number;
   leftSide: number;
   rightSide: number;
   aft: number;
+  /** WarShip-only corner facings (undefined on DropShips). */
+  foreLeft?: number;
+  foreRight?: number;
+  aftLeft?: number;
+  aftRight?: number;
 }
 
 /** One transport bay from `<transporters>` (e.g. 'Mech ×4, Cargo 1800t). */

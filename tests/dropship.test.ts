@@ -118,27 +118,45 @@ describe("WarShip (extends the DropShip path)", () => {
     `<Left Broadsides Equipment>\n(B) Large Laser\nLarge Laser\n</Left Broadsides Equipment>\n` +
     `<tonnage>\n620000.0\n</tonnage>\n`;
 
-  it("parses the Warship type, 6-facing armor, and broadside arcs", () => {
+  it("parses the Warship type, 6-facing armor (aft = index 3), and broadside arcs", () => {
     const u = parseBlkDropship(blk, "ws.blk");
     expect(u.shipClass).toBe("WarShip");
-    expect(u.armor).toEqual({ nose: 37, leftSide: 37, rightSide: 37, aft: 37 }); // 6 values -> aft = index 5
+    // <armor> 37 37 37 35 37 37 -> aft is the index-3 value (35), the four corners 37.
+    expect(u.armor).toEqual({
+      nose: 37,
+      leftSide: 37,
+      rightSide: 37,
+      aft: 35,
+      foreLeft: 37,
+      foreRight: 37,
+      aftLeft: 37,
+      aftRight: 37,
+    });
     expect(u.mounts.map((m) => m.facing)).toEqual(["nose", "nose", "leftBroad", "leftBroad"]);
   });
 
-  it("converts to a WarShip card: naval weapons show as bays (?), standard bays sum", () => {
+  it("converts to a WarShip card: capital armor ÷ 3, naval bays carry capital damage", () => {
     const c = convertDropship(parseBlkDropship(blk, "ws.blk"));
     expect(c.shipClass).toBe("WarShip");
+    expect(c.armor.nose).toBe(12); // 37 capital / 3 -> 12
+    expect(c.armor.aft).toBe(12); // 35 / 3 -> 12
+    expect(c.armor.aftLeft).toBe(12);
     const nose = c.weapons.find((w) => w.facing === "NO");
-    expect(nose?.unknown).toBe(true); // capital/naval — deferred, shown as ?
+    expect(nose?.unknown).toBe(false); // NAC/20 now has capital-scale stats
+    expect(nose?.damageText).toBe("14"); // 2x NAC/20 = 40 capital -> ceil(40/3)
     const broad = c.weapons.find((w) => w.facing === "LB");
     expect(broad?.damageText).toBe("6"); // 2x Large Laser = ceil(16/3)
-    expect(c.warnings).toHaveLength(0); // naval weapons are deferred, not "missing"
+    expect(c.warnings).toHaveLength(0);
   });
 
-  it("renders WarShip arc sections and the WarShip type label", () => {
+  it("renders WarShip arc sections, the six hex-side armor boxes, and the type label", () => {
     const html = renderDropshipCard(convertDropship(parseBlkDropship(blk, "ws.blk")));
-    expect(html).toContain(">Left Broadside<");
+    expect(html).toContain(">Left Broadside<"); // weapon-table arc section
     expect(html).toContain("WarShip");
+    expect(html).toContain('class="ddoll warship"');
+    for (const side of ["Nose", "Fore-Left", "Fore-Right", "Aft-Left", "Aft-Right", "Aft"]) {
+      expect(html).toContain(`>${side}<`);
+    }
   });
 });
 
