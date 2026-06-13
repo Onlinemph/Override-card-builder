@@ -1273,16 +1273,33 @@ footer {
    scales + centers it. */
 .fit-cell { overflow: hidden; }
 .fit-scale { transform-origin: top left; } /* width + transform set per card by JS */
+/* Cell heights leave room for the per-page sheet header (force name / BV /
+   page no.) while the 2×2 block still fits Letter AND A4 (10mm margins). */
 .sheet.fit-portrait {
   grid-template-columns: repeat(2, 92mm);
-  grid-template-rows: repeat(2, 126mm);
+  grid-template-rows: repeat(2, 120mm);
 }
-.sheet.fit-portrait .fit-cell { width: 92mm; height: 126mm; }
+.sheet.fit-portrait .fit-cell { width: 92mm; height: 120mm; }
 .sheet.fit-landscape {
   grid-template-columns: repeat(2, 122mm);
-  grid-template-rows: repeat(2, 88mm);
+  grid-template-rows: repeat(2, 84mm);
 }
-.sheet.fit-landscape .fit-cell { width: 122mm; height: 88mm; }
+.sheet.fit-landscape .fit-cell { width: 122mm; height: 84mm; }
+.print-page { display: flex; flex-direction: column; }
+
+/* Per-sheet header: force name (left), total BV, page x of y (right). */
+.sheet-head {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  font-size: 9pt;
+  color: #333;
+  border-bottom: 1px solid #999;
+  padding-bottom: 1mm;
+  margin-bottom: 2mm;
+}
+.sheet-head-name { font-weight: 800; font-size: 12pt; color: #000; }
+.sheet-head-page { margin-left: auto; }
 
 /* Keep print cards in their full multi-column layout. A single card is ~340px
    (≈ 90mm) wide on the site, where the 2-column layout (data | armor diagram)

@@ -1020,6 +1020,25 @@ function fitCardsToCells(area: HTMLElement): void {
   area.style.cssText = ""; // hand display back to the stylesheet (#print-area)
 }
 
+/** The active force's total (skill-adjusted) BV. */
+function forceTotalBv(): number {
+  let total = 0;
+  for (const u of force) {
+    const bv = unitBv(u);
+    if (bv) total += bv;
+  }
+  return total;
+}
+
+/** A print-sheet header row: force name, total BV, and (fit modes) page x of y. */
+function sheetHeader(pageNum?: number, pageCount?: number): string {
+  const total = forceTotalBv();
+  const bvTag = total ? `<span class="sheet-head-bv">Total BV ${total.toLocaleString()}</span>` : "";
+  const pageTag =
+    pageNum && pageCount ? `<span class="sheet-head-page">Page ${pageNum} of ${pageCount}</span>` : "";
+  return `<div class="sheet-head"><span class="sheet-head-name">${esc(forces[activeForce]!.name)}</span>${bvTag}${pageTag}</div>`;
+}
+
 /** Build all force cards, swap the page to the print container, and print. */
 function printForceSheet(): void {
   if (force.length === 0) return;
@@ -1030,20 +1049,24 @@ function printForceSheet(): void {
   const orientation = mode === "fitL" ? "landscape" : "portrait";
   pageStyle.textContent = `@page { size: ${orientation}; margin: 10mm; }`;
   if (isFit) {
-    // 2×2 per page: chunk into fours, each its own page, each card fit to a cell.
+    // 2×2 per page: chunk into fours, each its own page (with a header), each card fit to a cell.
     const sheetClass = mode === "fitL" ? "sheet fit-landscape" : "sheet fit-portrait";
+    const pageCount = Math.ceil(force.length / 4);
     const pages: string[] = [];
     for (let i = 0; i < force.length; i += 4) {
       const cells = force
         .slice(i, i + 4)
         .map((u) => `<div class="fit-cell"><div class="fit-scale">${forceCardHtml(u)}</div></div>`)
         .join("");
-      pages.push(`<div class="print-page"><div class="${sheetClass}">${cells}</div></div>`);
+      pages.push(
+        `<div class="print-page">${sheetHeader(i / 4 + 1, pageCount)}<div class="${sheetClass}">${cells}</div></div>`,
+      );
     }
     area.innerHTML = pages.join("");
     fitCardsToCells(area);
   } else {
-    area.innerHTML = `<div class="sheet cols-${mode === "p1" ? "1" : "2"}">${force.map(forceCardHtml).join("")}</div>`;
+    // Flowing layout: one header at the top (page numbers need explicit pages).
+    area.innerHTML = `${sheetHeader()}<div class="sheet cols-${mode === "p1" ? "1" : "2"}">${force.map(forceCardHtml).join("")}</div>`;
   }
   document.body.classList.add("print-mode");
   const cleanup = (): void => {
