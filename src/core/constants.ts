@@ -1078,8 +1078,11 @@ export const WEAPON_HEAT: Readonly<Record<string, number>> = {
   "ultra ac/5": 1,
   "ultra ac/10": 3,
   "ultra ac/20": 7,
-  "rotary ac/2": 1,
-  "rotary ac/5": 1,
+  // Rotary AC fires up to 6 shots/turn (1 heat each), so its sustained heat is
+  // the 6-shot burst: round(6/5) = 1. The single-shot 1 rounded to 0 (bug).
+  // VERIFIED vs DFA: RAC/5 Ht 1 (the key serves both Clan and IS).
+  "rotary ac/2": 6,
+  "rotary ac/5": 6,
   "light ac/2": 1,
   "light ac/5": 1,
   "machine gun": 0,
