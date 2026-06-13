@@ -1429,6 +1429,130 @@ async function importFromHash(): Promise<void> {
   history.replaceState(null, "", location.pathname + location.search);
 }
 
+// ---- RAT weighted random force generator ----------------------------------
+interface RatTable { name: string; type: string; weight: string; e: [number, number][] }
+interface RatFaction { name: string; side: string; tables: RatTable[] }
+interface RatSource { name: string; factions: RatFaction[] }
+interface RatIndex { units: { p: string; n: string }[]; sources: RatSource[] }
+let ratIndex: RatIndex | null = null;
+
+const ratSourceSel = () => document.getElementById("rat-source") as HTMLSelectElement | null;
+const ratFactionSel = () => document.getElementById("rat-faction") as HTMLSelectElement | null;
+const ratTableSel = () => document.getElementById("rat-table") as HTMLSelectElement | null;
+const ratStatus = (msg: string): void => {
+  const el = document.getElementById("rat-status");
+  if (el) el.textContent = msg;
+};
+
+const fillSelect = (sel: HTMLSelectElement | null, labels: string[]): void => {
+  if (sel) sel.innerHTML = labels.map((l, i) => `<option value="${i}">${esc(l)}</option>`).join("");
+};
+
+function ratCurrentFaction(): RatFaction | undefined {
+  return ratIndex?.sources[Number(ratSourceSel()?.value)]?.factions[Number(ratFactionSel()?.value)];
+}
+function fillRatTables(): void {
+  const f = ratCurrentFaction();
+  fillSelect(ratTableSel(), (f?.tables ?? []).map((t) => `${t.name}${t.type || t.weight ? ` [${[t.type, t.weight].filter(Boolean).join("/")}]` : ""}`));
+}
+function fillRatFactions(): void {
+  const src = ratIndex?.sources[Number(ratSourceSel()?.value)];
+  fillSelect(ratFactionSel(), (src?.factions ?? []).map((f) => (f.side ? `${f.name} (${f.side})` : f.name)));
+  fillRatTables();
+}
+
+/** Weighted pick (with replacement) of `n` unit indices from a table. */
+function rollTable(table: RatTable, n: number): number[] {
+  const total = table.e.reduce((s, [, w]) => s + w, 0);
+  const picks: number[] = [];
+  for (let k = 0; k < n && total > 0; k++) {
+    let r = Math.random() * total;
+    for (const [ui, w] of table.e) {
+      r -= w;
+      if (r < 0) {
+        picks.push(ui);
+        break;
+      }
+    }
+  }
+  return picks;
+}
+
+/** Fetch each rolled unit's source and append it to the active force. */
+async function addRolledUnits(unitIdxs: number[]): Promise<void> {
+  if (!ratIndex || unitIdxs.length === 0) return;
+  let added = 0;
+  for (const ui of unitIdxs) {
+    const u = ratIndex.units[ui];
+    if (!u) continue;
+    try {
+      const resp = await fetch(`./units/${u.p}`);
+      if (!resp.ok) continue;
+      force.push({ name: u.n, text: await resp.text(), file: u.p });
+      added += 1;
+    } catch {
+      /* skip a unit that fails to load */
+    }
+  }
+  saveForce();
+  renderForce();
+  ratStatus(`Rolled ${added} unit${added === 1 ? "" : "s"} into "${forces[activeForce]!.name}".`);
+}
+
+let ratLoaded = false;
+async function openRatGenerator(): Promise<void> {
+  const body = document.getElementById("rat-body");
+  const toggle = document.getElementById("rat-toggle") as HTMLButtonElement | null;
+  if (!body || !toggle) return;
+  const show = body.hasAttribute("hidden");
+  body.toggleAttribute("hidden", !show);
+  toggle.setAttribute("aria-expanded", String(show));
+  if (show && !ratLoaded) {
+    ratLoaded = true;
+    ratStatus("Loading tables…");
+    try {
+      const resp = await fetch("./rat-index.json");
+      if (resp.ok) ratIndex = (await resp.json()) as RatIndex;
+    } catch {
+      /* unavailable */
+    }
+    if (!ratIndex) {
+      ratStatus("RAT data unavailable.");
+      return;
+    }
+    fillSelect(ratSourceSel(), ratIndex.sources.map((s) => s.name));
+    fillRatFactions();
+    ratStatus("");
+  }
+}
+
+document.getElementById("rat-toggle")?.addEventListener("click", () => void openRatGenerator());
+ratSourceSel()?.addEventListener("change", fillRatFactions);
+ratFactionSel()?.addEventListener("change", fillRatTables);
+document.getElementById("rat-roll")?.addEventListener("click", () => {
+  const f = ratCurrentFaction();
+  const table = f?.tables[Number(ratTableSel()?.value)];
+  if (!table) return;
+  const n = Math.max(1, Math.min(12, Number((document.getElementById("rat-count") as HTMLInputElement)?.value) || 4));
+  void addRolledUnits(rollTable(table, n));
+});
+document.getElementById("rat-lance")?.addEventListener("click", () => {
+  const f = ratCurrentFaction();
+  if (!f) return;
+  // One 'Mech per weight class present; fall back to 4 from all this faction's tables.
+  const mekByWeight = new Map<string, RatTable>();
+  for (const t of f.tables) if (t.type === "Mek" && t.weight && !mekByWeight.has(t.weight)) mekByWeight.set(t.weight, t);
+  const picks: number[] = [];
+  for (const w of ["Light", "Medium", "Heavy", "Assault"]) {
+    const t = mekByWeight.get(w);
+    if (t) picks.push(...rollTable(t, 1));
+  }
+  if (picks.length === 0 && f.tables.length) {
+    picks.push(...rollTable({ name: "all", type: "", weight: "", e: f.tables.flatMap((t) => t.e) }, 4));
+  }
+  void addRolledUnits(picks);
+});
+
 renderForce();
 // Load the BV index, then refresh the force panel so totals appear once it's in.
 void loadBvIndex().then(renderForce);

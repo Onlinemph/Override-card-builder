@@ -91,6 +91,22 @@
           <button id="force-share" type="button">Copy link</button>
           <button id="force-clear" type="button">Clear</button>
         </div>
+        <div class="rat-gen">
+          <button id="rat-toggle" type="button" class="rat-toggle" aria-expanded="false">🎲 Generate from RAT</button>
+          <div id="rat-body" class="rat-body" hidden>
+            <div class="rat-row">
+              <select id="rat-source" class="browse-cat" aria-label="RAT era / source"></select>
+              <select id="rat-faction" class="browse-cat" aria-label="RAT faction"></select>
+            </div>
+            <div class="rat-row">
+              <select id="rat-table" class="browse-cat" aria-label="RAT table"></select>
+              <label class="rat-count-label">Count <input id="rat-count" type="number" min="1" max="12" value="4" class="rat-count" /></label>
+              <button id="rat-roll" type="button">Roll table</button>
+              <button id="rat-lance" type="button" title="Roll one 'Mech per weight class from this faction">Roll lance</button>
+            </div>
+            <span id="rat-status" class="muted rat-status"></span>
+          </div>
+        </div>
       </section>
 
       <section id="output" class="output" aria-live="polite"></section>

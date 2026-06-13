@@ -1146,6 +1146,24 @@ footer {
   max-width: 240px;
 }
 .force-manage { margin-left: auto; display: flex; gap: 0.4rem; flex-wrap: wrap; }
+
+/* RAT weighted random force generator. */
+.rat-gen { margin-top: 0.8rem; border-top: 1px solid var(--line); padding-top: 0.7rem; }
+.rat-toggle { font-size: 0.85rem; }
+.rat-body { margin-top: 0.6rem; display: flex; flex-direction: column; gap: 0.5rem; }
+.rat-row { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
+.rat-count-label { font-size: 0.8rem; color: var(--muted); }
+.rat-count {
+  width: 3.2rem;
+  background: var(--panel-2);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 0.3rem 0.4rem;
+  font: inherit;
+  margin-left: 0.3rem;
+}
+.rat-status { font-size: 0.8rem; }
 .force-actions {
   margin-left: auto;
   display: flex;

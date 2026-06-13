@@ -22,6 +22,7 @@
     "extract-units": "node scripts/extract-units.mjs",
     "build-bv-index": "node scripts/build-bv-index.mjs",
     "build-avail-index": "node scripts/build-avail-index.mjs",
+    "build-rat-index": "node scripts/build-rat-index.mjs",
     "build:web": "node scripts/extract-units.mjs && vite build && node scripts/inline.mjs",
     "preview:web": "vite preview",
     "preview:card": "tsx scripts/card-preview.ts",
