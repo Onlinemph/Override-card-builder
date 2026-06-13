@@ -1212,11 +1212,14 @@ footer {
    red "crossed-off" slash. */
 .force-play .hexrow .hex,
 .force-play .ba-armor-pips .pip,
-.force-play .cm-pip { cursor: pointer; }
+.force-play .cm-pip,
+.force-play .cm-box,
+.force-play .mweapons tbody tr { cursor: pointer; }
 .pip-hit {
   background-image: linear-gradient(135deg, transparent 38%, #c0392b 38%, #c0392b 62%, transparent 62%) !important;
 }
 .cm-pip.pip-hit { background: #c0392b; color: #fff; }
+.cm-box.pip-hit { background: #c0392b; }
 
 /* A TIC whose limb is destroyed: struck out and dimmed. */
 .tic-dead { opacity: 0.5; }

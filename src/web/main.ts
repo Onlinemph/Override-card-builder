@@ -717,7 +717,7 @@ const clampSkill = (v: string): number | undefined => {
 };
 
 function forceEditBar(u: ForceUnit): string {
-  return `<div class="force-edit-bar"><span><b>${esc(u.name)}</b> — click armor/structure pips to track damage</span>
+  return `<div class="force-edit-bar"><span><b>${esc(u.name)}</b> — click pips, engine/gyro boxes, or a weapon to track damage</span>
     <span class="force-edit-btns">
       <button id="force-reset-dmg" type="button">Reset damage</button>
       <button id="force-edit-done" type="button">Done</button>
@@ -797,31 +797,42 @@ function applyDamageMarks(): void {
       if (area) destroyed.add(area);
     }
   });
+  // Crew condition track.
   const cond = dmg.condition ?? 0;
   Array.from(output.querySelectorAll<HTMLElement>(".condmon .cm-pip")).forEach((p, i) => {
     p.dataset.dc = String(i);
     p.classList.toggle("pip-hit", i < cond);
   });
-  applyMechDestruction(destroyed);
+  // Engine / gyro hit boxes ('Mech).
+  Array.from(output.querySelectorAll<HTMLElement>(".condmon .cm-grp")).forEach((grp) => {
+    const boxes = Array.from(grp.querySelectorAll<HTMLElement>(".cm-box"));
+    const label = grp.textContent?.trimStart() ?? "";
+    const sys = label.startsWith("Engine") ? "engine" : label.startsWith("Gyro") ? "gyro" : null;
+    if (!boxes.length || !sys) return;
+    const hit = (sys === "engine" ? dmg.engine : dmg.gyro) ?? 0;
+    boxes.forEach((b, i) => {
+      b.dataset.dsys = sys;
+      b.dataset.di = String(i);
+      b.classList.toggle("pip-hit", i < hit);
+    });
+  });
+  // Weapon rows: struck out if their limb is destroyed OR manually disabled.
+  const manual = new Set(dmg.tics ?? []);
+  Array.from(output.querySelectorAll<HTMLElement>(".mweapons tbody tr")).forEach((tr, ti) => {
+    tr.dataset.ti = String(ti);
+    const loc = (tr.querySelector(".loc")?.textContent ?? "").replace(/\(R\)/, "").trim();
+    const area = LOC_TO_AREA[loc];
+    tr.classList.toggle("tic-dead", (!!area && destroyed.has(area)) || manual.has(ti));
+  });
+  // Whole 'Mech destroyed if torso (center) or head structure is gone.
+  const sheet = output.querySelector<HTMLElement>(".mech-sheet");
+  if (sheet) sheet.classList.toggle("unit-dead", destroyed.has("ct") || destroyed.has("hd"));
 }
 
 // Weapon-row location code (the .loc cell) -> paper-doll area class.
 const LOC_TO_AREA: Readonly<Record<string, string>> = {
   LA: "la", RA: "ra", LL: "ll", RL: "rl", H: "hd", T: "ct", CL: "cl",
 };
-
-/** 'Mech destruction: strike out TICs mounted in a destroyed limb, and overlay
- * DESTROYED on the whole card when the torso or head structure is gone. */
-function applyMechDestruction(destroyed: Set<string>): void {
-  const sheet = output.querySelector<HTMLElement>(".mech-sheet");
-  if (!sheet) return; // 'Mech-only for now
-  output.querySelectorAll<HTMLElement>(".mweapons tbody tr").forEach((tr) => {
-    const loc = (tr.querySelector(".loc")?.textContent ?? "").replace(/\(R\)/, "").trim();
-    const area = LOC_TO_AREA[loc];
-    tr.classList.toggle("tic-dead", !!area && destroyed.has(area));
-  });
-  sheet.classList.toggle("unit-dead", destroyed.has("ct") || destroyed.has("hd"));
-}
 
 /** A click toggles a pip "level": clicking the last-hit pip un-marks it. */
 const nextLevel = (cur: number, clicked: number): number => (cur === clicked + 1 ? clicked : clicked + 1);
@@ -844,6 +855,15 @@ output.addEventListener("click", (e) => {
     applyDamageMarks();
     return;
   }
+  const box = t.closest<HTMLElement>(".cm-box");
+  if (box?.dataset.dsys === "engine" || box?.dataset.dsys === "gyro") {
+    const sys = box.dataset.dsys;
+    u.damage ??= {};
+    u.damage[sys] = nextLevel(u.damage[sys] ?? 0, Number(box.dataset.di));
+    saveForce();
+    applyDamageMarks();
+    return;
+  }
   const pip = t.closest<HTMLElement>(".hex, .pip");
   const grp = pip?.closest<HTMLElement>(".hexrow, .pips");
   if (pip?.dataset.di != null && grp?.dataset.dg != null) {
@@ -851,6 +871,19 @@ output.addEventListener("click", (e) => {
     u.damage.groups ??= {};
     const key = `g${grp.dataset.dg}`;
     u.damage.groups[key] = nextLevel(u.damage.groups[key] ?? 0, Number(pip.dataset.di));
+    saveForce();
+    applyDamageMarks();
+    return;
+  }
+  // Manually disable / re-enable a specific weapon TIC.
+  const row = t.closest<HTMLElement>(".mweapons tbody tr");
+  if (row?.dataset.ti != null) {
+    const ti = Number(row.dataset.ti);
+    u.damage ??= {};
+    const set = new Set(u.damage.tics ?? []);
+    if (set.has(ti)) set.delete(ti);
+    else set.add(ti);
+    u.damage.tics = [...set];
     saveForce();
     applyDamageMarks();
   }
@@ -917,9 +950,15 @@ interface ForceUnit {
   piloting?: number;
   /** Saved TIC grouping override (weapon-index groups) from the editor. */
   grouping?: number[][];
-  /** Live damage state (Tier-1 tracking): hit-pip counts per pip group + the
-   * crew condition level. Groups are keyed by ordinal position on the card. */
-  damage?: { groups?: Record<string, number>; condition?: number };
+  /** Live damage state (Tier-1 tracking): hit-pip counts per pip group, crew
+   * condition, engine/gyro hits, and manually-disabled weapon-row ordinals. */
+  damage?: {
+    groups?: Record<string, number>;
+    condition?: number;
+    engine?: number;
+    gyro?: number;
+    tics?: number[];
+  };
 }
 /** A named force: a roster of units the user can save, switch, export, share. */
 interface SavedForce { name: string; units: ForceUnit[]; }
