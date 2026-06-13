@@ -53,25 +53,28 @@ function facingBox(
  * Facing armor diagram: Front on top, sides flanking the turret, Rear at bottom.
  *
  * Hit numbers follow the Override CV / VTOL location table (2d6): FR 6-8,
- * RS 3-4, LS 10-11, TAC (through-armor crit) on 2 & 12. On ground vehicles the
- * turret takes 5 & 9; on VTOLs those same rolls hit the Rotor instead (shown
- * above Front, the grid growing a `has-rotor` row). The rear is struck only from
- * the rear arc, so it carries no roll.
+ * RS 3-4, LS 10-11, TAC (through-armor crit) on 2 & 12. Rolls 5 & 9 hit the
+ * turret; on VTOLs they hit the Rotor instead. On a turretless ground vehicle
+ * there is nowhere for 5 & 9 to land, so they reallocate to the adjacent sides
+ * (5 -> Right with 3-4, 9 -> Left with 10-11). The rear carries no roll.
  */
 function armorDiagram(card: VehicleCard): string {
   const a = card.armor;
   const s = card.structure;
   const vtol = card.hasRotor;
-  // 5 & 9 hit the rotor on a VTOL, otherwise the turret.
+  const turretless = !vtol && a.turret === undefined; // ground vehicle with no turret
+  // 5 & 9 hit the rotor on a VTOL, the turret on a turreted vehicle, else the sides.
   const rotor = vtol ? facingBox("vrotor", "Rotor", "5,9", a.rotor, s) : "";
   const turretHits = vtol ? "" : "5,9";
+  const rightHits = turretless ? "3,4,5" : "3,4";
+  const leftHits = turretless ? "9,10,11" : "10,11";
   const cls = vtol ? "vdoll has-rotor" : "vdoll";
   return `<div class="${cls}">
     ${rotor}
     ${facingBox("vfront", "Front", "6,7,8", a.front, s)}
-    ${facingBox("vleft", "Left Side", "10,11", a.left, s)}
+    ${facingBox("vleft", "Left Side", leftHits, a.left, s)}
     ${facingBox("vturret", "Turret", turretHits, a.turret, s)}
-    ${facingBox("vright", "Right Side", "3,4", a.right, s)}
+    ${facingBox("vright", "Right Side", rightHits, a.right, s)}
     ${facingBox("vrear", "Rear", "", a.rear, s)}
   </div>
   <p class="mdoll-legend"><i class="hex armor"></i> armor &nbsp; <i class="hex struct"></i> structure &nbsp; · &nbsp; TAC (crit) on 2 &amp; 12</p>`;

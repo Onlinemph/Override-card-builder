@@ -118,6 +118,15 @@ describe("normalizeWeaponName", () => {
     expect(normalizeWeaponName("1 Small Laser")).toBe("small laser");
   });
 
+  it("strips a tech prefix glued before the lowercase improved-marker (iATM)", () => {
+    // The "i" is lowercase, so the plain CL/IS strip (which needs an uppercase
+    // next char) used to leave "c li atm 12". iATM shares the ATM stat block.
+    expect(normalizeWeaponName("CLiATM12:OMNI")).toBe("atm 12");
+    expect(normalizeWeaponName("CLiATM9")).toBe("atm 9");
+    expect(normalizeWeaponName("ISiATM6")).toBe("atm 6");
+    expect(lookupWeaponDamage("CLiATM12", "Clan").unknown).toBe(false);
+  });
+
   it("strips the MegaMek CLBA/ISBA Battle Armor prefix", () => {
     // After stripping CL+BA the name falls through to the shared weapon table.
     expect(normalizeWeaponName("CLBAERSmallLaser")).toBe("er small laser");

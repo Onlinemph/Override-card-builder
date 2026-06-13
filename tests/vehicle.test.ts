@@ -5,6 +5,7 @@ import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { convertAny, convertVehicle, parseBlkVehicle, ParseError } from "../src/core/index.js";
+import { renderVehicleCard } from "../src/web/vehicle-card.js";
 
 const FIXTURES = join(dirname(fileURLToPath(import.meta.url)), "fixtures");
 const load = (name: string) => readFileSync(join(FIXTURES, name), "utf8");
@@ -129,6 +130,36 @@ describe("convertAny dispatch", () => {
     const r = convertAny(load("Test Tank TT-1.blk"), "TT-1.blk");
     expect(r.kind).toBe("vehicle");
     expect(r.card.name).toBe("Test Tank TT-1");
+  });
+});
+
+describe("hit-location diagram (turret rolls reallocate when turretless)", () => {
+  const tank = (armorLines: string) =>
+    convertVehicle(
+      parseBlkVehicle(
+        `<UnitType>\nTank\n</UnitType>\n<Name>\nHL\n</Name>\n<motion_type>\nTracked\n</motion_type>\n` +
+          `<cruiseMP>\n4\n</cruiseMP>\n<armor>\n${armorLines}\n</armor>\n` +
+          `<Front Equipment>\nMedium Laser\n</Front Equipment>\n<tonnage>\n20.0\n</tonnage>\n`,
+        "hl.blk",
+      ),
+    );
+
+  it("a turreted vehicle keeps 5 & 9 on the turret", () => {
+    const c = tank("20\n15\n15\n10\n12"); // 5 values -> turret
+    expect(c.hasTurret).toBe(true);
+    const html = renderVehicleCard(c);
+    expect(html).toContain("Turret <span class=\"loc-hits\">(5,9)</span>");
+    expect(html).toContain("Right Side <span class=\"loc-hits\">(3,4)</span>");
+    expect(html).toContain("Left Side <span class=\"loc-hits\">(10,11)</span>");
+  });
+
+  it("a turretless vehicle reallocates 5 -> Right and 9 -> Left", () => {
+    const c = tank("20\n15\n15\n10"); // 4 values -> no turret
+    expect(c.hasTurret).toBe(false);
+    const html = renderVehicleCard(c);
+    expect(html).toContain("Right Side <span class=\"loc-hits\">(3,4,5)</span>");
+    expect(html).toContain("Left Side <span class=\"loc-hits\">(9,10,11)</span>");
+    expect(html).toContain("vturret vempty"); // empty turret slot, no roll lost
   });
 });
 

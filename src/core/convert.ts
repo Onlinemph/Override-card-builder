@@ -132,6 +132,7 @@ export function normalizeWeaponName(raw: string): string {
   s = s.replace(/\s*\[ba\]/gi, ""); // drop "[BA]" suffix ("Flamer [BA]" -> "Flamer")
   s = s.replace(/^\d+\s+/, ""); // drop leading count
   s = s.replace(/^(IS|CL)(?=[A-Z])/, ""); // drop attached tech prefix ("ISMediumLaser" -> "MediumLaser")
+  s = s.replace(/^(IS|CL)(?=i[A-Z])/, ""); // tech prefix glued before the improved-marker "i" ("CLiATM12" -> "iATM12")
   s = s.replace(/^BA(?=[A-Z])/, ""); // drop attached BA prefix ("BAERSmallLaser" -> "ERSmallLaser")
   s = s.replace(/^(IS|CL)(?=[A-Z])/, ""); // re-strip a tech prefix that followed BA ("BACLERMediumPulseLaser")
   // Split an acronym run from a following Capitalized word ("ERSmall" -> "ER
