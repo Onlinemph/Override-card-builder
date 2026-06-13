@@ -144,8 +144,9 @@ describe("WarShip (extends the DropShip path)", () => {
     const nose = c.weapons.find((w) => w.facing === "NO");
     expect(nose?.unknown).toBe(false); // NAC/20 now has capital-scale stats
     expect(nose?.damageText).toBe("14"); // 2x NAC/20 = 40 capital -> ceil(40/3)
+    // Standard weapons do 1/10 vs capital armor: 2x Large Laser = 16 TW / 10 -> ceil(1.6/3).
     const broad = c.weapons.find((w) => w.facing === "LB");
-    expect(broad?.damageText).toBe("6"); // 2x Large Laser = ceil(16/3)
+    expect(broad?.damageText).toBe("1");
     expect(c.warnings).toHaveLength(0);
   });
 

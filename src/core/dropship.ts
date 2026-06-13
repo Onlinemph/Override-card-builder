@@ -152,7 +152,7 @@ export function convertDropship(unit: DropshipUnit): DropshipCard {
       return;
     }
     const w: Weapon = { name: mount.name, location: SYNTH_LOCATION, rawLocation: arc, rearMounted: false };
-    into.push(convertWeapon(w, unit.techBase, 0));
+    into.push(convertWeapon(w, unit.techBase, 0, unit.shipClass === "WarShip"));
     if (unknown && !capital) unknownWeapons.add(mount.name); // capital is deferred, not "missing"
   };
 

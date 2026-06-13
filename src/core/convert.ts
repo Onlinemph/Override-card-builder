@@ -37,6 +37,7 @@ import {
   SPECIAL_ENGINE,
   SPECIAL_GYRO,
   STRUCTURE_DIVISOR,
+  CAPITAL_SCALE_DIVISOR,
   TIC_MAX_BASE,
   TIC_MAX_DAMAGE,
   WEAPON_BRACKET_OVERRIDE,
@@ -616,10 +617,14 @@ export function detectWeaponTech(raw: string): TechBase | null {
   return null;
 }
 
-export function convertWeapon(w: Weapon, techBase: TechBase, mass: number): CardWeapon {
+export function convertWeapon(w: Weapon, techBase: TechBase, mass: number, capitalScale = false): CardWeapon {
   const key = normalizeWeaponName(w.name);
   // A weapon's own CL/IS prefix wins over the unit's nominal base (Mixed tech).
   const wtech = detectWeaponTech(w.name) ?? techBase;
+  // Capital-scale targets (WarShips): a STANDARD-scale weapon does 1/10 its
+  // damage against capital armor (StratOps). Capital/naval weapons are already
+  // capital scale, so they are exempt. Divides the TW damage before the ÷3.
+  const dmgDiv = capitalScale && !isWarshipWeapon(w.name) ? CAPITAL_SCALE_DIVISOR : 1;
 
   // Physical melee weapons (Hatchet/Sword/Mace/Claws): damage from tonnage, not
   // a TW table; point-blank only, with a flat to-hit modifier (page 40).
@@ -695,19 +700,26 @@ export function convertWeapon(w: Weapon, techBase: TechBase, mass: number): Card
     };
   }
 
-  const { twDamage, unknown } = lookupWeaponDamage(w.name, wtech);
+  const { twDamage: rawTw, unknown } = lookupWeaponDamage(w.name, wtech);
+  // Capital-scale reduction (WarShip standard weapons) divides the TW input.
+  const twDamage = rawTw / dmgDiv;
   // v1: one weapon per TIC, so each weapon is its own group.
   // TODO(TIC grouping): replace per-weapon conversion with grouped sums.
   const byRange = WEAPON_DAMAGE_BY_RANGE[key];
   const baseProfile =
-    !unknown && byRange
-      ? computeVariableProfile(byRange)
-      : computeDamageProfile(
-          twDamage,
-          unknown ? "direct" : classifyDamage(key),
-          isRangeVaryingCluster(key),
-          isRocketLauncher(key),
-        );
+    dmgDiv !== 1
+      ? // Capital-scale reduction: collapse to a flat reduced value. Missile /
+        // cluster mechanics are meaningless at 1/10 (and scaling base + M dice
+        // by count would exceed the reduced max).
+        computeDamageProfile(twDamage, "direct")
+      : !unknown && byRange
+        ? computeVariableProfile(byRange)
+        : computeDamageProfile(
+            twDamage,
+            unknown ? "direct" : classifyDamage(key),
+            isRangeVaryingCluster(key),
+            isRocketLauncher(key),
+          );
   // Plasma weapons add heat dice to the target ("+H{n}") on top of their damage.
   const heatDamage = WEAPON_HEAT_DAMAGE[key];
   const profile = heatDamage ? { ...baseProfile, heatDamage } : baseProfile;

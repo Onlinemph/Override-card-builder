@@ -41,6 +41,11 @@ export const ROUNDING: Record<string, RoundMode> = {
 /** Weapon group damage (the printed MAX): sum of TW damage / 3, round UP. */
 export const WEAPON_DAMAGE_DIVISOR = 3;
 
+/** Standard-scale weapon damage vs CAPITAL-scale armor (WarShips) is 1/10
+ * (StratOps). Applied to non-capital weapons before the ÷3 so they don't read
+ * 10× too strong against capital armor. */
+export const CAPITAL_SCALE_DIVISOR = 10;
+
 /**
  * Missile-cluster M (missile) dice. For a missile rack the Override card prints
  * `base+M{mDice} (max)`, where both base and mDice derive from the rack's TW
@@ -534,8 +539,8 @@ export const WEAPON_DAMAGE: Readonly<Record<string, number>> = {
   "mass driver light": 60,
   "mass driver medium": 100,
   "mass driver heavy": 140,
-  // Screen launcher (deploys a defensive debris screen; CSV lists 15).
-  "screen launcher": 15,
+  // Screen launcher deploys a defensive debris screen rather than dealing a
+  // normal hit — damage cell prints SPECIAL (see WEAPON_SPECIAL_DAMAGE).
   // Naval Autocannon (NAC/N): N capital damage points.
   "nac/10": 10,
   "nac/20": 20,
@@ -1233,6 +1238,7 @@ export const WEAPON_BRACKET_OVERRIDE: Readonly<Record<string, import("./types.js
 export const WEAPON_SPECIAL_DAMAGE: Readonly<Record<string, string>> = {
   "tsemp cannon": "SPECIAL",
   "mech taser": "SPECIAL", // disrupts/​shuts down the target rather than dealing set damage
+  "screen launcher": "SPECIAL", // deploys a defensive debris screen, not a damaging hit
 } as const;
 
 // ---------------------------------------------------------------------------
