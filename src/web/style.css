@@ -578,6 +578,13 @@ footer {
   border: 1.5px solid #15171c;
   border-radius: 5px;
   margin-top: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  font-weight: 800;
+  line-height: 1;
+  color: #15171c;
 }
 .ba-wordmark {
   font-weight: 800;
@@ -809,7 +816,20 @@ footer {
 .ms-brand { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.4rem; }
 .ms-skills { display: flex; gap: 0.6rem; }
 .ms-skill { font-size: 0.6rem; text-align: center; }
-.ms-skill-box { width: 46px; height: 30px; border: 1.5px solid #15171c; border-radius: 5px; margin-top: 2px; }
+.ms-skill-box {
+  width: 46px;
+  height: 30px;
+  border: 1.5px solid #15171c;
+  border-radius: 5px;
+  margin-top: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  font-weight: 800;
+  line-height: 1;
+  color: #15171c;
+}
 .ms-wordmark { font-weight: 800; font-size: 1.05rem; line-height: 1.05; text-align: right; color: #8a8f98; letter-spacing: 1px; }
 .ms-wordmark b { color: #15171c; font-size: 1.15rem; letter-spacing: 2px; }
 .ms-wm-a { color: #15171c; font-size: 0.75em; }

@@ -532,6 +532,32 @@ function lookupBv(name: string, file?: string): number | undefined {
   return bvIndex[bvKey(name)];
 }
 
+// BV2 pilot-skill multiplier (TechManual p.315 / MegaMek): [gunnery][piloting],
+// 0–8 each. Regular 4/5 = 1.00; better skills cost more BV, worse less.
+const BV_SKILL_MULT: ReadonlyArray<ReadonlyArray<number>> = [
+  [2.42, 2.31, 2.21, 2.1, 1.93, 1.75, 1.68, 1.59, 1.5],
+  [2.21, 2.11, 2.02, 1.92, 1.76, 1.6, 1.54, 1.46, 1.38],
+  [1.93, 1.85, 1.76, 1.68, 1.54, 1.4, 1.35, 1.28, 1.21],
+  [1.66, 1.58, 1.51, 1.44, 1.32, 1.2, 1.16, 1.1, 1.04],
+  [1.38, 1.32, 1.26, 1.2, 1.1, 1.0, 0.95, 0.9, 0.85],
+  [1.31, 1.19, 1.13, 1.08, 0.99, 0.9, 0.85, 0.81, 0.77],
+  [1.24, 1.12, 1.07, 1.02, 0.94, 0.85, 0.81, 0.77, 0.72],
+  [1.17, 1.06, 1.01, 0.96, 0.88, 0.8, 0.76, 0.72, 0.68],
+  [1.1, 1.0, 0.95, 0.9, 0.83, 0.75, 0.71, 0.68, 0.64],
+];
+const clampIdx = (n: number): number => Math.max(0, Math.min(8, Math.round(n)));
+
+/** Skill-adjusted BV: base × the BV2 gunnery/piloting multiplier, rounded. */
+function adjustedBv(base: number | undefined, gunnery = 4, piloting = 5): number | undefined {
+  if (base === undefined) return undefined;
+  return Math.round(base * BV_SKILL_MULT[clampIdx(gunnery)]![clampIdx(piloting)]!);
+}
+
+/** A force unit's printed BV: official BV adjusted for its pilot skills. */
+function unitBv(u: ForceUnit): number | undefined {
+  return adjustedBv(lookupBv(u.name, u.file), u.gunnery ?? 4, u.piloting ?? 5);
+}
+
 /** Inject a BV badge just after the card's title (works for every card kind:
  * .ms-title for most, .ba-title for Battle Armor). */
 function withBv(html: string, bv: number | undefined): string {
@@ -734,7 +760,7 @@ function renderForceEdit(): void {
     edit = null; // BA / infantry: skills only, no TICs
     raw = rawCardHtml(r.result);
   }
-  const card = withSkills(withBv(raw, lookupBv(u.name, u.file)), u.gunnery ?? 4, u.piloting ?? 5);
+  const card = withSkills(withBv(raw, unitBv(u)), u.gunnery ?? 4, u.piloting ?? 5);
   output.innerHTML = forceEditBar(u) + skillsEditorHtml(u) + card + ticEditorHtml;
 }
 
@@ -851,7 +877,7 @@ function renderForce(): void {
   listEl.innerHTML = force.length
     ? force
         .map((u, i) => {
-          const bv = lookupBv(u.name, u.file);
+          const bv = unitBv(u); // skill-adjusted
           if (bv) {
             total += bv;
             withBvCount += 1;
@@ -893,6 +919,7 @@ function forceCardHtml(u: ForceUnit): string {
   const r = convertOne(u.text, u.file ?? u.name);
   if (!r.ok) return r.html;
   applySavedGrouping(r.result, u.grouping);
+  (r.result.card as { bv?: number }).bv = unitBv(u); // skill-adjusted BV on the badge
   return withSkills(cardHtml(r.result), u.gunnery ?? 4, u.piloting ?? 5);
 }
 
