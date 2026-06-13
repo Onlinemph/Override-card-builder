@@ -677,6 +677,7 @@ function makeSession(r: AnyCard): EditSession | null {
 function showResults(results: ConvertResult[]): void {
   edit = null;
   editingForceIdx = null; // a normal preview exits force-edit mode
+  output.classList.remove("force-play");
   if (results.length === 0) {
     output.innerHTML = `<p class="muted">Nothing to convert.</p>`;
     return;
@@ -716,7 +717,11 @@ const clampSkill = (v: string): number | undefined => {
 };
 
 function forceEditBar(u: ForceUnit): string {
-  return `<div class="force-edit-bar">Editing <b>${esc(u.name)}</b> in your force <button id="force-edit-done" type="button">Done</button></div>`;
+  return `<div class="force-edit-bar"><span><b>${esc(u.name)}</b> — click armor/structure pips to track damage</span>
+    <span class="force-edit-btns">
+      <button id="force-reset-dmg" type="button">Reset damage</button>
+      <button id="force-edit-done" type="button">Done</button>
+    </span></div>`;
 }
 
 function skillsEditorHtml(u: ForceUnit): string {
@@ -761,8 +766,68 @@ function renderForceEdit(): void {
     raw = rawCardHtml(r.result);
   }
   const card = withSkills(withBv(raw, unitBv(u)), u.gunnery ?? 4, u.piloting ?? 5);
+  output.classList.add("force-play"); // enables pip cursors / damage tracking
   output.innerHTML = forceEditBar(u) + skillsEditorHtml(u) + card + ticEditorHtml;
+  applyDamageMarks();
 }
+
+// ---- Damage tracking (Tier 1): clickable armor/structure/condition pips -----
+// Renderers stay pure; we tag each pip GROUP (.hexrow / BA .pips) by its ordinal
+// position on the card (stable across re-renders) and mark the first N pips as
+// hit from the unit's saved state. Crew condition is a single track.
+
+/** (Re)apply the active force unit's damage marks to the rendered card. */
+function applyDamageMarks(): void {
+  if (editingForceIdx == null) return;
+  const dmg = force[editingForceIdx]!.damage ?? {};
+  Array.from(output.querySelectorAll<HTMLElement>(".hexrow, .ba-armor-pips .pips")).forEach((g, gi) => {
+    g.dataset.dg = String(gi);
+    const hit = dmg.groups?.[`g${gi}`] ?? 0;
+    Array.from(g.children).forEach((p, i) => {
+      const el = p as HTMLElement;
+      el.dataset.di = String(i);
+      el.classList.toggle("pip-hit", i < hit);
+    });
+  });
+  const cond = dmg.condition ?? 0;
+  Array.from(output.querySelectorAll<HTMLElement>(".condmon .cm-pip")).forEach((p, i) => {
+    p.dataset.dc = String(i);
+    p.classList.toggle("pip-hit", i < cond);
+  });
+}
+
+/** A click toggles a pip "level": clicking the last-hit pip un-marks it. */
+const nextLevel = (cur: number, clicked: number): number => (cur === clicked + 1 ? clicked : clicked + 1);
+
+output.addEventListener("click", (e) => {
+  if (editingForceIdx == null) return;
+  const t = e.target as HTMLElement;
+  const u = force[editingForceIdx]!;
+  if (t.closest("#force-reset-dmg")) {
+    delete u.damage;
+    saveForce();
+    applyDamageMarks();
+    return;
+  }
+  const cm = t.closest<HTMLElement>(".cm-pip");
+  if (cm?.dataset.dc != null) {
+    u.damage ??= {};
+    u.damage.condition = nextLevel(u.damage.condition ?? 0, Number(cm.dataset.dc));
+    saveForce();
+    applyDamageMarks();
+    return;
+  }
+  const pip = t.closest<HTMLElement>(".hex, .pip");
+  const grp = pip?.closest<HTMLElement>(".hexrow, .pips");
+  if (pip?.dataset.di != null && grp?.dataset.dg != null) {
+    u.damage ??= {};
+    u.damage.groups ??= {};
+    const key = `g${grp.dataset.dg}`;
+    u.damage.groups[key] = nextLevel(u.damage.groups[key] ?? 0, Number(pip.dataset.di));
+    saveForce();
+    applyDamageMarks();
+  }
+});
 
 /** Persist + re-render after a TIC move/reset, in force-edit mode or the plain preview. */
 function afterTicChange(): void {
@@ -825,6 +890,9 @@ interface ForceUnit {
   piloting?: number;
   /** Saved TIC grouping override (weapon-index groups) from the editor. */
   grouping?: number[][];
+  /** Live damage state (Tier-1 tracking): hit-pip counts per pip group + the
+   * crew condition level. Groups are keyed by ordinal position on the card. */
+  damage?: { groups?: Record<string, number>; condition?: number };
 }
 /** A named force: a roster of units the user can save, switch, export, share. */
 interface SavedForce { name: string; units: ForceUnit[]; }
@@ -1085,6 +1153,7 @@ function exitForceEditor(): void {
   if (editingForceIdx == null) return;
   editingForceIdx = null;
   edit = null;
+  output.classList.remove("force-play");
   output.innerHTML = "";
 }
 $("force-clear").addEventListener("click", () => {

@@ -1206,7 +1206,17 @@ footer {
   margin-bottom: 0.8rem;
   font-size: 0.9rem;
 }
-.force-edit-bar button { margin-left: auto; }
+.force-edit-bar .force-edit-btns { margin-left: auto; display: flex; gap: 0.4rem; }
+
+/* Damage tracking: clickable pips in the force-unit play view; a hit pip gets a
+   red "crossed-off" slash. */
+.force-play .hexrow .hex,
+.force-play .ba-armor-pips .pip,
+.force-play .cm-pip { cursor: pointer; }
+.pip-hit {
+  background-image: linear-gradient(135deg, transparent 38%, #c0392b 38%, #c0392b 62%, transparent 62%) !important;
+}
+.cm-pip.pip-hit { background: #c0392b; color: #fff; }
 .skills-editor {
   display: flex;
   gap: 1.2rem;
