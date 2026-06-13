@@ -1036,3 +1036,25 @@ footer {
   cursor: pointer;
 }
 .tic-move:hover { border-color: var(--accent); color: var(--ink); }
+
+/* ---- DropShip / WarShip weapon table: per-arc sections ------------------- */
+.dropship-weapons .arc-head th {
+  text-align: left;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: #111;
+  background: #e6e6e0;            /* light band — prints cleanly */
+  padding: 9px 8px 4px;
+  border-top: 2px solid #2a2a2a; /* clear divider + breathing room between arcs */
+}
+.dropship-weapons .arc-head:first-child th {
+  border-top: none;              /* no rule above the very first arc */
+  padding-top: 4px;
+}
+/* Print: keep an arc's header with at least its first rows, avoid mid-arc breaks. */
+@media print {
+  .dropship-weapons .arc-head { break-after: avoid; }
+  .dropship-weapons tr { break-inside: avoid; }
+}

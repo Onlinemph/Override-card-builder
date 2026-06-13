@@ -5,6 +5,7 @@ import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { convertAny, convertDropship, parseBlkDropship, ParseError } from "../src/core/index.js";
+import { renderDropshipCard } from "../src/web/dropship-card.js";
 
 const FIXTURES = join(dirname(fileURLToPath(import.meta.url)), "fixtures");
 const load = (name: string) => readFileSync(join(FIXTURES, name), "utf8");
@@ -93,6 +94,17 @@ describe("weapon bays (the '(B)' groups)", () => {
     expect(nose[0]!.damageText).toBe("17"); // 5 x TW 10 = 50 -> ceil/3 (over the 14 TIC cap)
     expect(nose[1]!.label).toMatch(/x2 .*LLas/i);
     expect(nose[1]!.damageText).toBe("6"); // 2 x TW 8 = 16 -> ceil/3
+  });
+});
+
+describe("card layout", () => {
+  it("groups the weapon table into per-arc sections (no Loc column)", () => {
+    const html = renderDropshipCard(convertDropship(parseBlkDropship(load("Test Dropship DS-1.blk"), "DS-1.blk")));
+    expect(html).toContain('class="arc-head"');
+    expect(html).toContain(">Nose<");
+    expect(html).toContain(">Left Side<");
+    expect(html).toContain(">Right Side<");
+    expect(html).not.toContain(">Loc<"); // the per-row Loc column is replaced by the section headers
   });
 });
 

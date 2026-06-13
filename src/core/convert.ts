@@ -799,18 +799,59 @@ export function buildTic(members: CardWeapon[]): Tic {
     ? scaleSquadDamage(first, members.length)
     : computeDamageProfile(summedTw, kind, rangeVarying, allRocket);
 
+  // Compact label: "5x ER PPC" for one type, else counts per type joined with
+  // "+" ("2x Large Laser + 2x Medium Laser") rather than listing every weapon.
+  const counts = new Map<string, number>();
+  for (const m of members) counts.set(m.name, (counts.get(m.name) ?? 0) + 1);
+  const label = allSameName
+    ? `${members.length}x ${first.name}`
+    : [...counts].map(([n, c]) => (c > 1 ? `${c}x ${n}` : n)).join(" + ");
   const sameRange = members.every((m) => m.rangeText === first.rangeText);
+  if (sameRange) {
+    return {
+      weapons: members,
+      label,
+      location: first.location,
+      rearMounted: first.rearMounted,
+      count: members.length,
+      profile,
+      damageText: formatDamage(profile),
+      range: first.range,
+      rangeText: first.rangeText,
+    };
+  }
+
+  // MIXED-RANGE group (a weapon bay of different-reach weapons): a bay totals
+  // only the weapons IN RANGE of the target, so its damage falls off with range.
+  // At each tier sum the TW of the members that reach it (short = all), and show
+  // the range row of the longest-reaching member as the bay's outer envelope.
+  const ext = (m: CardWeapon) => reachExtent(m.range);
+  const sumWhere = (minExt: number) =>
+    members.reduce((s, m) => s + (ext(m) >= minExt ? m.twDamage : 0), 0);
+  const varied = computeVariableProfile([summedTw, sumWhere(3), sumWhere(4)]);
+  const widest = members.reduce((a, b) => (ext(b) > ext(a) ? b : a), first);
   return {
     weapons: members,
-    label: allSameName ? `${members.length}x ${first.name}` : members.map((m) => m.name).join(" + "),
+    label,
     location: first.location,
     rearMounted: first.rearMounted,
     count: members.length,
-    profile,
-    damageText: formatDamage(profile),
-    range: sameRange ? first.range : null,
-    rangeText: sameRange ? first.rangeText : null,
+    profile: varied,
+    damageText: formatDamage(varied),
+    range: widest.range,
+    rangeText: widest.rangeText,
   };
+}
+
+/** How far a weapon reaches, as a bracket rank (X=5 … PB=1, none=0). */
+function reachExtent(r: RangeBrackets | null): number {
+  if (!r) return 0;
+  if (r.x != null) return 5;
+  if (r.l != null) return 4;
+  if (r.m != null) return 3;
+  if (r.s != null) return 2;
+  if (r.pb != null) return 1;
+  return 0;
 }
 
 /**

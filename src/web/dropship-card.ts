@@ -54,29 +54,56 @@ function armorDiagram(card: DropshipCard): string {
 }
 
 /** The weapons table: one row per arc TIC. */
+/** Arc code -> full firing-arc name shown as the section header. */
+const ARC_NAMES: Readonly<Record<string, string>> = {
+  NO: "Nose",
+  LS: "Left Side",
+  RS: "Right Side",
+  AF: "Aft",
+  HL: "Hull",
+};
+const ARC_DISPLAY_ORDER = ["NO", "LS", "RS", "AF", "HL"];
+
 function weaponsTable(card: DropshipCard): string {
   if (card.weapons.length === 0) {
     return `<p class="muted">No weapons.</p>`;
   }
-  const rows = card.weapons
-    .map((w) => {
-      const flag = w.unknown ? ' <span class="warn-flag">[?]</span>' : "";
-      return `<tr>
+  // Group the bay rows by firing arc — each arc is its own banded section, so the
+  // (often long) DropShip/WarShip weapon list reads clearly on a printed sheet.
+  const byArc = new Map<string, DropshipCard["weapons"]>();
+  for (const w of card.weapons) {
+    const list = byArc.get(w.facing) ?? [];
+    list.push(w);
+    byArc.set(w.facing, list);
+  }
+  const arcs = ARC_DISPLAY_ORDER.filter((a) => byArc.has(a)).concat(
+    [...byArc.keys()].filter((a) => !ARC_DISPLAY_ORDER.includes(a)),
+  );
+  const body = arcs
+    .map((arc) => {
+      const head = `<tr class="arc-head"><th colspan="8">${esc(ARC_NAMES[arc] ?? arc)}</th></tr>`;
+      const rows = byArc
+        .get(arc)!
+        .map((w) => {
+          const flag = w.unknown ? ' <span class="warn-flag">[?]</span>' : "";
+          return `<tr>
         <td class="wname">${esc(w.label)}${flag}</td>
         <td class="num wdmg">${esc(w.damageText)}</td>
         <td class="num">${esc(w.heat)}</td>
-        <td class="loc">${esc(w.facing)}</td>
         ${rangeCells(w.range)}
       </tr>`;
+        })
+        .join("");
+      return head + rows;
     })
     .join("");
-  return `<table class="mweapons">
+  return `<table class="mweapons dropship-weapons">
     <thead><tr>
       <th class="wname">Weapons</th><th class="num">Dmg</th><th class="num">Ht</th>
-      <th class="loc">Loc</th><th class="num">PB</th><th class="num">S</th>
+      <th class="num">PB</th><th class="num">S</th>
       <th class="num">M</th><th class="num">L</th><th class="num">X</th>
     </tr></thead>
-    <tbody>${rows}</tbody>
+    <tbody>${body}</tbody>
   </table>`;
 }
 

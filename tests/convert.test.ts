@@ -363,6 +363,16 @@ describe("TIC grouping (page 41 caps: base <= 5, max <= 14)", () => {
     expect(isLegalTic(ws)).toBe(true);
   });
 
+  it("buildTic: a mixed-RANGE bay falls off with range (out-of-range weapons drop out)", () => {
+    const w = (name: string) => convertWeapon({ name, location: "CT", rearMounted: false }, "IS", 0);
+    // 2 Large Lasers (reach Long) + 2 Medium Lasers (stop at Medium).
+    const tic = buildTic([w("Large Laser"), w("Large Laser"), w("Medium Laser"), w("Medium Laser")]);
+    // Short/Med: all four (TW 26 -> 9); Long: only the Large Lasers (TW 16 -> 6).
+    expect(tic.damageText).toBe("9|9|6");
+    expect(tic.rangeText).toBe("+0 +0 +2 +4 –"); // the longest-reaching member's envelope
+    expect(tic.label).toBe("2x Large Laser + 2x Medium Laser");
+  });
+
   it("isLegalTic: single over-cap weapon legal; cross-location illegal", () => {
     const ws = convertUnit({
       chassis: "T", model: "1", mass: 55, techBase: "IS", config: "Biped",
