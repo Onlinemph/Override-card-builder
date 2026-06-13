@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   convertFighter,
   convertUnit,
+  convertWeapon,
   groupingLocation,
   isLegalTic,
   parseBlkFighter,
@@ -20,10 +21,12 @@ import type { EditorFacets } from "../src/web/tic-editor.js";
 const mechFacets: EditorFacets = {
   keyOf: (w: CardWeapon) => groupingLocation(w.location) + (w.rearMounted ? "|R" : ""),
   facetLabel: (w: CardWeapon) => w.location,
+  enforceCaps: true,
 };
 const facingFacets: EditorFacets = {
   keyOf: (w: CardWeapon) => w.rawLocation ?? "",
   facetLabel: (w: CardWeapon) => w.rawLocation ?? "—",
+  enforceCaps: true,
 };
 
 // Two Medium Lasers in the torso (auto-group into one TIC) + one in an arm.
@@ -99,5 +102,31 @@ describe("TIC editor — vehicle/aero (facing facet)", () => {
     expect(c.weapons[0]!.damageText).toBe("4"); // 2x ML combined in the nose
     const g = applyMove(groupingFromTics(c.tics, c.weaponMounts), 1, "new"); // split them
     expect(ticsFromGrouping(c.weaponMounts, g).map((t) => t.damageText)).toEqual(["2", "2"]);
+  });
+});
+
+describe("TIC editor — caps vs DropShip bays", () => {
+  // Six Medium Lasers in one arc, in two groups of three (each at the page-41
+  // base cap of 5; a 4th would push base to 7 and exceed it).
+  const ml = (rawLocation: string) =>
+    convertWeapon({ name: "Medium Laser", location: "X", rawLocation, rearMounted: false }, "IS", 0);
+  const weapons = Array.from({ length: 6 }, () => ml("nose"));
+  const grouping = [[0, 1, 2], [3, 4, 5]];
+  const base = { keyOf: (w: CardWeapon) => w.rawLocation ?? "", facetLabel: (w: CardWeapon) => w.rawLocation ?? "" };
+  const capped: EditorFacets = { ...base, enforceCaps: true };
+  const bays: EditorFacets = { ...base, enforceCaps: false };
+
+  it("capped facets forbid a merge that would exceed the caps", () => {
+    const html = renderTicEditorHtml(weapons, grouping, capped);
+    expect(html).toContain("split off"); // splitting is always legal
+    expect(html).not.toContain("→ TIC"); // merging the two full groups is blocked
+  });
+
+  it("bay (uncapped) facets allow the over-cap merge", () => {
+    const html = renderTicEditorHtml(weapons, grouping, bays);
+    expect(html).toContain("→ TIC"); // a bay can grow past the 'Mech caps
+    // And the merged bay actually sums past the cap.
+    const merged = applyMove(grouping, 3, 0); // move one laser into the other group
+    expect(ticsFromGrouping(weapons, merged)[0]!.damageText).toBe("7"); // 4x ML = ceil(20/3), over base cap 5
   });
 });

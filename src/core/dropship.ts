@@ -43,28 +43,13 @@ import type {
 } from "./types.js";
 
 /** Rebuild the per-arc weapon rows from TICs (shared by the converter and the TIC
- * editor): arc order, then collapse repeated unknown capital batteries into "xN". */
+ * editor), in arc order. Each TIC is already one weapon bay, so no further
+ * collapsing — two identical bays are two separate attacks and stay two rows. */
 export function dropshipWeaponRows(tics: ReadonlyArray<Tic>, techBase: TechBase): VehicleWeaponRow[] {
   const order = (t: Tic) => ARC_ORDER.indexOf(t.weapons[0]!.rawLocation as DropshipFacing);
-  const rows = [...tics]
+  return [...tics]
     .sort((a, b) => order(a) - order(b))
     .map((t) => ticRow(t, techBase, ARC_CODE[t.weapons[0]!.rawLocation as DropshipFacing]));
-
-  // Capital batteries repeat the same unknown gun many times per arc; collapse
-  // identical unknown rows into one "xN" line so the card stays readable.
-  const collapsed: VehicleWeaponRow[] = [];
-  for (const row of rows) {
-    const prev = collapsed.find(
-      (r) => r.unknown && row.unknown && r.label.replace(/^x\d+ /, "") === row.label && r.facing === row.facing,
-    );
-    if (prev) {
-      const n = Number.parseInt(prev.label.match(/^x(\d+) /)?.[1] ?? "1", 10) + 1;
-      prev.label = `x${n} ${prev.label.replace(/^x\d+ /, "")}`;
-    } else {
-      collapsed.push({ ...row });
-    }
-  }
-  return collapsed;
 }
 
 /** All dropship weapons share a synthetic 'Mech location; grouping is per arc. */
@@ -128,24 +113,26 @@ export function convertDropship(unit: DropshipUnit): DropshipCard {
   const allTics: Tic[] = [];
   const unknownWeapons = new Set<string>();
 
-  // Convert one mount into `into`, or divert it: capital-scale guns are dropped,
-  // hull mounts / ammo / gear / unrecognised non-weapons go to the equipment line.
+  // Convert one mount into `into`, or divert it. Capital / sub-capital weapons
+  // have no 'Mech-scale stats yet, but their bays are SHOWN (as "?") so the
+  // layout is visible — they don't count as accidentally-"missing" weapons.
+  // Hull mounts / ammo / gear / unrecognised non-weapons go to the equipment line.
   const takeWeapon = (mount: DropshipMount, into: CardWeapon[]): void => {
-    if (isWarshipWeapon(mount.name)) return; // capital-scale: no 'Mech-scale stats yet
     const arc = mount.facing;
+    const capital = isWarshipWeapon(mount.name); // capital/sub-capital scale, deferred
     const { unknown } = lookupWeaponDamage(mount.name, unit.techBase);
     if (
       arc === "hull" ||
       isNonWeaponMount(mount.name) ||
       isWeaponBlockEquipment(mount.name) ||
-      (unknown && !looksLikeWeapon(mount.name))
+      (unknown && !looksLikeWeapon(mount.name) && !capital)
     ) {
       otherMounts.push(mount);
       return;
     }
     const w: Weapon = { name: mount.name, location: SYNTH_LOCATION, rawLocation: arc, rearMounted: false };
     into.push(convertWeapon(w, unit.techBase, 0));
-    if (unknown) unknownWeapons.add(mount.name);
+    if (unknown && !capital) unknownWeapons.add(mount.name); // capital is deferred, not "missing"
   };
 
   if (unit.mounts.some((m) => m.bay !== undefined)) {

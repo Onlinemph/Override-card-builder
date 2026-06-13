@@ -25,6 +25,9 @@ export interface EditorFacets {
   keyOf: (w: CardWeapon) => string;
   /** Human label for a TIC's facet (location / arc), shown on the box. */
   facetLabel: (w: CardWeapon) => string;
+  /** Apply the page-41 TIC caps (base ≤ 5, max ≤ 14). 'Mechs/vehicles/aero do;
+   * DropShip & WarShip weapon BAYS do not (a bay fires as one big attack). */
+  enforceCaps: boolean;
 }
 
 const esc = (s: string | number): string =>
@@ -51,18 +54,18 @@ export function applyMove(g: Grouping, wi: number, target: number | "new"): Grou
   return next.filter((grp) => grp.length > 0);
 }
 
-/** True if the indices form a legal TIC: one facet + within the caps. */
-function legal(weapons: CardWeapon[], members: number[], keyOf: EditorFacets["keyOf"]): boolean {
+/** True if the indices form a legal TIC: one facet, and (when capped) within the caps. */
+function legal(weapons: CardWeapon[], members: number[], facets: EditorFacets): boolean {
   if (members.length <= 1) return true;
-  const k = keyOf(weapons[members[0]!]!);
-  if (!members.every((i) => keyOf(weapons[i]!) === k)) return false;
-  return isLegalTicProfile(buildTic(members.map((i) => weapons[i]!)).profile);
+  const k = facets.keyOf(weapons[members[0]!]!);
+  if (!members.every((i) => facets.keyOf(weapons[i]!) === k)) return false;
+  return !facets.enforceCaps || isLegalTicProfile(buildTic(members.map((i) => weapons[i]!)).profile);
 }
 
 /** True if weapon `wi` may join existing group `gi`. */
-function canMove(weapons: CardWeapon[], g: Grouping, wi: number, gi: number, keyOf: EditorFacets["keyOf"]): boolean {
+function canMove(weapons: CardWeapon[], g: Grouping, wi: number, gi: number, facets: EditorFacets): boolean {
   if (g[gi]!.includes(wi)) return false;
-  return legal(weapons, [...g[gi]!, wi], keyOf);
+  return legal(weapons, [...g[gi]!, wi], facets);
 }
 
 /** Render the editor panel HTML for the current grouping. */
@@ -76,7 +79,7 @@ export function renderTicEditorHtml(weapons: CardWeapon[], g: Grouping, facets: 
           const w = weapons[wi]!;
           const opts = g
             .map((_, ti) => ti)
-            .filter((ti) => ti !== gi && canMove(weapons, g, wi, ti, facets.keyOf))
+            .filter((ti) => ti !== gi && canMove(weapons, g, wi, ti, facets))
             .map((ti) => `<option value="g:${ti}">→ TIC ${ti + 1}</option>`)
             .join("");
           const split = grp.length > 1 ? `<option value="new">→ split off</option>` : "";

@@ -527,14 +527,18 @@ const mechFacets: EditorFacets = {
     const base = g === "T" || g === "Tr" ? "Torso" : w.location;
     return w.rearMounted ? `${base} (R)` : base;
   },
+  enforceCaps: true,
 };
 // Vehicles / aero / proto / dropship group per arc (the weapon's rawLocation).
 const titleCase = (s: string) =>
   s.replace(/([a-z])([A-Z])/g, "$1 $2").replace(/^./, (c) => c.toUpperCase());
-const facingFacets: EditorFacets = {
-  keyOf: (w) => w.rawLocation ?? "",
-  facetLabel: (w) => titleCase(w.rawLocation ?? "—"),
+const facingBase = {
+  keyOf: (w: CardWeapon) => w.rawLocation ?? "",
+  facetLabel: (w: CardWeapon) => titleCase(w.rawLocation ?? "—"),
 };
+// Vehicles / aero / proto fire 'Mech-scale TICs (capped); DropShip bays do not.
+const facingFacets: EditorFacets = { ...facingBase, enforceCaps: true };
+const bayFacets: EditorFacets = { ...facingBase, enforceCaps: false };
 
 /** Build an edit session for an editable card kind, or null when not editable. */
 function makeSession(r: AnyCard): EditSession | null {
@@ -552,7 +556,7 @@ function makeSession(r: AnyCard): EditSession | null {
     case "protomech":
       return start(r.card.weaponMounts, r.card.tics, facingFacets, (t) => (r.card.weapons = protoWeaponRows(t, r.card.techBase)), () => renderProtoCard(r.card));
     case "dropship":
-      return start(r.card.weaponMounts, r.card.tics, facingFacets, (t) => (r.card.weapons = dropshipWeaponRows(t, r.card.techBase)), () => renderDropshipCard(r.card));
+      return start(r.card.weaponMounts, r.card.tics, bayFacets, (t) => (r.card.weapons = dropshipWeaponRows(t, r.card.techBase)), () => renderDropshipCard(r.card));
     default:
       return null; // BA / infantry: no TICs
   }
