@@ -115,12 +115,15 @@ function heatScale(): string {
   return `<div class="heatscale"><div class="hs-label">Heat Scale</div><div class="hs-rows">${rows}</div></div>`;
 }
 
-/** Pilot condition monitor (consciousness track), as on the 'Mech card. */
+/** Pilot condition monitor + Engine / Avionics crit boxes (mirrors the 'Mech card). */
 function conditionMonitor(): string {
+  const box = '<span class="cm-box"></span>';
   const track = ["3+", "5+", "7+", "9+", "11+"]
     .map((t) => `<span class="cm-pip">${t}</span>`)
     .join("");
   return `<div class="condmon">
+    <span class="cm-grp">Engine ${box}${box}</span>
+    <span class="cm-grp">Avionics ${box}${box}</span>
     <span class="cm-grp">Condition ${track}<span class="cm-pip kia">KIA</span></span>
   </div>`;
 }

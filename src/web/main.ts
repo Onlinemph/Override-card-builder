@@ -880,13 +880,19 @@ function applyDamageMarks(): void {
     p.dataset.dc = String(i);
     p.classList.toggle("pip-hit", i < cond);
   });
-  // Engine / gyro hit boxes ('Mech).
+  // Engine / gyro / avionics hit boxes ('Mech engine+gyro, aerospace engine+avionics).
   Array.from(output.querySelectorAll<HTMLElement>(".condmon .cm-grp")).forEach((grp) => {
     const boxes = Array.from(grp.querySelectorAll<HTMLElement>(".cm-box"));
     const label = grp.textContent?.trimStart() ?? "";
-    const sys = label.startsWith("Engine") ? "engine" : label.startsWith("Gyro") ? "gyro" : null;
+    const sys = label.startsWith("Engine")
+      ? "engine"
+      : label.startsWith("Gyro")
+        ? "gyro"
+        : label.startsWith("Avionics")
+          ? "avionics"
+          : null;
     if (!boxes.length || !sys) return;
-    const hit = (sys === "engine" ? dmg.engine : dmg.gyro) ?? 0;
+    const hit = dmg[sys] ?? 0;
     boxes.forEach((b, i) => {
       b.dataset.dsys = sys;
       b.dataset.di = String(i);
@@ -943,7 +949,7 @@ output.addEventListener("click", (e) => {
     return;
   }
   const box = t.closest<HTMLElement>(".cm-box");
-  if (box?.dataset.dsys === "engine" || box?.dataset.dsys === "gyro") {
+  if (box?.dataset.dsys === "engine" || box?.dataset.dsys === "gyro" || box?.dataset.dsys === "avionics") {
     const sys = box.dataset.dsys;
     u.damage ??= {};
     u.damage[sys] = nextLevel(u.damage[sys] ?? 0, Number(box.dataset.di));
@@ -1044,6 +1050,7 @@ interface ForceUnit {
     condition?: number;
     engine?: number;
     gyro?: number;
+    avionics?: number;
     tics?: number[];
   };
 }
