@@ -51,6 +51,8 @@ async function initBrowser(): Promise<void> {
   const countEl = document.getElementById("browse-count");
   const catSel = document.getElementById("browse-cat") as HTMLSelectElement;
   const searchInput = document.getElementById("browse-q") as HTMLInputElement;
+  const factionSel = document.getElementById("browse-faction") as HTMLSelectElement | null;
+  const eraSel = document.getElementById("browse-era") as HTMLSelectElement | null;
   const toggleBtn = document.getElementById("browse-toggle") as HTMLButtonElement;
   const browseBody = document.getElementById("browse-body") as HTMLElement;
   if (!statusEl || !listEl || !catSel || !searchInput || !toggleBtn || !browseBody) return;
@@ -73,13 +75,39 @@ async function initBrowser(): Promise<void> {
     catSel.appendChild(opt);
   }
 
+  // MUL availability: faction + era filters (only if the index loaded).
+  await loadAvailIndex();
+  if (availIndex && factionSel && eraSel) {
+    for (const f of availIndex.factions) {
+      const o = document.createElement("option");
+      o.value = String(f.id);
+      o.textContent = f.name;
+      factionSel.appendChild(o);
+    }
+    for (const e of availIndex.eras) {
+      const o = document.createElement("option");
+      o.value = String(e.id);
+      o.textContent = e.name;
+      eraSel.appendChild(o);
+    }
+  } else {
+    // No availability data — hide just the faction/era selects, keep the rest.
+    if (factionSel) factionSel.style.display = "none";
+    if (eraSel) eraSel.style.display = "none";
+  }
+
   function render(): void {
     const q = searchInput.value.trim().toLowerCase();
     const cat = catSel.value;
+    const facId = factionSel?.value ?? "";
+    const eraId = eraSel?.value ?? "";
+    const eraBit = eraId && availIndex ? availIndex.eras.findIndex((e) => String(e.id) === eraId) : -1;
+    const useAvail = !!availIndex && (facId !== "" || eraId !== "");
     const filtered = units.filter(
       (u) =>
         (!cat || u.category === cat) &&
-        (!q || u.name.toLowerCase().includes(q) || u.era.toLowerCase().includes(q)),
+        (!q || u.name.toLowerCase().includes(q) || u.era.toLowerCase().includes(q)) &&
+        (!useAvail || isAvailable(u.path, facId, eraBit)),
     );
     if (countEl) countEl.textContent = `(${filtered.length.toLocaleString()} units)`;
     statusEl!.textContent = "";
@@ -156,6 +184,8 @@ async function initBrowser(): Promise<void> {
 
   catSel.addEventListener("change", render);
   searchInput.addEventListener("input", render);
+  factionSel?.addEventListener("change", render);
+  eraSel?.addEventListener("change", render);
 
   // Collapse toggle.
   toggleBtn.addEventListener("click", () => {
@@ -556,6 +586,42 @@ function adjustedBv(base: number | undefined, gunnery = 4, piloting = 5): number
 /** A force unit's printed BV: official BV adjusted for its pilot skills. */
 function unitBv(u: ForceUnit): number | undefined {
   return adjustedBv(lookupBv(u.name, u.file), u.gunnery ?? 4, u.piloting ?? 5);
+}
+
+// ---- MUL availability (faction × era) -------------------------------------
+// Distilled from the MUL by scripts/build-avail-index.mjs into avail-index.json.
+interface AvailIndex {
+  factions: { id: number; name: string }[];
+  eras: { id: number; name: string }[]; // chronological; the bit index follows this order
+  byFile: Record<string, number>; // filename stem -> MUL ID
+  avail: Record<string, Record<string, number>>; // MUL ID -> factionId -> era bitmask
+}
+let availIndex: AvailIndex | null = null;
+
+async function loadAvailIndex(): Promise<void> {
+  try {
+    const resp = await fetch("./avail-index.json");
+    if (resp.ok) availIndex = (await resp.json()) as AvailIndex;
+  } catch {
+    /* no availability data — the faction/era filters just stay inert */
+  }
+}
+
+/** Whether a unit (by source path) is fielded by a faction in an era. Empty
+ * factionId = any faction; eraBit < 0 = any era. Units not in the MUL
+ * availability data are excluded whenever a faction/era filter is active. */
+function isAvailable(path: string, factionId: string, eraBit: number): boolean {
+  if (!availIndex) return true;
+  const id = availIndex.byFile[bvKey(fileStem(path))];
+  if (id == null) return false;
+  const byFaction = availIndex.avail[id];
+  if (!byFaction) return false;
+  if (factionId) {
+    const mask = byFaction[factionId] ?? 0;
+    return eraBit < 0 ? mask !== 0 : (mask & (1 << eraBit)) !== 0;
+  }
+  if (eraBit < 0) return true;
+  return Object.values(byFaction).some((mask) => (mask & (1 << eraBit)) !== 0);
 }
 
 /** Inject a BV badge just after the card's title (works for every card kind:
