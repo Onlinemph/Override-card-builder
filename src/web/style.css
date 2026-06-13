@@ -1183,6 +1183,15 @@ footer {
 .fit-cell { width: 90mm; height: 120mm; overflow: hidden; }
 .fit-scale { width: 90mm; transform-origin: top center; }
 
+/* Keep print cards in their full multi-column layout. A single card is ~340px
+   (≈ 90mm) wide on the site, where the 2-column layout (data | armor diagram)
+   shows everything. On the print page the responsive ≤760px breakpoint would
+   otherwise collapse it to one tall column — losing the side-by-side look and
+   mismatching the off-screen measured scale. Scoped to .sheet so it applies in
+   BOTH the measuring pass and the print (not gated by @media). */
+.sheet .ms-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important; }
+.sheet .inf-top { grid-template-columns: minmax(150px, 1fr) minmax(180px, 1.4fr) auto !important; }
+
 /* Print: keep an arc's header with at least its first rows, avoid mid-arc breaks. */
 @media print {
   .dropship-weapons .arc-head { break-after: avoid; }
