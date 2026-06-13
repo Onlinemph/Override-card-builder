@@ -631,13 +631,27 @@ function parseDropshipArmor(blocks: Block[]): DropshipArmorRaw {
  * becomes "ISERLargeLaser" -> the known "ER Large Laser".
  */
 function parseDropshipMounts(blocks: Block[]): DropshipMount[] {
+  const facingBlocks = blocks.filter((b) => DROPSHIP_FACING_BLOCKS[b.key]);
+  // MegaMek marks each weapon bay with a leading "(B)" on its first weapon; the
+  // unprefixed lines beneath it belong to that same bay (and "Ammo …" lines are
+  // the bay's ammo). Only bay-aware files get bay ids — a markerless BLK leaves
+  // `bay` undefined and the converter falls back to auto-grouping.
+  const hasBays = facingBlocks.some((b) => b.lines.some((l) => /\(B\)/.test(l)));
   const mounts: DropshipMount[] = [];
-  for (const block of blocks) {
-    const facing = DROPSHIP_FACING_BLOCKS[block.key];
-    if (!facing) continue;
+  let bayId = 0;
+  for (const block of facingBlocks) {
+    const facing = DROPSHIP_FACING_BLOCKS[block.key]!;
+    let currentBay = -1; // a bay never spans an arc, so reset each block
     for (const line of block.lines) {
+      const startsBay = /\(B\)/.test(line);
       const name = line.replace(/^(?:\([A-Za-z]\)\s*)+/, "").trim();
-      if (name) mounts.push({ name, facing });
+      if (!name) continue;
+      if (!hasBays) {
+        mounts.push({ name, facing });
+        continue;
+      }
+      if (startsBay || currentBay === -1) currentBay = ++bayId;
+      mounts.push({ name, facing, bay: currentBay });
     }
   }
   return mounts;

@@ -16,6 +16,7 @@
 import { IMPORTANT_EQUIPMENT, VEHICLE_ARMOR_DIVISOR, STRUCTURE_DIVISOR } from "./constants.js";
 import {
   ammoLabel,
+  buildTic,
   convertWeapon,
   groupIntoTics,
   isWarshipWeapon,
@@ -127,25 +128,51 @@ export function convertDropship(unit: DropshipUnit): DropshipCard {
   const allTics: Tic[] = [];
   const unknownWeapons = new Set<string>();
 
-  for (const arc of ARC_ORDER) {
-    const cardWeapons: CardWeapon[] = [];
-    for (const mount of unit.mounts.filter((m) => m.facing === arc)) {
-      // Capital-scale guns have no 'Mech-scale stats — drop them (no row, no warning).
-      if (isWarshipWeapon(mount.name)) continue;
-      const isAmmo = isNonWeaponMount(mount.name); // glued ammo + cargo + Narc pods
-      const { unknown } = lookupWeaponDamage(mount.name, unit.techBase);
-      const isEquipment = isWeaponBlockEquipment(mount.name);
-      // Hull mounts never fire; treat them all as equipment/ammo.
-      if (arc !== "hull" && !isAmmo && !isEquipment && (!unknown || looksLikeWeapon(mount.name))) {
-        const w: Weapon = { name: mount.name, location: SYNTH_LOCATION, rawLocation: arc, rearMounted: false };
-        cardWeapons.push(convertWeapon(w, unit.techBase, 0));
-        if (unknown) unknownWeapons.add(mount.name);
-      } else {
-        otherMounts.push(mount);
+  // Convert one mount into `into`, or divert it: capital-scale guns are dropped,
+  // hull mounts / ammo / gear / unrecognised non-weapons go to the equipment line.
+  const takeWeapon = (mount: DropshipMount, into: CardWeapon[]): void => {
+    if (isWarshipWeapon(mount.name)) return; // capital-scale: no 'Mech-scale stats yet
+    const arc = mount.facing;
+    const { unknown } = lookupWeaponDamage(mount.name, unit.techBase);
+    if (
+      arc === "hull" ||
+      isNonWeaponMount(mount.name) ||
+      isWeaponBlockEquipment(mount.name) ||
+      (unknown && !looksLikeWeapon(mount.name))
+    ) {
+      otherMounts.push(mount);
+      return;
+    }
+    const w: Weapon = { name: mount.name, location: SYNTH_LOCATION, rawLocation: arc, rearMounted: false };
+    into.push(convertWeapon(w, unit.techBase, 0));
+    if (unknown) unknownWeapons.add(mount.name);
+  };
+
+  if (unit.mounts.some((m) => m.bay !== undefined)) {
+    // Bay-aware BLK: each weapon bay (the "(B)" group) becomes ONE TIC, summed
+    // across the bay with no 'Mech TIC caps — a WarShip-scale bay can be huge.
+    const bays = new Map<number, DropshipMount[]>();
+    for (const m of unit.mounts) {
+      const arr = bays.get(m.bay!) ?? [];
+      arr.push(m);
+      bays.set(m.bay!, arr);
+    }
+    for (const id of [...bays.keys()].sort((a, b) => a - b)) {
+      const bayWeapons: CardWeapon[] = [];
+      for (const mount of bays.get(id)!) takeWeapon(mount, bayWeapons);
+      if (bayWeapons.length > 0) {
+        allWeapons.push(...bayWeapons);
+        allTics.push(buildTic(bayWeapons));
       }
     }
-    allWeapons.push(...cardWeapons);
-    allTics.push(...groupIntoTics(cardWeapons));
+  } else {
+    // Markerless BLK: fall back to auto-grouping identical weapons per arc.
+    for (const arc of ARC_ORDER) {
+      const cardWeapons: CardWeapon[] = [];
+      for (const mount of unit.mounts.filter((m) => m.facing === arc)) takeWeapon(mount, cardWeapons);
+      allWeapons.push(...cardWeapons);
+      allTics.push(...groupIntoTics(cardWeapons));
+    }
   }
 
   for (const name of unknownWeapons) {

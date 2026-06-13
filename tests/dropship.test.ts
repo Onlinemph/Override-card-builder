@@ -70,6 +70,32 @@ describe("convertDropship (aerospace rules)", () => {
   });
 });
 
+describe("weapon bays (the '(B)' groups)", () => {
+  // Nose holds two bays: 5 ER PPC, then 2 Large Lasers.
+  const blk =
+    `<UnitType>\nDropship\n</UnitType>\n<Name>\nBay\n</Name>\n<motion_type>\nSpheroid\n</motion_type>\n` +
+    `<SafeThrust>\n3\n</SafeThrust>\n<heatsinks>\n20\n</heatsinks>\n<sink_type>\n1\n</sink_type>\n` +
+    `<structural_integrity>\n10\n</structural_integrity>\n<armor>\n100\n80\n80\n60\n</armor>\n` +
+    `<Nose Equipment>\n(B) ISERPPC\nISERPPC\nISERPPC\nISERPPC\nISERPPC\n(B) Large Laser\nLarge Laser\n</Nose Equipment>\n` +
+    `<tonnage>\n2000.0\n</tonnage>\n`;
+
+  it("assigns a bay id per '(B)' group, resetting per arc", () => {
+    const u = parseBlkDropship(blk, "bay.blk");
+    const nose = u.mounts.filter((m) => m.facing === "nose");
+    expect(nose.map((m) => m.bay)).toEqual([1, 1, 1, 1, 1, 2, 2]); // 5 in bay 1, 2 in bay 2
+  });
+
+  it("fires each bay as ONE TIC, summed with no 'Mech caps", () => {
+    const c = convertDropship(parseBlkDropship(blk, "bay.blk"));
+    const nose = c.weapons.filter((w) => w.facing === "NO");
+    expect(nose).toHaveLength(2); // two bays -> two rows
+    expect(nose[0]!.label).toMatch(/x5 ER PPC/i);
+    expect(nose[0]!.damageText).toBe("17"); // 5 x TW 10 = 50 -> ceil/3 (over the 14 TIC cap)
+    expect(nose[1]!.label).toMatch(/x2 .*LLas/i);
+    expect(nose[1]!.damageText).toBe("6"); // 2 x TW 8 = 16 -> ceil/3
+  });
+});
+
 describe("convertAny dispatch (dropship)", () => {
   it("routes a BLK Dropship to the dropship path", () => {
     const r = convertAny(load("Test Dropship DS-1.blk"), "DS-1.blk");

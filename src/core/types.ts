@@ -951,6 +951,9 @@ export type DropshipFacing = "nose" | "leftSide" | "rightSide" | "aft" | "hull";
 export interface DropshipMount {
   name: string;
   facing: DropshipFacing;
+  /** Weapon-bay id (MegaMek "(B)" groups). Same id = fires as one bay. Undefined
+   * on markerless BLKs, which fall back to auto-grouping identical weapons. */
+  bay?: number;
 }
 
 /** Raw per-arc TW armor from the BLK `<armor>` block (nose, left, right, aft). */
