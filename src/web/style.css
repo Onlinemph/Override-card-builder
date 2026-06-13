@@ -473,8 +473,11 @@ footer {
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
 }
 .browse-item {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-areas: "name add" "meta add";
+  align-items: center;
+  column-gap: 0.5rem;
   padding: 0.45rem 0.65rem;
   border-bottom: 1px solid var(--line);
   cursor: pointer;
@@ -486,11 +489,20 @@ footer {
   outline: none;
 }
 .browse-item-name {
+  grid-area: name;
   font-weight: 600;
   font-size: 0.9rem;
 }
 .browse-item-meta {
+  grid-area: meta;
   font-size: 0.75rem;
+}
+.browse-add {
+  grid-area: add;
+  align-self: center;
+  font-size: 1rem;
+  line-height: 1;
+  padding: 0.2rem 0.5rem;
 }
 .browse-status {
   font-size: 0.82rem;
@@ -1064,8 +1076,98 @@ footer {
   border-top: none;              /* no rule above the very first arc */
   padding-top: 4px;
 }
+/* ---- Force builder + print sheet ----------------------------------------- */
+.input-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.force {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0.85rem 1.1rem 1rem;
+  margin-bottom: 1.5rem;
+}
+.force-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.6rem;
+}
+.force-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+.force-count { font-size: 0.82rem; font-weight: 400; }
+.force-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.force-cols-label { font-size: 0.8rem; color: var(--muted); }
+.force-cols {
+  background: var(--panel-2);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 0.3rem 0.45rem;
+  font: inherit;
+  font-size: 0.82rem;
+  margin-left: 0.3rem;
+}
+.force-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+.force-empty { margin: 0; font-size: 0.85rem; }
+.force-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  background: var(--panel-2);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0.25rem 0.3rem 0.25rem 0.7rem;
+  font-size: 0.85rem;
+}
+.force-item-name { font-weight: 600; }
+.force-remove {
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.85rem;
+  line-height: 1;
+  padding: 0.15rem 0.35rem;
+  border-radius: 999px;
+}
+.force-remove:hover { background: var(--line); color: var(--ink); }
+
+/* The print sheet: a grid of cards, swapped in for the whole page when printing. */
+#print-area { display: none; }
+.sheet {
+  display: grid;
+  gap: 6mm;
+  align-items: start;
+}
+.sheet.cols-1 { grid-template-columns: 1fr; }
+.sheet.cols-2 { grid-template-columns: 1fr 1fr; }
+
 /* Print: keep an arc's header with at least its first rows, avoid mid-arc breaks. */
 @media print {
   .dropship-weapons .arc-head { break-after: avoid; }
   .dropship-weapons tr { break-inside: avoid; }
+
+  /* Force "Print sheet": hide the app chrome and lay out only the card grid. */
+  @page { margin: 10mm; }
+  body.print-mode #app { display: none; }
+  body.print-mode #print-area { display: block; }
+  body.print-mode .card { break-inside: avoid; page-break-inside: avoid; box-shadow: none; }
 }

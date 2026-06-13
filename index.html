@@ -50,7 +50,27 @@
           spellcheck="false"
           placeholder="Paste .mtf or .blk text here, or upload a file above…"
         ></textarea>
-        <button id="convert" type="button" class="primary">Convert</button>
+        <div class="input-actions">
+          <button id="convert" type="button" class="primary">Convert</button>
+          <button id="add-force" type="button">＋ Add to Force</button>
+        </div>
+      </section>
+
+      <section class="force" id="force-panel">
+        <div class="force-header">
+          <h2 class="force-title">Force / Print Sheet <span class="force-count muted" id="force-count"></span></h2>
+          <div class="force-actions">
+            <label class="force-cols-label">Layout
+              <select id="force-cols" class="force-cols">
+                <option value="2" selected>2 per row</option>
+                <option value="1">1 per row</option>
+              </select>
+            </label>
+            <button id="force-print" type="button" class="primary" disabled>Print sheet</button>
+            <button id="force-clear" type="button">Clear force</button>
+          </div>
+        </div>
+        <div id="force-list" class="force-list"></div>
       </section>
 
       <section id="output" class="output" aria-live="polite"></section>
@@ -63,6 +83,10 @@
         <p class="muted" id="build"></p>
       </footer>
     </main>
+
+    <!-- Print-only container: filled by the Force "Print sheet" button. Lives
+         outside #app so the print stylesheet can swap it in for the whole page. -->
+    <div id="print-area" aria-hidden="true"></div>
 
     <script type="module" src="/src/web/main.ts"></script>
   </body>

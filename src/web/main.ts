@@ -97,6 +97,7 @@ async function initBrowser(): Promise<void> {
           `<div class="browse-item" role="option" tabindex="0" data-idx="${i}" data-path="${esc(u.path)}" data-name="${esc(u.name)}">
             <span class="browse-item-name">${esc(u.name)}</span>
             <span class="browse-item-meta muted">${esc(u.category)}${u.era ? ` · ${esc(u.era)}` : ""}</span>
+            <button class="browse-add" type="button" data-path="${esc(u.path)}" data-name="${esc(u.name)}" title="Add to force" aria-label="Add ${esc(u.name)} to force">＋</button>
           </div>`,
       )
       .join("");
@@ -122,7 +123,24 @@ async function initBrowser(): Promise<void> {
     }
   }
 
+  // Add a browsed unit to the force without disturbing the preview.
+  async function addBrowsedUnit(path: string, name: string): Promise<void> {
+    try {
+      const resp = await fetch(`./units/${path}`);
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      addToForce(name, await resp.text());
+      statusEl!.textContent = `Added ${name} to force.`;
+    } catch (err) {
+      statusEl!.textContent = `Error adding ${name}: ${err instanceof Error ? err.message : String(err)}`;
+    }
+  }
+
   listEl.addEventListener("click", (e) => {
+    const add = (e.target as Element).closest<HTMLElement>(".browse-add");
+    if (add) {
+      void addBrowsedUnit(add.dataset.path!, add.dataset.name!);
+      return;
+    }
     const item = (e.target as Element).closest<HTMLElement>(".browse-item");
     if (!item) return;
     loadUnit(item.dataset.path!, item.dataset.name!);
@@ -602,6 +620,110 @@ output.addEventListener("click", (e) => {
   edit.grouping = edit.autoGrouping.map((g) => [...g]);
   renderEdit();
 });
+
+// ---- Force builder + print sheet ------------------------------------------
+// A persistent collection of units (source text + name) the user assembles from
+// the browser / input area, rendered all at once onto a print-optimized sheet.
+// Stored as SOURCE text (not converted cards) so it survives reloads and stays
+// independent of any in-progress TIC edits.
+
+interface ForceUnit { name: string; text: string; }
+const FORCE_KEY = "mtf2override.force";
+
+function loadForce(): ForceUnit[] {
+  try {
+    const raw = localStorage.getItem(FORCE_KEY);
+    const parsed = raw ? (JSON.parse(raw) as unknown) : [];
+    return Array.isArray(parsed) ? (parsed as ForceUnit[]) : [];
+  } catch {
+    return [];
+  }
+}
+let force: ForceUnit[] = loadForce();
+
+function saveForce(): void {
+  try {
+    localStorage.setItem(FORCE_KEY, JSON.stringify(force));
+  } catch {
+    /* storage may be unavailable (private mode / quota) — the in-memory force still works */
+  }
+}
+
+function addToForce(name: string, text: string): void {
+  force.push({ name: name || "Unit", text });
+  saveForce();
+  renderForce();
+}
+
+/** Add whatever is currently in the textarea, naming it from the converted card. */
+function addCurrentToForce(): void {
+  const text = textarea.value.trim();
+  if (!text) {
+    output.innerHTML = `<p class="muted">Paste or upload an .mtf or .blk first, then add it.</p>`;
+    return;
+  }
+  const r = convertOne(text, "pasted");
+  addToForce(r.ok ? r.result.card.name : "Pasted unit", text);
+}
+
+/** Render the force list panel and toggle the Print button. */
+function renderForce(): void {
+  const listEl = document.getElementById("force-list");
+  const countEl = document.getElementById("force-count");
+  const printBtn = document.getElementById("force-print") as HTMLButtonElement | null;
+  if (!listEl) return;
+  if (countEl) countEl.textContent = force.length ? `(${force.length})` : "";
+  if (printBtn) printBtn.disabled = force.length === 0;
+  listEl.innerHTML = force.length
+    ? force
+        .map(
+          (u, i) =>
+            `<div class="force-item"><span class="force-item-name">${esc(u.name)}</span>` +
+            `<button class="force-remove" type="button" data-i="${i}" title="Remove" aria-label="Remove ${esc(u.name)}">✕</button></div>`,
+        )
+        .join("")
+    : `<p class="muted force-empty">No units yet. Add units from the browser (＋) or the input area below.</p>`;
+}
+
+/** Build all force cards, swap the page to the print container, and print. */
+function printForceSheet(): void {
+  if (force.length === 0) return;
+  const area = document.getElementById("print-area");
+  if (!area) return;
+  const cols = (document.getElementById("force-cols") as HTMLSelectElement | null)?.value === "1" ? "1" : "2";
+  const cards = force
+    .map((u) => {
+      const r = convertOne(u.text, u.name);
+      return r.ok ? cardHtml(r.result) : r.html;
+    })
+    .join("");
+  area.innerHTML = `<div class="sheet cols-${cols}">${cards}</div>`;
+  document.body.classList.add("print-mode");
+  const cleanup = (): void => {
+    document.body.classList.remove("print-mode");
+    window.removeEventListener("afterprint", cleanup);
+  };
+  window.addEventListener("afterprint", cleanup);
+  window.print();
+}
+
+// Force-panel controls.
+$("add-force").addEventListener("click", addCurrentToForce);
+$("force-print").addEventListener("click", printForceSheet);
+$("force-clear").addEventListener("click", () => {
+  if (force.length === 0) return;
+  force = [];
+  saveForce();
+  renderForce();
+});
+$("force-list").addEventListener("click", (e) => {
+  const btn = (e.target as HTMLElement).closest<HTMLElement>(".force-remove");
+  if (!btn) return;
+  force.splice(Number(btn.dataset.i), 1);
+  saveForce();
+  renderForce();
+});
+renderForce();
 
 $("convert").addEventListener("click", () => {
   const text = textarea.value.trim();
