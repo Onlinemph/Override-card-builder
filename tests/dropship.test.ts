@@ -108,6 +108,40 @@ describe("card layout", () => {
   });
 });
 
+
+describe("WarShip (extends the DropShip path)", () => {
+  const blk =
+    `<UnitType>\nWarship\n</UnitType>\n<Name>\nTest WarShip\n</Name>\n<motion_type>\nAerodyne\n</motion_type>\n` +
+    `<SafeThrust>\n3\n</SafeThrust>\n<heatsinks>\n100\n</heatsinks>\n<sink_type>\n1\n</sink_type>\n` +
+    `<structural_integrity>\n60\n</structural_integrity>\n<armor>\n37\n37\n37\n35\n37\n37\n</armor>\n` +
+    `<Nose Equipment>\n(B) Naval Autocannon (NAC/20)\nNaval Autocannon (NAC/20)\n</Nose Equipment>\n` +
+    `<Left Broadsides Equipment>\n(B) Large Laser\nLarge Laser\n</Left Broadsides Equipment>\n` +
+    `<tonnage>\n620000.0\n</tonnage>\n`;
+
+  it("parses the Warship type, 6-facing armor, and broadside arcs", () => {
+    const u = parseBlkDropship(blk, "ws.blk");
+    expect(u.shipClass).toBe("WarShip");
+    expect(u.armor).toEqual({ nose: 37, leftSide: 37, rightSide: 37, aft: 37 }); // 6 values -> aft = index 5
+    expect(u.mounts.map((m) => m.facing)).toEqual(["nose", "nose", "leftBroad", "leftBroad"]);
+  });
+
+  it("converts to a WarShip card: naval weapons show as bays (?), standard bays sum", () => {
+    const c = convertDropship(parseBlkDropship(blk, "ws.blk"));
+    expect(c.shipClass).toBe("WarShip");
+    const nose = c.weapons.find((w) => w.facing === "NO");
+    expect(nose?.unknown).toBe(true); // capital/naval — deferred, shown as ?
+    const broad = c.weapons.find((w) => w.facing === "LB");
+    expect(broad?.damageText).toBe("6"); // 2x Large Laser = ceil(16/3)
+    expect(c.warnings).toHaveLength(0); // naval weapons are deferred, not "missing"
+  });
+
+  it("renders WarShip arc sections and the WarShip type label", () => {
+    const html = renderDropshipCard(convertDropship(parseBlkDropship(blk, "ws.blk")));
+    expect(html).toContain(">Left Broadside<");
+    expect(html).toContain("WarShip");
+  });
+});
+
 describe("convertAny dispatch (dropship)", () => {
   it("routes a BLK Dropship to the dropship path", () => {
     const r = convertAny(load("Test Dropship DS-1.blk"), "DS-1.blk");

@@ -61,8 +61,15 @@ const ARC_NAMES: Readonly<Record<string, string>> = {
   RS: "Right Side",
   AF: "Aft",
   HL: "Hull",
+  // WarShip arcs.
+  FL: "Left Front Side",
+  FR: "Right Front Side",
+  LB: "Left Broadside",
+  RB: "Right Broadside",
+  AL: "Aft Left Side",
+  AR: "Aft Right Side",
 };
-const ARC_DISPLAY_ORDER = ["NO", "LS", "RS", "AF", "HL"];
+const ARC_DISPLAY_ORDER = ["NO", "FL", "FR", "LB", "RB", "AL", "AR", "AF", "LS", "RS", "HL"];
 
 function weaponsTable(card: DropshipCard): string {
   if (card.weapons.length === 0) {
@@ -166,7 +173,7 @@ export function renderDropshipCard(card: DropshipCard): string {
           <div class="ms-ud-h">UNIT DATA</div>
           <div class="ms-ud-cols">
             <div class="ms-ud-stats">
-              <div><b>Type:</b> ${esc(card.motionLabel)} DropShip</div>
+              <div><b>Type:</b> ${esc(card.shipClass === "WarShip" ? "WarShip" : `${card.motionLabel} DropShip`)}</div>
               <div><b>Mass:</b> ${esc(card.tonnage.toLocaleString())} Tons</div>
               <div class="ms-ud-move"><b>Thrust:</b> ${esc(card.move)} <b>Sinks:</b> ${esc(card.sinks)}</div>
               <div><b>TMM:</b> ${esc(card.tmm)} <b>DThr:</b> ${esc(card.dthr)}</div>

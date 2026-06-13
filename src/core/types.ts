@@ -945,7 +945,19 @@ export interface ProtoMechCard {
 // ---------------------------------------------------------------------------
 
 /** DropShip firing arcs (hull = non-firing internal mounts). */
-export type DropshipFacing = "nose" | "leftSide" | "rightSide" | "aft" | "hull";
+export type DropshipFacing =
+  | "nose"
+  | "leftSide"
+  | "rightSide"
+  | "aft"
+  | "hull"
+  // WarShip-only firing arcs (DropShips use the four above):
+  | "foreLeft"
+  | "foreRight"
+  | "aftLeft"
+  | "aftRight"
+  | "leftBroad"
+  | "rightBroad";
 
 /** One mounted weapon/equipment item and the arc it fires from. */
 export interface DropshipMount {
@@ -977,6 +989,8 @@ export interface DropshipBay {
 /** A fully-parsed DropShip — physical facts only. */
 export interface DropshipUnit {
   kind: "dropship";
+  /** "DropShip" or the larger "WarShip" (same BLK shape: bays + firing arcs). */
+  shipClass: "DropShip" | "WarShip";
   chassis: string;
   model: string;
   techBase: TechBase;
@@ -1003,6 +1017,8 @@ export interface DropshipUnit {
 /** Converted Override record-card statistics for a DropShip. */
 export interface DropshipCard {
   kind: "dropship";
+  /** "DropShip" or "WarShip" — drives the card's type label. */
+  shipClass: "DropShip" | "WarShip";
   name: string;
   chassis: string;
   model: string;

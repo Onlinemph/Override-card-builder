@@ -62,8 +62,27 @@ const ARC_CODE: Readonly<Record<DropshipFacing, string>> = {
   rightSide: "RS",
   aft: "AF",
   hull: "HL",
+  // WarShip arcs.
+  foreLeft: "FL",
+  foreRight: "FR",
+  aftLeft: "AL",
+  aftRight: "AR",
+  leftBroad: "LB",
+  rightBroad: "RB",
 };
-const ARC_ORDER: ReadonlyArray<DropshipFacing> = ["nose", "leftSide", "rightSide", "aft", "hull"];
+const ARC_ORDER: ReadonlyArray<DropshipFacing> = [
+  "nose",
+  "foreLeft",
+  "foreRight",
+  "leftBroad",
+  "rightBroad",
+  "aftLeft",
+  "aftRight",
+  "aft",
+  "leftSide",
+  "rightSide",
+  "hull",
+];
 
 /** Armor: TW / 4, round nearest, min 1 (0 if the arc is absent). */
 function convertArmor(tw: number): number {
@@ -193,6 +212,7 @@ export function convertDropship(unit: DropshipUnit): DropshipCard {
 
   return {
     kind: "dropship",
+    shipClass: unit.shipClass,
     name: `${unit.chassis} ${unit.model}`.trim(),
     chassis: unit.chassis,
     model: unit.model,

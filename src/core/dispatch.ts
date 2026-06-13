@@ -64,11 +64,11 @@ export function convertAny(text: string, file = "<unknown>"): AnyCard {
   if (type === "protomech") {
     return { kind: "protomech", card: convertProto(parseBlkProto(text, file)) };
   }
-  if (type === "dropship") {
+  if (type === "dropship" || type === "warship") {
     return { kind: "dropship", card: convertDropship(parseBlkDropship(text, file)) };
   }
   throw new ParseError(
-    `unsupported BLK unit type "${blkUnitType(text) ?? "?"}" (supported: BattleArmor, Tank, VTOL, Aerospace/Conventional Fighter, Infantry, ProtoMech, Dropship)`,
+    `unsupported BLK unit type "${blkUnitType(text) ?? "?"}" (supported: BattleArmor, Tank, VTOL, Aerospace/Conventional Fighter, Infantry, ProtoMech, DropShip, WarShip)`,
     file,
     "UnitType",
   );

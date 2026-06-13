@@ -598,6 +598,13 @@ const DROPSHIP_FACING_BLOCKS: Readonly<Record<string, DropshipFacing>> = {
   "right side equipment": "rightSide",
   "aft equipment": "aft",
   "hull equipment": "hull",
+  // WarShip firing arcs (more than a DropShip's four).
+  "left front side equipment": "foreLeft",
+  "right front side equipment": "foreRight",
+  "aft left side equipment": "aftLeft",
+  "aft right side equipment": "aftRight",
+  "left broadsides equipment": "leftBroad",
+  "right broadsides equipment": "rightBroad",
 };
 
 /** `<transporters>` bay type -> display label (unit bays count units; cargo is tons). */
@@ -615,11 +622,17 @@ const DROPSHIP_BAY_LABELS: Readonly<Record<string, { label: string; tons?: boole
   liquidcargobay: { label: "Liquid Cargo", tons: true },
 };
 
-/** Armor block order: nose, left side, right side, aft. */
+/**
+ * Armor block facings. DropShip order: nose, left side, right side, aft (4
+ * values). WarShip order (6 values): nose, fore-left, fore-right, aft-left,
+ * aft-right, aft — we surface nose / fore-sides / aft on the 4-box diagram (the
+ * aft-side and broadside arcs still appear in the weapon table).
+ */
 function parseDropshipArmor(blocks: Block[]): DropshipArmorRaw {
   const block = blocks.find((b) => b.key === "armor");
   const v = (block?.lines ?? []).map((l) => Number.parseInt(l, 10)).filter((n) => Number.isFinite(n));
   const at = (i: number) => v[i] ?? 0;
+  if (v.length >= 6) return { nose: at(0), leftSide: at(1), rightSide: at(2), aft: at(5) }; // WarShip
   return { nose: at(0), leftSide: at(1), rightSide: at(2), aft: at(3) };
 }
 
@@ -678,10 +691,11 @@ function parseDropshipBays(blocks: Block[]): DropshipBay[] {
 export function parseBlkDropship(text: string, file = "<unknown>"): DropshipUnit {
   const blocks = readBlocks(text);
 
-  const unitType = scalar(blocks, "unittype");
-  if (unitType && unitType.toLowerCase().replace(/\s+/g, "") !== "dropship") {
-    throw new ParseError(`expected a Dropship BLK but got unit type "${unitType}"`, file, "UnitType");
+  const unitType = (scalar(blocks, "unittype") ?? "").toLowerCase().replace(/\s+/g, "");
+  if (unitType && unitType !== "dropship" && unitType !== "warship") {
+    throw new ParseError(`expected a DropShip or WarShip BLK but got unit type "${unitType}"`, file, "UnitType");
   }
+  const shipClass = unitType === "warship" ? "WarShip" : "DropShip";
 
   const chassis = scalarAny(blocks, ["name", "chassis_name"]);
   if (!chassis) throw new ParseError("missing unit name", file, "Name");
@@ -698,6 +712,7 @@ export function parseBlkDropship(text: string, file = "<unknown>"): DropshipUnit
 
   return {
     kind: "dropship",
+    shipClass,
     chassis,
     model,
     techBase: resolveTechBase(blocks),

@@ -992,6 +992,9 @@ export function looksLikeWeapon(name: string): boolean {
 export function isWarshipWeapon(name: string): boolean {
   return (
     /\bcapital\b/i.test(name) || // "Capital ..." and "Sub-Capital ..."
+    /\bnaval\b/i.test(name) || // Naval Autocannon (NAC), Naval Laser (NL), Naval PPC
+    /mass driver/i.test(name) ||
+    /\b(nac|nppc|sub-capital)\b/i.test(name) ||
     /screen launcher/i.test(name) ||
     /tele-?operated/i.test(name) || // tele-operated capital missiles (Kraken, etc.)
     /\b(ar10|killer whale|white shark|barracuda|piranha|stingray|manta ray|kraken)\b/i.test(name)
