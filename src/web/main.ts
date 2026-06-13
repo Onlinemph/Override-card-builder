@@ -787,7 +787,9 @@ function applyDamageMarks(): void {
   if (editingForceIdx == null) return;
   const dmg = force[editingForceIdx]!.damage ?? {};
   const destroyed = new Set<string>(); // paper-doll area codes whose STRUCTURE is gone
-  Array.from(output.querySelectorAll<HTMLElement>(".hexrow, .ba-armor-pips .pips")).forEach((g, gi) => {
+  let infTotal = 0; // infantry troopers + casualties (platoon wiped out when equal)
+  let infDead = 0;
+  Array.from(output.querySelectorAll<HTMLElement>(".hexrow, .ba-armor-pips .pips, .inf-pips")).forEach((g, gi) => {
     g.dataset.dg = String(gi);
     const pips = Array.from(g.children) as HTMLElement[];
     const hit = dmg.groups?.[`g${gi}`] ?? 0;
@@ -800,6 +802,10 @@ function applyDamageMarks(): void {
       const mloc = g.closest<HTMLElement>(".mloc");
       const area = mloc && [...mloc.classList].find((c) => c !== "mloc");
       if (area) destroyed.add(area);
+    }
+    if (g.classList.contains("inf-pips")) {
+      infTotal += pips.length;
+      infDead += Math.min(hit, pips.length);
     }
   });
   // Crew condition track.
@@ -836,7 +842,7 @@ function applyDamageMarks(): void {
   if (sheet) {
     const condTotal = output.querySelectorAll(".condmon .cm-pip").length;
     const pilotDead = condTotal > 0 && (dmg.condition ?? 0) >= condTotal;
-    const wrecked = destroyed.has("ct") || (dmg.engine ?? 0) >= 2;
+    const wrecked = destroyed.has("ct") || (dmg.engine ?? 0) >= 2 || (infTotal > 0 && infDead >= infTotal);
     const kia = pilotDead || (destroyed.has("hd") && !editTorsoCockpit);
     const status = wrecked ? "DESTROYED" : kia ? "KIA" : "";
     if (status) sheet.dataset.dead = status;
@@ -879,8 +885,8 @@ output.addEventListener("click", (e) => {
     applyDamageMarks();
     return;
   }
-  const pip = t.closest<HTMLElement>(".hex, .pip");
-  const grp = pip?.closest<HTMLElement>(".hexrow, .pips");
+  const pip = t.closest<HTMLElement>(".hex, .pip, .ms-body");
+  const grp = pip?.closest<HTMLElement>(".hexrow, .pips, .inf-pips");
   if (pip?.dataset.di != null && grp?.dataset.dg != null) {
     u.damage ??= {};
     u.damage.groups ??= {};

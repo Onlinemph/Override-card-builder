@@ -1212,6 +1212,7 @@ footer {
    red "crossed-off" slash. */
 .force-play .hexrow .hex,
 .force-play .ba-armor-pips .pip,
+.force-play .inf-pips .ms-body,
 .force-play .cm-pip,
 .force-play .cm-box,
 .force-play .mweapons tbody tr { cursor: pointer; }
