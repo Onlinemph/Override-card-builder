@@ -685,12 +685,30 @@ function renderForce(): void {
     : `<p class="muted force-empty">No units yet. Add units from the browser (＋) or the input area below.</p>`;
 }
 
+// A dedicated <style> whose @page rule sets the print orientation (CSS @page
+// can't be toggled by a class, so we rewrite this rule per print).
+const pageStyle = document.createElement("style");
+document.head.appendChild(pageStyle);
+
+/** Map the layout selector to columns + page orientation. */
+function forceLayout(): { cols: "1" | "2"; orientation: "portrait" | "landscape" } {
+  switch ((document.getElementById("force-cols") as HTMLSelectElement | null)?.value) {
+    case "p1":
+      return { cols: "1", orientation: "portrait" };
+    case "l2":
+      return { cols: "2", orientation: "landscape" }; // 2 columns on a sideways page ≈ a 2×2 grid
+    default:
+      return { cols: "2", orientation: "portrait" };
+  }
+}
+
 /** Build all force cards, swap the page to the print container, and print. */
 function printForceSheet(): void {
   if (force.length === 0) return;
   const area = document.getElementById("print-area");
   if (!area) return;
-  const cols = (document.getElementById("force-cols") as HTMLSelectElement | null)?.value === "1" ? "1" : "2";
+  const { cols, orientation } = forceLayout();
+  pageStyle.textContent = `@page { size: ${orientation}; margin: 10mm; }`;
   const cards = force
     .map((u) => {
       const r = convertOne(u.text, u.name);
@@ -701,6 +719,7 @@ function printForceSheet(): void {
   document.body.classList.add("print-mode");
   const cleanup = (): void => {
     document.body.classList.remove("print-mode");
+    pageStyle.textContent = "";
     window.removeEventListener("afterprint", cleanup);
   };
   window.addEventListener("afterprint", cleanup);

@@ -863,14 +863,26 @@ footer {
 .pdoll .mloc.ra { grid-area: ra; }
 .pdoll .mloc.ct { grid-area: ct; }
 .pdoll .mloc.lg { grid-area: lg; }
-.mloc-pips { display: flex; flex-wrap: wrap; gap: 2px; justify-content: center; margin-top: 0.3rem; }
-.hexrow { display: inline-flex; flex-wrap: wrap; gap: 2px; justify-content: center; }
+.mloc-pips { display: flex; flex-wrap: wrap; gap: 2px; justify-content: center; align-items: center; margin-top: 0.3rem; }
+.hexrow { display: inline-flex; flex-wrap: wrap; gap: 2px; justify-content: center; align-items: center; }
 .hex {
   width: 13px; height: 13px; display: inline-block;
   clip-path: polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%);
+  /* Force the fill to print: browsers drop background colors by default, which
+     would make the (filled) armor pips vanish on paper. */
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
 }
 .hex.armor { background: #6c4f9e; }
-.hex.struct { background: #c0392b; }
+/* Structure pips are a HOLLOW SQUARE — a distinct SHAPE from the armor hexagon,
+   so armor vs structure reads clearly in plain black ink (no color needed). */
+.hex.struct {
+  background: transparent;
+  border: 1.5px solid #2a2d35;
+  clip-path: none;
+  width: 11px; height: 11px;
+  align-self: center;
+}
 .mdoll-legend { display: flex; align-items: center; gap: 0.35rem; justify-content: center; font-size: 0.72rem; color: #2a2d35; margin: 0.5rem 0 0; }
 .mdoll-legend .hex { vertical-align: middle; }
 .mech-sheet .warnings { color: #b03020; padding-left: 1.1rem; }
@@ -1165,9 +1177,15 @@ footer {
   .dropship-weapons .arc-head { break-after: avoid; }
   .dropship-weapons tr { break-inside: avoid; }
 
-  /* Force "Print sheet": hide the app chrome and lay out only the card grid. */
-  @page { margin: 10mm; }
+  /* Force "Print sheet": hide the app chrome and lay out only the card grid.
+     (@page size/margin is set at print time by the layout selector.) */
   body.print-mode #app { display: none; }
   body.print-mode #print-area { display: block; }
   body.print-mode .card { break-inside: avoid; page-break-inside: avoid; box-shadow: none; }
+  /* Print the card fills/banners faithfully (browsers omit backgrounds otherwise). */
+  body.print-mode .card,
+  body.print-mode .card * {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
 }
