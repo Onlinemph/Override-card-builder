@@ -84,9 +84,11 @@ const ARC_ORDER: ReadonlyArray<DropshipFacing> = [
   "hull",
 ];
 
-/** Armor: TW / 4, round nearest, min 1 (0 if the arc is absent). */
-function convertArmor(tw: number): number {
-  return tw > 0 ? Math.max(1, roundNearest(tw / VEHICLE_ARMOR_DIVISOR)) : 0;
+/** Armor: TW / divisor, round nearest, min 1 (0 if the arc is absent).
+ * DropShips use VEHICLE_ARMOR_DIVISOR (4). WarShip BLK armor is ALREADY
+ * capital-scale (1/10 of TW); Override drops it further by /3 (per the user). */
+function convertArmor(tw: number, divisor: number): number {
+  return tw > 0 ? Math.max(1, roundNearest(tw / divisor)) : 0;
 }
 
 /** Notable equipment (ammo / gear) grouped by arc + label, with bin counts. */
@@ -188,11 +190,12 @@ export function convertDropship(unit: DropshipUnit): DropshipCard {
   const collapsed = dropshipWeaponRows(allTics, unit.techBase);
 
   const a = unit.armor;
+  const armorDivisor = unit.shipClass === "WarShip" ? 3 : VEHICLE_ARMOR_DIVISOR;
   const armor = {
-    nose: convertArmor(a.nose),
-    leftSide: convertArmor(a.leftSide),
-    rightSide: convertArmor(a.rightSide),
-    aft: convertArmor(a.aft),
+    nose: convertArmor(a.nose, armorDivisor),
+    leftSide: convertArmor(a.leftSide, armorDivisor),
+    rightSide: convertArmor(a.rightSide, armorDivisor),
+    aft: convertArmor(a.aft, armorDivisor),
   };
 
   // SI: the BLK carries the TW value; card scale = /3 round nearest, min 1.

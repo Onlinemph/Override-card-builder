@@ -50,7 +50,7 @@ function armorDiagram(card: DropshipCard): string {
     ${arcBox("drs", "Right Side", "3,4,5", a.rightSide)}
     ${arcBox("daft", "Aft", "2,12", a.aft)}
   </div>
-  <p class="mdoll-legend">Armor per arc (TW ÷ 4) · SI = structural integrity</p>`;
+  <p class="mdoll-legend">Armor per arc (${card.shipClass === "WarShip" ? "capital ÷ 3" : "TW ÷ 4"}) · SI = structural integrity</p>`;
 }
 
 /** The weapons table: one row per arc TIC. */
