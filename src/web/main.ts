@@ -1676,3 +1676,13 @@ initBrowser().catch(() => { /* already handled inside */ });
 // Build stamp — lets you confirm at a glance whether you're on the latest deploy.
 const buildEl = document.getElementById("build");
 if (buildEl) buildEl.textContent = `build ${__BUILD_TIME__}`;
+
+// Register the PWA service worker (offline + installable). Skip localhost so the
+// dev server / HMR isn't intercepted by a cache-first worker.
+if ("serviceWorker" in navigator && location.hostname !== "localhost" && location.hostname !== "127.0.0.1") {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./sw.js").catch(() => {
+      /* registration failures are non-fatal */
+    });
+  });
+}
