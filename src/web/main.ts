@@ -563,6 +563,31 @@ function lookupBv(name: string, file?: string): number | undefined {
   return bvIndex[bvKey(name)];
 }
 
+// MUL design quirks ({ key -> [quirk, …] }, public/quirk-index.json), shown on
+// the card when the "Show quirks" option is on (a body class reveals them).
+let quirkIndex: Record<string, string[]> = {};
+async function loadQuirkIndex(): Promise<void> {
+  try {
+    const resp = await fetch("./quirk-index.json");
+    if (resp.ok) quirkIndex = (await resp.json()) as Record<string, string[]>;
+  } catch {
+    /* no quirk data — the line just never appears */
+  }
+}
+function lookupQuirks(name: string, file?: string): string[] | undefined {
+  if (file) {
+    const byFile = quirkIndex[bvKey(fileStem(file))];
+    if (byFile) return byFile;
+  }
+  return quirkIndex[bvKey(name)];
+}
+/** Inject a (CSS-hidden) quirks line after the card title; revealed by body.show-quirks. */
+function withQuirks(html: string, quirks: string[] | undefined): string {
+  if (!quirks || quirks.length === 0) return html;
+  const line = `<div class="card-quirks"><b>Quirks:</b> ${quirks.map(esc).join(", ")}</div>`;
+  return html.replace(/(<div class="(?:ms-title|ba-title)\b[^>]*>[\s\S]*?<\/div>)/, `$1${line}`);
+}
+
 // BV2 pilot-skill multiplier (TechManual p.315 / MegaMek): [gunnery][piloting],
 // 0–8 each. Regular 4/5 = 1.00; better skills cost more BV, worse less.
 const BV_SKILL_MULT: ReadonlyArray<ReadonlyArray<number>> = [
@@ -704,9 +729,10 @@ function rawCardHtml(result: AnyCard): string {
               : renderMechCard(result.card);
 }
 
-/** Card HTML with the BV badge (used for the single preview). */
+/** Card HTML with the BV badge + (hidden) quirks line (used for previews/print). */
 function cardHtml(result: AnyCard): string {
-  return withBv(rawCardHtml(result), (result.card as { bv?: number }).bv);
+  const c = result.card as { bv?: number; sourceFile?: string };
+  return withQuirks(withBv(rawCardHtml(result), c.bv), lookupQuirks(result.card.name, c.sourceFile));
 }
 
 // ---- Manual TIC editor wiring ---------------------------------------------
@@ -877,7 +903,7 @@ function renderForceEdit(): void {
     raw = rawCardHtml(r.result);
   }
   const sk = unitSkills(u);
-  const card = withSkills(withBv(raw, unitBv(u)), sk.gunnery, sk.piloting);
+  const card = withQuirks(withSkills(withBv(raw, unitBv(u)), sk.gunnery, sk.piloting), lookupQuirks(u.name, u.file));
   editWeapons = weaponsForToHit(r.result); // for the to-hit table (reflects current TIC grouping)
   editSinks = unitSinks(r.result);
   output.classList.add("force-play"); // enables pip cursors / damage tracking
@@ -1915,9 +1941,30 @@ document.getElementById("pilot-toggle")?.addEventListener("click", () => {
 });
 renderPilots();
 
+// "Show quirks" option: a body class reveals the (always-injected) quirks line.
+const QUIRKS_KEY = "mtf2override.showQuirks";
+const quirksToggle = document.getElementById("show-quirks") as HTMLInputElement | null;
+const applyQuirksPref = (on: boolean): void => {
+  document.body.classList.toggle("show-quirks", on);
+  if (quirksToggle) quirksToggle.checked = on;
+};
+applyQuirksPref(localStorage.getItem(QUIRKS_KEY) === "1");
+quirksToggle?.addEventListener("change", () => {
+  const on = quirksToggle.checked;
+  applyQuirksPref(on);
+  try {
+    localStorage.setItem(QUIRKS_KEY, on ? "1" : "0");
+  } catch {
+    /* ignore */
+  }
+});
+
 renderForce();
-// Load the BV index, then refresh the force panel so totals appear once it's in.
+// Load the BV + quirk indexes, then refresh so badges/quirks appear once in.
 void loadBvIndex().then(renderForce);
+void loadQuirkIndex().then(() => {
+  if (editingForceIdx != null) renderForceEdit();
+});
 // Import a shared force from the URL hash, if present.
 void importFromHash();
 
