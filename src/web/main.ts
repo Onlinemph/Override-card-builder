@@ -786,7 +786,7 @@ const clampSkill = (v: string): number | undefined => {
 };
 
 function forceEditBar(u: ForceUnit): string {
-  return `<div class="force-edit-bar"><span><b>${esc(u.name)}</b> — click pips, engine/gyro boxes, or a weapon to track damage</span>
+  return `<div class="force-edit-bar"><span><b>${esc(u.name)}</b> — set each part's damage (or click pips), plus engine/gyro boxes &amp; weapons</span>
     <span class="force-edit-btns">
       <button id="force-reset-dmg" type="button">Reset damage</button>
       <button id="force-edit-done" type="button">Done</button>
@@ -855,7 +855,27 @@ function applyDamageMarks(): void {
   const destroyed = new Set<string>(); // paper-doll area codes whose STRUCTURE is gone
   let infTotal = 0; // infantry troopers + casualties (platoon wiped out when equal)
   let infDead = 0;
+  // Biped SVG doll: ONE damage value per location (set by the per-part dropdowns).
+  // Fills armor circles first, then structure squares; the location is destroyed
+  // when the total reaches armor+structure (all structure gone).
+  const bdoll = output.querySelector<HTMLElement>("svg.bdoll");
+  if (bdoll) {
+    for (const mloc of Array.from(bdoll.querySelectorAll<HTMLElement>(".mloc"))) {
+      const area = [...mloc.classList].find((c) => c !== "mloc");
+      if (!area) continue;
+      const rows = mloc.querySelectorAll<HTMLElement>(".hexrow");
+      const armorPips = rows[0] ? (Array.from(rows[0].children) as HTMLElement[]) : [];
+      const structPips = rows[1] ? (Array.from(rows[1].children) as HTMLElement[]) : [];
+      const d = dmg.loc?.[area] ?? 0;
+      armorPips.forEach((p, k) => p.classList.toggle("pip-hit", k < Math.min(d, armorPips.length)));
+      structPips.forEach((p, k) => p.classList.toggle("pip-hit", k < Math.max(0, d - armorPips.length)));
+      if (structPips.length > 0 && d >= armorPips.length + structPips.length) destroyed.add(area);
+      const sel = output.querySelector<HTMLSelectElement>(`.dmg-ctl[data-area="${area}"] select`);
+      if (sel) sel.value = String(d);
+    }
+  }
   Array.from(output.querySelectorAll<HTMLElement>(".hexrow, .ba-armor-pips .pips, .inf-pips")).forEach((g, gi) => {
+    if (g.closest("svg.bdoll")) return; // biped doll handled above (per-location, not per-group)
     g.dataset.dg = String(gi);
     const pips = Array.from(g.children) as HTMLElement[];
     const hit = dmg.groups?.[`g${gi}`] ?? 0;
@@ -957,7 +977,7 @@ output.addEventListener("click", (e) => {
     applyDamageMarks();
     return;
   }
-  const pip = t.closest<HTMLElement>(".hex, .pip, .ms-body, .bpip");
+  const pip = t.closest<HTMLElement>(".hex, .pip, .ms-body");
   const grp = pip?.closest<HTMLElement>(".hexrow, .pips, .inf-pips");
   if (pip?.dataset.di != null && grp?.dataset.dg != null) {
     u.damage ??= {};
@@ -997,6 +1017,17 @@ function afterTicChange(): void {
 // on the stable `output` container rather than the transient selects/buttons).
 output.addEventListener("change", (e) => {
   const target = e.target as HTMLElement;
+  // Biped-doll per-location damage dropdown.
+  const dctl = target.closest<HTMLElement>(".dmg-ctl");
+  if (editingForceIdx != null && dctl?.dataset.area) {
+    const u = force[editingForceIdx]!;
+    u.damage ??= {};
+    u.damage.loc ??= {};
+    u.damage.loc[dctl.dataset.area] = Number((target as HTMLSelectElement).value) || 0;
+    saveForce();
+    applyDamageMarks();
+    return;
+  }
   // Skill inputs (force editor): persist onto the force unit.
   if (editingForceIdx != null && (target.id === "sk-gun" || target.id === "sk-pil")) {
     const val = clampSkill((target as HTMLInputElement).value);
@@ -1047,6 +1078,8 @@ interface ForceUnit {
    * condition, engine/gyro hits, and manually-disabled weapon-row ordinals. */
   damage?: {
     groups?: Record<string, number>;
+    /** Biped paper-doll: total damage per location area (fills armor then structure). */
+    loc?: Record<string, number>;
     condition?: number;
     engine?: number;
     gyro?: number;

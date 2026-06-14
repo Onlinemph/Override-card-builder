@@ -59,8 +59,15 @@ function loc(area: string, armorZone: Zone, structZone: Zone, armor: number, str
   );
 }
 
-const lbl = (x: number, y: number, name: string, hits: string): string =>
-  `<text class="bdoll-lbl" x="${x}" y="${y}">${name}</text><text class="bdoll-hits" x="${x}" y="${y + 9}">${hits}</text>`;
+/** A per-location damage dropdown overlaid on the doll (0..armor+structure). */
+function ctl(area: string, name: string, hits: string, max: number, left: number, top: number): string {
+  const opts = Array.from({ length: max + 1 }, (_, i) => `<option value="${i}">${i}</option>`).join("");
+  return (
+    `<label class="dmg-ctl" data-area="${area}" style="left:${left}%;top:${top}%">` +
+    `<span class="dmg-name">${name}</span><span class="dmg-hits">${hits}</span>` +
+    `<select aria-label="${name} damage">${opts}</select></label>`
+  );
+}
 
 /** True when this card should use the biped silhouette doll. */
 export function isBipedDoll(card: OverrideCard): boolean {
@@ -101,19 +108,20 @@ export function bipedDoll(card: OverrideCard): string {
     loc("rl", [189, 198, 38, 66], [193, 266, 32, 86], a.rightLeg, s.rightLeg) +
     loc("tr", [144, 384, 52, 20], [0, 0, 0, 0], a.rear, 0);
 
-  const labels =
-    lbl(170, 12, "HEAD", "(12)") +
-    lbl(28, 150, "L ARM", "(10,11)") +
-    lbl(312, 150, "R ARM", "(3,4)") +
-    lbl(170, 190, "TORSO", "(6,7,8)") +
-    lbl(72, 312, "L LEG", "(9)") +
-    lbl(268, 312, "R LEG", "(5)") +
-    lbl(170, 426, "TORSO REAR", "(2,12)");
-
   const legend =
     `<circle class="bpip armor" cx="6" cy="456" r="4.5"/><text class="bdoll-lbl" x="15" y="459" text-anchor="start">armor</text>` +
     `<rect class="bpip struct" x="62" y="451" width="9" height="9"/><text class="bdoll-lbl" x="76" y="459" text-anchor="start">structure</text>`;
 
-  return `<svg class="bdoll" viewBox="-18 0 376 470" xmlns="http://www.w3.org/2000/svg">${seg}${dolls}${labels}${legend}</svg>
-  <p class="mdoll-legend">Armor (circles) over Structure (squares) · click pips to track damage</p>`;
+  // Per-location damage dropdowns positioned over the doll (fill armor then structure).
+  const controls =
+    ctl("hd", "HEAD", "12", a.head + s.head, 50, 4) +
+    ctl("la", "L ARM", "10,11", a.leftArm + s.leftArm, 8, 30) +
+    ctl("ra", "R ARM", "3,4", a.rightArm + s.rightArm, 92, 30) +
+    ctl("ct", "TORSO", "6,7,8", a.torso + s.torso, 50, 43) +
+    ctl("ll", "L LEG", "9", a.leftLeg + s.leftLeg, 16, 71) +
+    ctl("rl", "R LEG", "5", a.rightLeg + s.rightLeg, 84, 71) +
+    ctl("tr", "REAR", "2,12", a.rear, 50, 91);
+
+  return `<div class="bdoll-wrap"><svg class="bdoll" viewBox="-18 0 376 470" xmlns="http://www.w3.org/2000/svg">${seg}${dolls}${legend}</svg>${controls}</div>
+  <p class="mdoll-legend">Armor (circles) over Structure (squares) · set damage per part — lower the number to heal</p>`;
 }

@@ -907,12 +907,32 @@ footer {
 .mdoll-legend .hex { vertical-align: middle; }
 
 /* Biped record-sheet paper doll (SVG silhouette + circle armor / square structure). */
-svg.bdoll { display: block; width: 100%; max-width: 460px; height: auto; margin: 0.3rem auto 0; }
+.bdoll-wrap { position: relative; width: 100%; max-width: 460px; margin: 0.3rem auto 0; }
+svg.bdoll { display: block; width: 100%; height: auto; }
 svg.bdoll .bpip { fill: #fff; stroke: #2c2c28; stroke-width: 1; }
 svg.bdoll .bdoll-lbl { font-size: 9px; font-weight: 800; fill: #222; text-anchor: middle; }
-svg.bdoll .bdoll-hits { font-size: 7.5px; font-weight: 600; fill: #555; text-anchor: middle; }
 .bpip.pip-hit { fill: #c0392b !important; }
-.force-play svg.bdoll .bpip { cursor: pointer; }
+/* Per-location damage dropdowns overlaid on the doll. */
+.dmg-ctl {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  pointer-events: none; /* only the select itself is interactive */
+}
+.dmg-name { font-size: 0.58rem; font-weight: 800; line-height: 1.05; background: rgba(244, 244, 241, 0.92); padding: 0 3px; border-radius: 3px; }
+.dmg-hits { font-size: 0.5rem; color: #555; line-height: 1; background: rgba(244, 244, 241, 0.92); border-radius: 3px; }
+.dmg-ctl select {
+  pointer-events: auto;
+  font-size: 0.85rem;
+  padding: 2px 1px;
+  border: 1px solid #777;
+  border-radius: 5px;
+  background: #fff;
+  color: #15171c;
+}
 .mech-sheet .warnings { color: #b03020; padding-left: 1.1rem; }
 
 /* ---- Combat Vehicle facing armor diagram --------------------------------- */
