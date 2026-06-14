@@ -957,7 +957,7 @@ output.addEventListener("click", (e) => {
     applyDamageMarks();
     return;
   }
-  const pip = t.closest<HTMLElement>(".hex, .pip, .ms-body");
+  const pip = t.closest<HTMLElement>(".hex, .pip, .ms-body, .bpip");
   const grp = pip?.closest<HTMLElement>(".hexrow, .pips, .inf-pips");
   if (pip?.dataset.di != null && grp?.dataset.dg != null) {
     u.damage ??= {};

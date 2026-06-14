@@ -10,6 +10,7 @@
 
 import { abbreviatedTicLabel, ticHeat } from "../core/index.js";
 import type { OverrideCard, RangeBrackets, Tic } from "../core/index.js";
+import { bipedDoll, isBipedDoll } from "./biped-doll.js";
 
 /** Escape text for safe insertion into HTML. */
 function esc(s: string | number): string {
@@ -207,7 +208,7 @@ export function renderMechCard(card: OverrideCard): string {
           </div>
           <div class="ms-wordmark">B<span class="ms-wm-a">▲</span>TTLETECH<br><b>OVERRIDE</b></div>
         </div>
-        ${paperDoll(card)}
+        ${isBipedDoll(card) ? bipedDoll(card) : paperDoll(card)}
       </div>
     </div>
   </article>`;
