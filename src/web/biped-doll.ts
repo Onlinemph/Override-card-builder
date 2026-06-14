@@ -120,7 +120,7 @@ export function bipedDoll(card: OverrideCard): string {
     ctl("ct", "TORSO", "6,7,8", a.torso + s.torso, 50, 43) +
     ctl("ll", "L LEG", "9", a.leftLeg + s.leftLeg, 16, 71) +
     ctl("rl", "R LEG", "5", a.rightLeg + s.rightLeg, 84, 71) +
-    ctl("tr", "REAR", "2,12", a.rear, 50, 91);
+    ctl("tr", "REAR", "2,12", a.rear + s.torso, 50, 91); // rear armor bleeds into torso structure
 
   return `<div class="bdoll-wrap"><svg class="bdoll" viewBox="-18 0 376 470" xmlns="http://www.w3.org/2000/svg">${seg}${dolls}${legend}</svg>${controls}</div>
   <p class="mdoll-legend">Armor (circles) over Structure (squares) · set damage per part — lower the number to heal</p>`;

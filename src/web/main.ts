@@ -860,6 +860,9 @@ function applyDamageMarks(): void {
   // when the total reaches armor+structure (all structure gone).
   const bdoll = output.querySelector<HTMLElement>("svg.bdoll");
   if (bdoll) {
+    // Rear armor bleeds into the (shared) torso structure once it's gone.
+    const rearArmorCount = bdoll.querySelector(".mloc.tr .hexrow")?.children.length ?? 0;
+    const structFromRear = Math.max(0, (dmg.loc?.tr ?? 0) - rearArmorCount);
     for (const mloc of Array.from(bdoll.querySelectorAll<HTMLElement>(".mloc"))) {
       const area = [...mloc.classList].find((c) => c !== "mloc");
       if (!area) continue;
@@ -868,8 +871,10 @@ function applyDamageMarks(): void {
       const structPips = rows[1] ? (Array.from(rows[1].children) as HTMLElement[]) : [];
       const d = dmg.loc?.[area] ?? 0;
       armorPips.forEach((p, k) => p.classList.toggle("pip-hit", k < Math.min(d, armorPips.length)));
-      structPips.forEach((p, k) => p.classList.toggle("pip-hit", k < Math.max(0, d - armorPips.length)));
-      if (structPips.length > 0 && d >= armorPips.length + structPips.length) destroyed.add(area);
+      // Structure consumed: front overflow + (torso only) rear overflow.
+      const structHit = Math.max(0, d - armorPips.length) + (area === "ct" ? structFromRear : 0);
+      structPips.forEach((p, k) => p.classList.toggle("pip-hit", k < Math.min(structHit, structPips.length)));
+      if (structPips.length > 0 && structHit >= structPips.length) destroyed.add(area);
       const sel = output.querySelector<HTMLSelectElement>(`.dmg-ctl[data-area="${area}"] select`);
       if (sel) sel.value = String(d);
     }
