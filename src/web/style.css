@@ -912,6 +912,35 @@ svg.bdoll { display: block; width: 100%; height: auto; }
 svg.bdoll .bpip { fill: #fff; stroke: #2c2c28; stroke-width: 1; }
 svg.bdoll .bdoll-lbl { font-size: 9px; font-weight: 800; fill: #222; text-anchor: middle; }
 .bpip.pip-hit { fill: #c0392b !important; }
+
+/* Tabletop assistant: heat dial + to-hit helper (play mode). */
+.ttop {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.8rem;
+  margin: 0.8rem 0;
+  padding: 0.6rem 0.8rem;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.ttop-heat, .ttop-tohit { display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; }
+.ttop-h { font-weight: 800; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.03em; color: var(--muted); }
+.heat-btn { padding: 0.2rem 0.55rem; font-size: 0.9rem; }
+.heat-val { font-size: 1.2rem; font-weight: 800; min-width: 1.4rem; text-align: center; font-variant-numeric: tabular-nums; }
+.heat-eff { font-size: 0.78rem; color: #c0392b; font-weight: 600; }
+.ttop-tohit label { font-size: 0.72rem; color: var(--muted); display: inline-flex; align-items: center; gap: 0.25rem; }
+.ttop-tohit select, .th-num {
+  background: var(--panel-2); color: var(--ink); border: 1px solid var(--line);
+  border-radius: 5px; padding: 0.25rem 0.35rem; font: inherit; font-size: 0.85rem;
+}
+.th-num { width: 3rem; }
+.tohit-out { flex: 1 1 100%; }
+.tohit-tbl { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+.tohit-tbl td { padding: 0.15rem 0.4rem; border-bottom: 1px solid var(--line); }
+.tohit-tbl td.num { text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
+/* Active heat row highlighted on the card's heat scale. */
+.hs-row.hs-active { background: rgba(192, 57, 24, 0.16); outline: 1.5px solid #c0392b; border-radius: 3px; }
 /* Per-location damage dropdowns overlaid on the doll. */
 .dmg-ctl {
   position: absolute;

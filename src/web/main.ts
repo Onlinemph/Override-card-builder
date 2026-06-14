@@ -7,6 +7,7 @@
 import "./style.css";
 
 import {
+  abbreviatedTicLabel,
   convertAny,
   dropshipWeaponRows,
   fighterWeaponRows,
@@ -197,7 +198,7 @@ async function initBrowser(): Promise<void> {
 
   render();
 }
-import type { AnyCard, CardWeapon, Tic } from "../core/index.js";
+import type { AnyCard, CardWeapon, RangeBrackets, Tic } from "../core/index.js";
 
 // Injected by Vite (see vite.config.ts).
 declare const __BUILD_TIME__: string;
@@ -837,9 +838,12 @@ function renderForceEdit(): void {
     raw = rawCardHtml(r.result);
   }
   const card = withSkills(withBv(raw, unitBv(u)), u.gunnery ?? 4, u.piloting ?? 5);
+  editWeapons = weaponsForToHit(r.result); // for the to-hit table (reflects current TIC grouping)
+  editSinks = unitSinks(r.result);
   output.classList.add("force-play"); // enables pip cursors / damage tracking
-  output.innerHTML = forceEditBar(u) + skillsEditorHtml(u) + card + ticEditorHtml;
+  output.innerHTML = forceEditBar(u) + skillsEditorHtml(u) + card + tabletopPanel(u, r.result) + ticEditorHtml;
   applyDamageMarks();
+  updateTabletop();
 }
 
 // ---- Damage tracking (Tier 1): clickable armor/structure/condition pips -----
@@ -952,6 +956,87 @@ const LOC_TO_AREA: Readonly<Record<string, string>> = {
   LA: "la", RA: "ra", LL: "ll", RL: "rl", H: "hd", T: "ct", CL: "cl",
 };
 
+// ---- Tabletop assistant: heat dial + to-hit helper ------------------------
+type WeaponRangeRow = { label: string; range: RangeBrackets | null };
+let editWeapons: WeaponRangeRow[] = []; // weapons of the edited unit (for to-hit)
+let editSinks = 0; // its heat dissipation (for the Cool button)
+
+const HEAT_EFFECT = [
+  "No effects",
+  "−2 Move / −1 TMM",
+  "+1 Ranged Attack Mod",
+  "Shutdown (avoid 8+)",
+  "Ammo Explosion (avoid 8+)",
+  "Automatic Shutdown",
+];
+
+/** The unit's weapons with range brackets, for the to-hit table. */
+function weaponsForToHit(result: AnyCard): WeaponRangeRow[] {
+  if (result.kind === "mech")
+    return result.card.tics.map((t) => ({ label: abbreviatedTicLabel(t, result.card.techBase), range: t.range }));
+  if (result.kind === "vehicle" || result.kind === "fighter" || result.kind === "protomech" || result.kind === "dropship")
+    return result.card.weapons.map((w) => ({ label: w.label, range: w.range }));
+  return [];
+}
+
+/** Heat dissipation (sinks) for the unit, or 0. */
+function unitSinks(result: AnyCard): number {
+  const c = result.card as { heatDissipation?: number; sinks?: number };
+  return c.heatDissipation ?? c.sinks ?? 0;
+}
+
+/** Heat dial (mech/fighter/dropship) + per-weapon to-hit helper for play mode. */
+function tabletopPanel(u: ForceUnit, result: AnyCard): string {
+  const hasHeat = result.kind === "mech" || result.kind === "fighter" || result.kind === "dropship";
+  if (!hasHeat && editWeapons.length === 0) return "";
+  const heat = u.damage?.heat ?? 0;
+  const heatBlock = hasHeat
+    ? `<div class="ttop-heat"><span class="ttop-h">Heat</span>
+        <button class="heat-btn" type="button" data-heat="-1">−</button>
+        <span class="heat-val">${heat}</span>
+        <button class="heat-btn" type="button" data-heat="1">+</button>
+        <button class="heat-btn" type="button" data-heat="cool">Cool −${editSinks}</button>
+        <span class="heat-eff"></span></div>`
+    : "";
+  const toHit = editWeapons.length
+    ? `<div class="ttop-tohit"><span class="ttop-h">To-hit</span>
+        <label>Range <select id="th-range"><option value="pb">PB</option><option value="s">S</option><option value="m" selected>M</option><option value="l">L</option><option value="x">X</option></select></label>
+        <label>Move <select id="th-move"><option value="0">Still</option><option value="1">Walk</option><option value="2">Run</option><option value="3">Jump</option></select></label>
+        <label>Tgt TMM <input id="th-tmm" type="number" value="0" class="th-num"></label>
+        <label>Other <input id="th-other" type="number" value="0" class="th-num"></label>
+        <div id="tohit-out" class="tohit-out"></div></div>`
+    : "";
+  return `<div class="ttop">${heatBlock}${toHit}</div>`;
+}
+
+/** Refresh the heat readout, heat-scale highlight, and the to-hit table. */
+function updateTabletop(): void {
+  if (editingForceIdx == null) return;
+  const u = force[editingForceIdx]!;
+  const heat = u.damage?.heat ?? 0;
+  const lvl = Math.max(0, Math.min(5, heat));
+  const hv = output.querySelector(".heat-val");
+  if (hv) hv.textContent = String(heat);
+  const eff = output.querySelector(".heat-eff");
+  if (eff) eff.textContent = HEAT_EFFECT[lvl] ?? "";
+  output.querySelectorAll<HTMLElement>(".heatscale .hs-row").forEach((row) => {
+    row.classList.toggle("hs-active", Number(row.querySelector(".hs-n")?.textContent) === lvl);
+  });
+  const out = output.querySelector("#tohit-out");
+  if (!out) return;
+  const bracket = ((output.querySelector("#th-range") as HTMLSelectElement | null)?.value ?? "m") as keyof RangeBrackets;
+  const move = Number((output.querySelector("#th-move") as HTMLSelectElement | null)?.value) || 0;
+  const tmm = Number((output.querySelector("#th-tmm") as HTMLInputElement | null)?.value) || 0;
+  const other = Number((output.querySelector("#th-other") as HTMLInputElement | null)?.value) || 0;
+  const base = (u.gunnery ?? 4) + move + tmm + other + (heat >= 2 ? 1 : 0);
+  out.innerHTML = `<table class="tohit-tbl"><tbody>${editWeapons
+    .map((w) => {
+      const m = w.range ? w.range[bracket] : null;
+      return `<tr><td>${esc(w.label)}</td><td class="num">${m == null ? "—" : `${base + m}+`}</td></tr>`;
+    })
+    .join("")}</tbody></table>`;
+}
+
 /** A click toggles a pip "level": clicking the last-hit pip un-marks it. */
 const nextLevel = (cur: number, clicked: number): number => (cur === clicked + 1 ? clicked : clicked + 1);
 
@@ -963,6 +1048,16 @@ output.addEventListener("click", (e) => {
     delete u.damage;
     saveForce();
     applyDamageMarks();
+    updateTabletop();
+    return;
+  }
+  const hb = t.closest<HTMLElement>(".heat-btn");
+  if (hb?.dataset.heat) {
+    u.damage ??= {};
+    const cur = u.damage.heat ?? 0;
+    u.damage.heat = hb.dataset.heat === "cool" ? Math.max(0, cur - editSinks) : Math.max(0, cur + Number(hb.dataset.heat));
+    saveForce();
+    updateTabletop();
     return;
   }
   const cm = t.closest<HTMLElement>(".cm-pip");
@@ -1020,8 +1115,17 @@ function afterTicChange(): void {
 
 // Delegated editor controls (the panel is re-rendered on each change, so listen
 // on the stable `output` container rather than the transient selects/buttons).
+// To-hit inputs (range / move / TMM / other) recompute the table live.
+output.addEventListener("input", (e) => {
+  const t = e.target as HTMLElement;
+  if (editingForceIdx != null && t.id.startsWith("th-")) updateTabletop();
+});
 output.addEventListener("change", (e) => {
   const target = e.target as HTMLElement;
+  if (editingForceIdx != null && target.id.startsWith("th-")) {
+    updateTabletop();
+    return;
+  }
   // Biped-doll per-location damage dropdown.
   const dctl = target.closest<HTMLElement>(".dmg-ctl");
   if (editingForceIdx != null && dctl?.dataset.area) {
@@ -1090,6 +1194,8 @@ interface ForceUnit {
     gyro?: number;
     avionics?: number;
     tics?: number[];
+    /** Current heat level (tabletop assistant). */
+    heat?: number;
   };
 }
 /** A named force: a roster of units the user can save, switch, export, share. */
