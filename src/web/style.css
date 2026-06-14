@@ -1225,6 +1225,25 @@ svg.bdoll .bdoll-lbl { font-size: 9px; font-weight: 800; fill: #222; text-anchor
 .rat-scn-h { font-weight: 700; font-size: 0.8rem; }
 .rat-scn-lbl { font-size: 0.8rem; color: var(--muted); }
 .rat-status { font-size: 0.8rem; }
+
+/* Pilot stable. */
+.pilot-stable { margin-top: 0.6rem; border-top: 1px solid var(--line); padding-top: 0.6rem; }
+.pilot-list { display: flex; flex-direction: column; gap: 0.3rem; margin-bottom: 0.6rem; }
+.pilot-item { display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; }
+.pilot-name { font-weight: 700; }
+.pilot-sk { color: var(--accent); font-variant-numeric: tabular-nums; }
+.pilot-ab { color: var(--muted); font-size: 0.78rem; font-style: italic; }
+.pilot-edit, .pilot-del { margin-left: auto; padding: 0.1rem 0.45rem; font-size: 0.75rem; }
+.pilot-del { margin-left: 0; }
+.pilot-form { display: flex; gap: 0.4rem; flex-wrap: wrap; align-items: center; }
+.pf-name, .pf-abil {
+  background: var(--panel-2); color: var(--ink); border: 1px solid var(--line);
+  border-radius: 6px; padding: 0.3rem 0.45rem; font: inherit; font-size: 0.85rem;
+}
+.pf-name { flex: 1 1 8rem; }
+.pf-abil { flex: 2 1 12rem; }
+.pf-num { width: 2.8rem; background: var(--panel-2); color: var(--ink); border: 1px solid var(--line); border-radius: 6px; padding: 0.3rem 0.35rem; font: inherit; }
+.pilot-abil { font-size: 0.75rem; color: var(--muted); font-style: italic; align-self: center; }
 .force-actions {
   margin-left: auto;
   display: flex;

@@ -119,6 +119,19 @@
             <span id="rat-status" class="muted rat-status"></span>
           </div>
         </div>
+        <div class="pilot-stable">
+          <button id="pilot-toggle" type="button" class="rat-toggle" aria-expanded="false">👤 Pilot stable</button>
+          <div id="pilot-body" class="rat-body" hidden>
+            <div id="pilot-list" class="pilot-list"></div>
+            <div class="pilot-form">
+              <input id="pf-name" placeholder="Pilot name" class="pf-name" />
+              <label class="rat-count-label">G <input id="pf-gun" type="number" min="0" max="8" value="4" class="pf-num" /></label>
+              <label class="rat-count-label">P <input id="pf-pil" type="number" min="0" max="8" value="5" class="pf-num" /></label>
+              <input id="pf-abil" placeholder="abilities / notes (optional)" class="pf-abil" />
+              <button id="pf-save" type="button">Add pilot</button>
+            </div>
+          </div>
+        </div>
       </section>
 
       <section id="output" class="output" aria-live="polite"></section>

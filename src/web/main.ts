@@ -584,9 +584,38 @@ function adjustedBv(base: number | undefined, gunnery = 4, piloting = 5): number
   return Math.round(base * BV_SKILL_MULT[clampIdx(gunnery)]![clampIdx(piloting)]!);
 }
 
-/** A force unit's printed BV: official BV adjusted for its pilot skills. */
+/** A force unit's printed BV: official BV adjusted for its (effective) skills. */
 function unitBv(u: ForceUnit): number | undefined {
-  return adjustedBv(lookupBv(u.name, u.file), u.gunnery ?? 4, u.piloting ?? 5);
+  const sk = unitSkills(u);
+  return adjustedBv(lookupBv(u.name, u.file), sk.gunnery, sk.piloting);
+}
+
+// ---- Pilot stable: named pilots saved once, assignable across forces -------
+interface Pilot { id: string; name: string; gunnery: number; piloting: number; abilities?: string }
+const PILOTS_KEY = "mtf2override.pilots";
+function loadPilots(): Pilot[] {
+  try {
+    const p = JSON.parse(localStorage.getItem(PILOTS_KEY) ?? "[]") as unknown;
+    return Array.isArray(p) ? (p as Pilot[]) : [];
+  } catch {
+    return [];
+  }
+}
+let pilots: Pilot[] = loadPilots();
+function savePilots(): void {
+  try {
+    localStorage.setItem(PILOTS_KEY, JSON.stringify(pilots));
+  } catch {
+    /* storage unavailable */
+  }
+}
+function pilotFor(u: ForceUnit): Pilot | undefined {
+  return u.pilotId ? pilots.find((p) => p.id === u.pilotId) : undefined;
+}
+/** Effective skills for a unit: its assigned pilot's, else its own (default 4/5). */
+function unitSkills(u: ForceUnit): { gunnery: number; piloting: number } {
+  const p = pilotFor(u);
+  return { gunnery: p?.gunnery ?? u.gunnery ?? 4, piloting: p?.piloting ?? u.piloting ?? 5 };
 }
 
 // ---- MUL availability (faction × era) -------------------------------------
@@ -795,9 +824,19 @@ function forceEditBar(u: ForceUnit): string {
 }
 
 function skillsEditorHtml(u: ForceUnit): string {
+  const p = pilotFor(u);
+  const sk = unitSkills(u);
+  const opts =
+    `<option value="">— Custom —</option>` +
+    pilots
+      .map((pl) => `<option value="${pl.id}"${pl.id === u.pilotId ? " selected" : ""}>${esc(pl.name)} (${pl.gunnery}/${pl.piloting})</option>`)
+      .join("");
+  const dis = p ? " disabled" : "";
   return `<div class="skills-editor">
-    <label>Gunnery <input type="number" id="sk-gun" min="0" max="8" step="1" value="${u.gunnery ?? 4}"></label>
-    <label>Piloting <input type="number" id="sk-pil" min="0" max="8" step="1" value="${u.piloting ?? 5}"></label>
+    <label>Pilot <select id="pilot-pick">${opts}</select></label>
+    <label>Gunnery <input type="number" id="sk-gun" min="0" max="8" step="1" value="${sk.gunnery}"${dis}></label>
+    <label>Piloting <input type="number" id="sk-pil" min="0" max="8" step="1" value="${sk.piloting}"${dis}></label>
+    ${p?.abilities ? `<span class="pilot-abil">${esc(p.abilities)}</span>` : ""}
   </div>`;
 }
 
@@ -837,7 +876,8 @@ function renderForceEdit(): void {
     edit = null; // BA / infantry: skills only, no TICs
     raw = rawCardHtml(r.result);
   }
-  const card = withSkills(withBv(raw, unitBv(u)), u.gunnery ?? 4, u.piloting ?? 5);
+  const sk = unitSkills(u);
+  const card = withSkills(withBv(raw, unitBv(u)), sk.gunnery, sk.piloting);
   editWeapons = weaponsForToHit(r.result); // for the to-hit table (reflects current TIC grouping)
   editSinks = unitSinks(r.result);
   output.classList.add("force-play"); // enables pip cursors / damage tracking
@@ -1028,7 +1068,7 @@ function updateTabletop(): void {
   const move = Number((output.querySelector("#th-move") as HTMLSelectElement | null)?.value) || 0;
   const tmm = Number((output.querySelector("#th-tmm") as HTMLInputElement | null)?.value) || 0;
   const other = Number((output.querySelector("#th-other") as HTMLInputElement | null)?.value) || 0;
-  const base = (u.gunnery ?? 4) + move + tmm + other + (heat >= 2 ? 1 : 0);
+  const base = unitSkills(u).gunnery + move + tmm + other + (heat >= 2 ? 1 : 0);
   out.innerHTML = `<table class="tohit-tbl"><tbody>${editWeapons
     .map((w) => {
       const m = w.range ? w.range[bracket] : null;
@@ -1137,7 +1177,15 @@ output.addEventListener("change", (e) => {
     applyDamageMarks();
     return;
   }
-  // Skill inputs (force editor): persist onto the force unit.
+  // Assign a stable pilot to the force unit.
+  if (editingForceIdx != null && target.id === "pilot-pick") {
+    force[editingForceIdx]!.pilotId = (target as HTMLSelectElement).value || undefined;
+    saveForce();
+    renderForceEdit();
+    renderForce();
+    return;
+  }
+  // Skill inputs (force editor): persist onto the force unit (custom pilot only).
   if (editingForceIdx != null && (target.id === "sk-gun" || target.id === "sk-pil")) {
     const val = clampSkill((target as HTMLInputElement).value);
     if (target.id === "sk-gun") force[editingForceIdx]!.gunnery = val;
@@ -1178,9 +1226,11 @@ interface ForceUnit {
   name: string;
   text: string;
   file?: string;
-  /** Pilot skills (default 4 / 5 when unset). */
+  /** Pilot skills (default 4 / 5 when unset). Overridden by an assigned pilot. */
   gunnery?: number;
   piloting?: number;
+  /** Assigned stable pilot (id); its skills take precedence over the unit's. */
+  pilotId?: string;
   /** Saved TIC grouping override (weapon-index groups) from the editor. */
   grouping?: number[][];
   /** Live damage state (Tier-1 tracking): hit-pip counts per pip group, crew
@@ -1352,7 +1402,8 @@ function forceCardHtml(u: ForceUnit): string {
   if (!r.ok) return r.html;
   applySavedGrouping(r.result, u.grouping);
   (r.result.card as { bv?: number }).bv = unitBv(u); // skill-adjusted BV on the badge
-  return withSkills(cardHtml(r.result), u.gunnery ?? 4, u.piloting ?? 5);
+  const sk = unitSkills(u);
+  return withSkills(cardHtml(r.result), sk.gunnery, sk.piloting);
 }
 
 /** Fit every card into its fixed quarter-page cell, measured off-screen.
@@ -1784,6 +1835,85 @@ document.getElementById("rat-lance")?.addEventListener("click", () => {
   }
   void addRolledUnits(picks);
 });
+
+// ---- Pilot stable UI ------------------------------------------------------
+let editingPilotId: string | null = null;
+const pf = (id: string): HTMLInputElement | null => document.getElementById(id) as HTMLInputElement | null;
+
+function renderPilots(): void {
+  const list = document.getElementById("pilot-list");
+  if (!list) return;
+  list.innerHTML = pilots.length
+    ? pilots
+        .map(
+          (p) =>
+            `<div class="pilot-item"><span class="pilot-name">${esc(p.name)}</span> <span class="pilot-sk">${p.gunnery}/${p.piloting}</span>` +
+            (p.abilities ? ` <span class="pilot-ab">${esc(p.abilities)}</span>` : "") +
+            `<button class="pilot-edit" type="button" data-id="${p.id}">edit</button>` +
+            `<button class="pilot-del" type="button" data-id="${p.id}" aria-label="Delete ${esc(p.name)}">✕</button></div>`,
+        )
+        .join("")
+    : `<p class="muted force-empty">No pilots yet — add one below, then assign it to a unit in the editor.</p>`;
+}
+
+function refreshAfterPilotChange(): void {
+  if (editingForceIdx != null) {
+    renderForceEdit();
+    renderForce();
+  }
+}
+
+function savePilotFromForm(): void {
+  const name = pf("pf-name")?.value.trim();
+  if (!name) return;
+  const gunnery = Math.max(0, Math.min(8, Math.round(Number(pf("pf-gun")?.value) || 4)));
+  const piloting = Math.max(0, Math.min(8, Math.round(Number(pf("pf-pil")?.value) || 5)));
+  const abilities = pf("pf-abil")?.value.trim() || undefined;
+  const existing = editingPilotId ? pilots.find((p) => p.id === editingPilotId) : undefined;
+  if (existing) Object.assign(existing, { name, gunnery, piloting, abilities });
+  else pilots.push({ id: `p${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`, name, gunnery, piloting, abilities });
+  editingPilotId = null;
+  savePilots();
+  renderPilots();
+  for (const id of ["pf-name", "pf-abil"]) if (pf(id)) pf(id)!.value = "";
+  const sb = document.getElementById("pf-save");
+  if (sb) sb.textContent = "Add pilot";
+  refreshAfterPilotChange(); // an edited pilot updates any assigned units
+}
+document.getElementById("pf-save")?.addEventListener("click", savePilotFromForm);
+document.getElementById("pilot-list")?.addEventListener("click", (e) => {
+  const t = e.target as HTMLElement;
+  const ed = t.closest<HTMLElement>(".pilot-edit");
+  if (ed?.dataset.id) {
+    const p = pilots.find((pl) => pl.id === ed.dataset.id);
+    if (!p) return;
+    editingPilotId = p.id;
+    if (pf("pf-name")) pf("pf-name")!.value = p.name;
+    if (pf("pf-gun")) pf("pf-gun")!.value = String(p.gunnery);
+    if (pf("pf-pil")) pf("pf-pil")!.value = String(p.piloting);
+    if (pf("pf-abil")) pf("pf-abil")!.value = p.abilities ?? "";
+    const sb = document.getElementById("pf-save");
+    if (sb) sb.textContent = "Save pilot";
+    return;
+  }
+  const del = t.closest<HTMLElement>(".pilot-del");
+  if (del?.dataset.id) {
+    pilots = pilots.filter((p) => p.id !== del.dataset.id);
+    savePilots();
+    renderPilots();
+    refreshAfterPilotChange();
+  }
+});
+document.getElementById("pilot-toggle")?.addEventListener("click", () => {
+  const body = document.getElementById("pilot-body");
+  const tg = document.getElementById("pilot-toggle");
+  if (!body || !tg) return;
+  const show = body.hasAttribute("hidden");
+  body.toggleAttribute("hidden", !show);
+  tg.setAttribute("aria-expanded", String(show));
+  if (show) renderPilots();
+});
+renderPilots();
 
 renderForce();
 // Load the BV index, then refresh the force panel so totals appear once it's in.
