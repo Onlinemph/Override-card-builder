@@ -563,18 +563,19 @@ function lookupBv(name: string, file?: string): number | undefined {
   return bvIndex[bvKey(name)];
 }
 
-// MUL design quirks ({ key -> [quirk, …] }, public/quirk-index.json), shown on
-// the card when the "Show quirks" option is on (a body class reveals them).
-let quirkIndex: Record<string, string[]> = {};
+// MUL design quirks (unit + weapon) — public/quirk-index.json, shown on the card
+// when the "Show quirks" option is on (a body class reveals the injected line).
+interface Quirks { u: string[]; w: string[] }
+let quirkIndex: Record<string, Quirks> = {};
 async function loadQuirkIndex(): Promise<void> {
   try {
     const resp = await fetch("./quirk-index.json");
-    if (resp.ok) quirkIndex = (await resp.json()) as Record<string, string[]>;
+    if (resp.ok) quirkIndex = (await resp.json()) as Record<string, Quirks>;
   } catch {
     /* no quirk data — the line just never appears */
   }
 }
-function lookupQuirks(name: string, file?: string): string[] | undefined {
+function lookupQuirks(name: string, file?: string): Quirks | undefined {
   if (file) {
     const byFile = quirkIndex[bvKey(fileStem(file))];
     if (byFile) return byFile;
@@ -582,9 +583,12 @@ function lookupQuirks(name: string, file?: string): string[] | undefined {
   return quirkIndex[bvKey(name)];
 }
 /** Inject a (CSS-hidden) quirks line after the card title; revealed by body.show-quirks. */
-function withQuirks(html: string, quirks: string[] | undefined): string {
-  if (!quirks || quirks.length === 0) return html;
-  const line = `<div class="card-quirks"><b>Quirks:</b> ${quirks.map(esc).join(", ")}</div>`;
+function withQuirks(html: string, quirks: Quirks | undefined): string {
+  if (!quirks || (quirks.u.length === 0 && quirks.w.length === 0)) return html;
+  const parts: string[] = [];
+  if (quirks.u.length) parts.push(`<b>Quirks:</b> ${quirks.u.map(esc).join(", ")}`);
+  if (quirks.w.length) parts.push(`<b>Weapon:</b> ${quirks.w.map(esc).join(", ")}`);
+  const line = `<div class="card-quirks">${parts.join(' <span class="q-sep">·</span> ')}</div>`;
   return html.replace(/(<div class="(?:ms-title|ba-title)\b[^>]*>[\s\S]*?<\/div>)/, `$1${line}`);
 }
 
