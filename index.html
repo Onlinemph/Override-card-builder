@@ -109,6 +109,13 @@
               <button id="rat-roll" type="button">Roll table</button>
               <button id="rat-lance" type="button" title="Roll one 'Mech per weight class from this faction">Roll lance</button>
             </div>
+            <div class="rat-row rat-scenario-row">
+              <span class="rat-scn-h">Scenario:</span>
+              <span class="rat-scn-lbl">vs</span>
+              <select id="rat-faction-b" class="browse-cat" aria-label="Opposing faction"></select>
+              <label class="rat-count-label">~BV <input id="rat-bv" type="number" min="500" step="500" value="5000" class="rat-bv" /></label>
+              <button id="rat-scenario" type="button" title="Roll two BV-matched forces (faction above vs this one)">Generate scenario</button>
+            </div>
             <span id="rat-status" class="muted rat-status"></span>
           </div>
         </div>

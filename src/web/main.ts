@@ -1608,7 +1608,9 @@ function fillRatTables(): void {
 }
 function fillRatFactions(): void {
   const src = ratIndex?.sources[Number(ratSourceSel()?.value)];
-  fillSelect(ratFactionSel(), (src?.factions ?? []).map((f) => (f.side ? `${f.name} (${f.side})` : f.name)));
+  const labels = (src?.factions ?? []).map((f) => (f.side ? `${f.name} (${f.side})` : f.name));
+  fillSelect(ratFactionSel(), labels);
+  fillSelect(document.getElementById("rat-faction-b") as HTMLSelectElement | null, labels);
   fillRatTables();
 }
 
@@ -1649,6 +1651,85 @@ async function addRolledUnits(unitIdxs: number[]): Promise<void> {
   renderForce();
   ratStatus(`Rolled ${added} unit${added === 1 ? "" : "s"} into "${forces[activeForce]!.name}".`);
 }
+
+// ---- Scenario generator: two BV-matched forces from a faction's RATs --------
+
+/** Roll a faction's force (weighted from its 'Mech tables, with replacement)
+ * until it reaches ~targetBv. Only BV-known units count; returns picks + total. */
+function rollForceToBv(faction: RatFaction, targetBv: number): { picks: number[]; bv: number } {
+  let pool = faction.tables.filter((t) => t.type === "Mek").flatMap((t) => t.e);
+  if (pool.length === 0) pool = faction.tables.flatMap((t) => t.e);
+  const total = pool.reduce((s, [, w]) => s + w, 0);
+  const pick = (): number => {
+    let r = Math.random() * total;
+    for (const [ui, w] of pool) {
+      r -= w;
+      if (r < 0) return ui;
+    }
+    return pool[pool.length - 1]![0];
+  };
+  const picks: number[] = [];
+  let bv = 0;
+  for (let guard = 0; bv < targetBv && guard < 400 && total > 0; guard++) {
+    const ui = pick();
+    const u = ratIndex!.units[ui];
+    const b = u && lookupBv(u.n, u.p);
+    if (!b) continue; // skip unmatched units so the BV total is meaningful
+    picks.push(ui);
+    bv += b;
+  }
+  return { picks, bv };
+}
+
+/** Convert a list of RAT unit indices into ForceUnits (fetch each source once). */
+async function buildForceUnits(picks: number[]): Promise<ForceUnit[]> {
+  if (!ratIndex) return [];
+  const cache = new Map<string, string | null>();
+  const units: ForceUnit[] = [];
+  for (const ui of picks) {
+    const u = ratIndex.units[ui];
+    if (!u) continue;
+    if (!cache.has(u.p)) {
+      try {
+        const resp = await fetch(`./units/${u.p}`);
+        cache.set(u.p, resp.ok ? await resp.text() : null);
+      } catch {
+        cache.set(u.p, null);
+      }
+    }
+    const text = cache.get(u.p);
+    if (text) units.push({ name: u.n, text, file: u.p });
+  }
+  return units;
+}
+
+/** Roll two BV-matched opposing forces (faction A vs faction B) into new forces. */
+async function generateScenario(): Promise<void> {
+  if (!ratIndex) return;
+  const src = ratIndex.sources[Number(ratSourceSel()?.value)];
+  const facA = src?.factions[Number(ratFactionSel()?.value)];
+  const facB = src?.factions[Number((document.getElementById("rat-faction-b") as HTMLSelectElement | null)?.value)];
+  if (!src || !facA || !facB) return;
+  const target = Math.max(500, Math.min(30000, Number((document.getElementById("rat-bv") as HTMLInputElement)?.value) || 5000));
+  ratStatus("Rolling scenario…");
+  const a = rollForceToBv(facA, target);
+  const b = rollForceToBv(facB, a.bv); // match side B to side A's actual BV
+  const era = src.name.replace(/^\([^)]*\)\s*-?\s*/, "").trim() || src.name;
+  const unitsA = await buildForceUnits(a.picks);
+  const unitsB = await buildForceUnits(b.picks);
+  if (unitsA.length === 0 || unitsB.length === 0) {
+    ratStatus("Couldn't roll a scenario for those factions.");
+    return;
+  }
+  forces.push({ name: `${facA.name} · ${era}`, units: unitsA });
+  forces.push({ name: `${facB.name} · ${era}`, units: unitsB });
+  setActiveForce(forces.length - 2); // open side A
+  ratStatus(
+    `${facA.name}: ${a.bv.toLocaleString()} BV / ${unitsA.length} units  vs  ` +
+      `${facB.name}: ${b.bv.toLocaleString()} BV / ${unitsB.length} units (switch with the force picker)`,
+  );
+}
+document.getElementById("rat-scenario")?.addEventListener("click", () => void generateScenario());
 
 let ratLoaded = false;
 async function openRatGenerator(): Promise<void> {

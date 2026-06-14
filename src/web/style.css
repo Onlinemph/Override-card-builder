@@ -1210,7 +1210,7 @@ svg.bdoll .bdoll-lbl { font-size: 9px; font-weight: 800; fill: #222; text-anchor
 .rat-body { margin-top: 0.6rem; display: flex; flex-direction: column; gap: 0.5rem; }
 .rat-row { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
 .rat-count-label { font-size: 0.8rem; color: var(--muted); }
-.rat-count {
+.rat-count, .rat-bv {
   width: 3.2rem;
   background: var(--panel-2);
   color: var(--ink);
@@ -1220,6 +1220,10 @@ svg.bdoll .bdoll-lbl { font-size: 9px; font-weight: 800; fill: #222; text-anchor
   font: inherit;
   margin-left: 0.3rem;
 }
+.rat-bv { width: 4.2rem; }
+.rat-scenario-row { border-top: 1px dashed var(--line); padding-top: 0.5rem; margin-top: 0.2rem; }
+.rat-scn-h { font-weight: 700; font-size: 0.8rem; }
+.rat-scn-lbl { font-size: 0.8rem; color: var(--muted); }
 .rat-status { font-size: 0.8rem; }
 .force-actions {
   margin-left: auto;
