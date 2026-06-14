@@ -37,6 +37,14 @@ html = html.replace(
 writeFileSync(indexPath, html);
 rmSync(join(dir, "assets"), { recursive: true, force: true });
 
+// Emit the service worker from its source (scripts/sw-source.js — kept OUT of
+// public/ so Vite never copies it and races this write), stamping a unique cache
+// version per build. The changed sw.js makes the browser install a new worker,
+// whose activate step deletes old caches -> stale bundled MUL data can't linger.
+const swVersion = new Date().toISOString().replace(/[^0-9]/g, "").slice(0, 14);
+const swSource = readFileSync(join("scripts", "sw-source.js"), "utf8");
+writeFileSync(join(dir, "sw.js"), swSource.replace("__SW_VERSION__", swVersion));
+
 // GitHub Pages runs Jekyll, which silently drops files/dirs beginning with "_"
 // (e.g. units/Mechs/.../_Gestalt_ D2X-G.mtf -> 404). An empty .nojekyll marker
 // disables Jekyll so every unit file is served verbatim.
