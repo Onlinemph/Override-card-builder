@@ -59,8 +59,8 @@ function loc(area: string, armorZone: Zone, structZone: Zone, armor: number, str
   );
 }
 
-const lbl = (x: number, y: number, t: string): string =>
-  `<text class="bdoll-lbl" x="${x}" y="${y}">${t}</text>`;
+const lbl = (x: number, y: number, name: string, hits: string): string =>
+  `<text class="bdoll-lbl" x="${x}" y="${y}">${name}</text><text class="bdoll-hits" x="${x}" y="${y + 9}">${hits}</text>`;
 
 /** True when this card should use the biped silhouette doll. */
 export function isBipedDoll(card: OverrideCard): boolean {
@@ -102,18 +102,18 @@ export function bipedDoll(card: OverrideCard): string {
     loc("tr", [144, 384, 52, 20], [0, 0, 0, 0], a.rear, 0);
 
   const labels =
-    lbl(170, 16, "HEAD (12)") +
-    lbl(78, 96, "L ARM (10,11)") +
-    lbl(262, 96, "R ARM (3,4)") +
-    lbl(170, 198, "TORSO (6,7,8)") +
-    lbl(80, 368, "L LEG (9)") +
-    lbl(260, 368, "R LEG (5)") +
-    lbl(170, 420, "TORSO REAR (2,12)");
+    lbl(170, 12, "HEAD", "(12)") +
+    lbl(28, 150, "L ARM", "(10,11)") +
+    lbl(312, 150, "R ARM", "(3,4)") +
+    lbl(170, 190, "TORSO", "(6,7,8)") +
+    lbl(72, 312, "L LEG", "(9)") +
+    lbl(268, 312, "R LEG", "(5)") +
+    lbl(170, 426, "TORSO REAR", "(2,12)");
 
   const legend =
-    `<circle class="bpip armor" cx="22" cy="456" r="4"/><text class="bdoll-lbl" x="30" y="459" text-anchor="start">armor</text>` +
-    `<rect class="bpip struct" x="78" y="452" width="8" height="8"/><text class="bdoll-lbl" x="90" y="459" text-anchor="start">structure</text>`;
+    `<circle class="bpip armor" cx="6" cy="456" r="4.5"/><text class="bdoll-lbl" x="15" y="459" text-anchor="start">armor</text>` +
+    `<rect class="bpip struct" x="62" y="451" width="9" height="9"/><text class="bdoll-lbl" x="76" y="459" text-anchor="start">structure</text>`;
 
-  return `<svg class="bdoll" viewBox="0 0 340 470" xmlns="http://www.w3.org/2000/svg">${seg}${dolls}${labels}${legend}</svg>
+  return `<svg class="bdoll" viewBox="-18 0 376 470" xmlns="http://www.w3.org/2000/svg">${seg}${dolls}${labels}${legend}</svg>
   <p class="mdoll-legend">Armor (circles) over Structure (squares) · click pips to track damage</p>`;
 }

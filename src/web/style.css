@@ -907,9 +907,10 @@ footer {
 .mdoll-legend .hex { vertical-align: middle; }
 
 /* Biped record-sheet paper doll (SVG silhouette + circle armor / square structure). */
-svg.bdoll { display: block; width: 100%; max-width: 210px; height: auto; margin: 0.3rem auto 0; }
+svg.bdoll { display: block; width: 100%; max-width: 300px; height: auto; margin: 0.3rem auto 0; }
 svg.bdoll .bpip { fill: #fff; stroke: #2c2c28; stroke-width: 1; }
-svg.bdoll .bdoll-lbl { font-size: 8px; font-weight: 700; fill: #333; text-anchor: middle; }
+svg.bdoll .bdoll-lbl { font-size: 9px; font-weight: 800; fill: #222; text-anchor: middle; }
+svg.bdoll .bdoll-hits { font-size: 7.5px; font-weight: 600; fill: #555; text-anchor: middle; }
 .bpip.pip-hit { fill: #c0392b !important; }
 .force-play svg.bdoll .bpip { cursor: pointer; }
 .mech-sheet .warnings { color: #b03020; padding-left: 1.1rem; }
