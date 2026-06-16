@@ -283,6 +283,10 @@ export interface CardEquipment {
   category: "ammo" | "equipment";
   /** Number of bins/slots (ammo and jump jets count; other gear is 1). */
   count: number;
+  /** Total rounds carried for an ammo line (sum across its bins), when the
+   * shots-per-ton is known. Used by the play-mode ammo counter; omitted for
+   * equipment and for ammo types without a canonical per-ton count. */
+  shots?: number;
   /** True for body-wide systems (Stealth Armor, signature gear) shown once, no location. */
   global?: boolean;
 }

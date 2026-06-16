@@ -939,6 +939,19 @@ svg.bdoll .bdoll-lbl { font-size: 9px; font-weight: 800; fill: #222; text-anchor
 .tohit-tbl { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
 .tohit-tbl td { padding: 0.15rem 0.4rem; border-bottom: 1px solid var(--line); }
 .tohit-tbl td.num { text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
+/* Ammo counter (play mode). */
+.ammo-track {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.9rem;
+  margin: 0.8rem 0; padding: 0.6rem 0.8rem;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
+}
+.ammo-row { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 0.85rem; }
+.ammo-name { font-weight: 600; }
+.ammo-btn { padding: 0.05rem 0.5rem; font-size: 1rem; line-height: 1.2; }
+.ammo-val { min-width: 4.2rem; text-align: center; font-variant-numeric: tabular-nums; }
+.ammo-rem { font-size: 1.1rem; font-weight: 800; }
+.ammo-tot { color: var(--muted); font-size: 0.78rem; }
+.ammo-val.ammo-empty .ammo-rem { color: #c0392b; }
 /* Active heat row highlighted on the card's heat scale. */
 .hs-row.hs-active { background: rgba(192, 57, 24, 0.16); outline: 1.5px solid #c0392b; border-radius: 3px; }
 /* Per-location damage dropdowns overlaid on the doll. */

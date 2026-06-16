@@ -953,6 +953,60 @@ export function groupIntoTics(weapons: CardWeapon[]): Tic[] {
 // Equipment surfacing: ammo (with bin count) and important gear, from crit slots.
 // ---------------------------------------------------------------------------
 
+/**
+ * Canonical rounds per ton of ammunition, by weapon type (Total Warfare /
+ * TechManual). Returns undefined for ammo we don't have a fixed count for — the
+ * card then falls back to showing tons. Reads the raw crit name (and its
+ * de-glued form) so MegaMek's glued BLK spellings still match, e.g.
+ * "ISRotaryAC5 Ammo", "ISLBXAC10 Ammo", "ISAMS Ammo".
+ */
+export function ammoShotsPerTon(rawName: string): number | undefined {
+  const s = `${rawName} ${normalizeWeaponName(rawName)}`.toLowerCase();
+  if (/\(os\)|one-?shot/.test(s)) return 1; // one-shot launchers carry a single round
+  const pick = (n: number, tbl: Record<number, number>): number | undefined => tbl[n];
+  const num = (re: RegExp): number => Number(s.match(re)?.[1] ?? 0);
+  const acClass: Record<number, number> = { 2: 45, 4: 25, 5: 20, 10: 10, 20: 5 };
+
+  // Gauss family (check the specials before the generic "gauss").
+  if (/light gauss/.test(s)) return 16;
+  if (/heavy ?gauss/.test(s)) return 4; // standard + Improved Heavy Gauss
+  if (/magshot/.test(s)) return 50;
+  if (/silver ?bullet|sb ?gauss/.test(s)) return 8;
+  if (/hyper-?assault|\bhag\b/.test(s)) return pick(num(/(?:hag|gauss rifle)\/?\s*(\d+)/), { 20: 6, 30: 4, 40: 3 });
+  if (/gauss/.test(s)) return 8;
+
+  // Autocannons: standard, LB-X, Ultra, Rotary, Light AC (all share the per-class count).
+  if (/autocannon|ultra ?ac|rotary ?ac|\blac\b|lbx?|\bac\b|ac\/|ac\d/.test(s)) {
+    const n = num(/(\d+)-x/) || num(/lbx?ac(\d+)/) || num(/rotaryac(\d+)/) || num(/ac\s*\/?\s*(\d+)/);
+    return pick(n, acClass);
+  }
+
+  // Missiles.
+  if (/mml/.test(s)) {
+    const n = num(/mml[ -]?(\d+)/);
+    return /lrm/.test(s) ? pick(n, { 3: 40, 5: 24, 7: 17, 9: 13 }) : pick(n, { 3: 33, 5: 20, 7: 14, 9: 11 });
+  }
+  if (/extended ?lrm|\belrm/.test(s)) return pick(num(/(?:extended ?lrm|elrm)[ -]?(\d+)/), { 5: 18, 10: 9, 15: 6, 20: 4 });
+  if (/\blr[mt]\b|lr[mt][ -]?\d/.test(s)) return pick(num(/lr[mt][ -]?(\d+)/), { 5: 24, 10: 12, 15: 8, 20: 6 });
+  if (/\bmrm/.test(s)) return pick(num(/mrm[ -]?(\d+)/), { 10: 24, 20: 12, 30: 8, 40: 6 });
+  if (/\bsr[mt]\b|sr[mt][ -]?\d/.test(s)) return pick(num(/sr[mt][ -]?(\d+)/), { 2: 50, 4: 25, 6: 15 }); // incl. Streak
+  if (/\bi?atm/.test(s)) return pick(num(/atm[ -]?(\d+)/), { 3: 20, 6: 10, 9: 7, 12: 5 });
+
+  // Other ammo-fed weapons.
+  if (/plasma/.test(s)) return 10; // Plasma Rifle (IS) + Plasma Cannon (Clan)
+  if (/heavy ?machine ?gun|heavy ?mg|\bhmg\b/.test(s)) return 100;
+  if (/machine ?gun|\bmg\b/.test(s)) return 200; // standard + light MG
+  if (/\bams\b|isams|clams|laser ?ams|anti-?missile/.test(s)) return 12;
+  if (/inarc/.test(s)) return 4;
+  if (/narc/.test(s)) return 6;
+  if (/fluid ?gun|sprayer|vehicle ?flamer|vflamer/.test(s)) return 20;
+  if (/arrow ?iv/.test(s)) return 5;
+  if (/long ?tom/.test(s)) return 5;
+  if (/sniper/.test(s)) return 10;
+  if (/thumper/.test(s)) return 20;
+  return undefined;
+}
+
 /** Clean an ammo crit name into a label like "AC/20 Ammo". */
 export function ammoLabel(raw: string): string {
   let s = raw
@@ -1088,6 +1142,7 @@ export function buildEquipment(critSlots: ReadonlyArray<CritSlot>): CardEquipmen
     category: "ammo" | "equipment",
     countable: boolean,
     global = false,
+    shots = 0,
   ) => {
     // Body-wide systems (global) are keyed by label alone, so their per-location
     // crit slots collapse to a single, location-less entry.
@@ -1095,8 +1150,9 @@ export function buildEquipment(critSlots: ReadonlyArray<CritSlot>): CardEquipmen
     const existing = byKey.get(key);
     if (existing) {
       if (countable) existing.count += 1;
+      if (shots) existing.shots = (existing.shots ?? 0) + shots;
     } else {
-      byKey.set(key, { label, location, category, count: 1, ...(global ? { global: true } : {}) });
+      byKey.set(key, { label, location, category, count: 1, ...(shots ? { shots } : {}), ...(global ? { global: true } : {}) });
     }
   };
 
@@ -1105,7 +1161,10 @@ export function buildEquipment(critSlots: ReadonlyArray<CritSlot>): CardEquipmen
     const norm = normalizeWeaponName(slot.name); // de-glue BLK names ("ISMGA" -> "machine gun array")
     const loc = equipmentLocation(slot.location); // CT/LT/RT -> one "Torso"
     if (lower.includes("ammo")) {
-      bump(ammoLabel(slot.name), loc, "ammo", true); // each bin counts
+      // Each bin = 1 ton; "(Half)" bins carry half the rounds.
+      const per = ammoShotsPerTon(slot.name);
+      const shots = per == null ? 0 : Math.max(1, Math.round(per * (/\bhalf\b/i.test(slot.name) ? 0.5 : 1)));
+      bump(ammoLabel(slot.name), loc, "ammo", true, false, shots);
       continue;
     }
     const match = IMPORTANT_EQUIPMENT.find((e) => e.match.some((m) => lower.includes(m) || norm.includes(m)));

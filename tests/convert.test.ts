@@ -6,6 +6,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   abbreviateWeapon,
+  ammoShotsPerTon,
   buildTic,
   classifyDamage,
   computeDamageProfile,
@@ -103,6 +104,45 @@ describe("lookupHeadArmor (bracketed on head TW, cap 5)", () => {
     expect(lookupHeadArmor(7)).toBe(3);
     expect(lookupHeadArmor(9)).toBe(4);
     expect(lookupHeadArmor(12)).toBe(5);
+  });
+});
+
+describe("ammoShotsPerTon (canonical rounds per ton)", () => {
+  it("reads autocannon class, including LB-X / Ultra / Rotary / Light AC", () => {
+    expect(ammoShotsPerTon("IS Ammo AC/2")).toBe(45);
+    expect(ammoShotsPerTon("IS Ammo AC/5")).toBe(20);
+    expect(ammoShotsPerTon("IS Ammo AC/10")).toBe(10);
+    expect(ammoShotsPerTon("IS Ammo AC/20")).toBe(5);
+    expect(ammoShotsPerTon("IS Ammo LAC/5")).toBe(20);
+    expect(ammoShotsPerTon("ISRotaryAC5 Ammo")).toBe(20);
+    expect(ammoShotsPerTon("Clan Ultra AC/10 Ammo")).toBe(10);
+    expect(ammoShotsPerTon("IS LB 10-X AC Ammo")).toBe(10);
+    expect(ammoShotsPerTon("ISLBXAC10 Ammo")).toBe(10);
+    expect(ammoShotsPerTon("IS LB 20-X Cluster Ammo")).toBe(5);
+  });
+  it("reads missile rack sizes (LRM/SRM/Streak/MML/ATM/MRM)", () => {
+    expect(ammoShotsPerTon("IS Ammo LRM-5")).toBe(24);
+    expect(ammoShotsPerTon("IS Ammo LRM-20")).toBe(6);
+    expect(ammoShotsPerTon("IS Ammo SRM-2")).toBe(50);
+    expect(ammoShotsPerTon("IS Streak SRM 6 Ammo")).toBe(15);
+    expect(ammoShotsPerTon("IS Ammo MML-5 LRM")).toBe(24);
+    expect(ammoShotsPerTon("IS Ammo MML-5 SRM")).toBe(20);
+    expect(ammoShotsPerTon("Clan Ammo ATM-6")).toBe(10);
+    expect(ammoShotsPerTon("IS Ammo Extended LRM-15")).toBe(6);
+  });
+  it("handles Gauss family, MG, plasma, AMS, and one-shot", () => {
+    expect(ammoShotsPerTon("IS Gauss Ammo")).toBe(8);
+    expect(ammoShotsPerTon("IS Light Gauss Ammo")).toBe(16);
+    expect(ammoShotsPerTon("ISHeavyGauss Ammo")).toBe(4);
+    expect(ammoShotsPerTon("Hyper-Assault Gauss Rifle/20 Ammo")).toBe(6);
+    expect(ammoShotsPerTon("IS Ammo MG - Full")).toBe(200);
+    expect(ammoShotsPerTon("ISPlasmaRifleAmmo")).toBe(10);
+    expect(ammoShotsPerTon("ISAMS Ammo")).toBe(12);
+    expect(ammoShotsPerTon("CLSRM2 (OS) Ammo")).toBe(1);
+  });
+  it("returns undefined for ammo without a canonical per-ton count", () => {
+    expect(ammoShotsPerTon("Cargo")).toBeUndefined();
+    expect(ammoShotsPerTon("Coolant Pod")).toBeUndefined();
   });
 });
 

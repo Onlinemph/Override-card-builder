@@ -198,7 +198,7 @@ async function initBrowser(): Promise<void> {
 
   render();
 }
-import type { AnyCard, CardWeapon, RangeBrackets, Tic } from "../core/index.js";
+import type { AnyCard, CardEquipment, CardWeapon, RangeBrackets, Tic } from "../core/index.js";
 
 // Injected by Vite (see vite.config.ts).
 declare const __BUILD_TIME__: string;
@@ -911,7 +911,8 @@ function renderForceEdit(): void {
   editWeapons = weaponsForToHit(r.result); // for the to-hit table (reflects current TIC grouping)
   editSinks = unitSinks(r.result);
   output.classList.add("force-play"); // enables pip cursors / damage tracking
-  output.innerHTML = forceEditBar(u) + skillsEditorHtml(u) + card + tabletopPanel(u, r.result) + ticEditorHtml;
+  output.innerHTML =
+    forceEditBar(u) + skillsEditorHtml(u) + card + tabletopPanel(u, r.result) + ammoTrackerHtml(u, r.result) + ticEditorHtml;
   applyDamageMarks();
   updateTabletop();
 }
@@ -998,6 +999,14 @@ function applyDamageMarks(): void {
       b.classList.toggle("pip-hit", i < hit);
     });
   });
+  // Ammo counters: remaining = total − expended.
+  Array.from(output.querySelectorAll<HTMLElement>(".ammo-row")).forEach((row) => {
+    const total = Number(row.dataset.total) || 0;
+    const rem = Math.max(0, total - (row.dataset.ammo ? (dmg.ammo?.[row.dataset.ammo] ?? 0) : 0));
+    const remEl = row.querySelector<HTMLElement>(".ammo-rem");
+    if (remEl) remEl.textContent = String(rem);
+    row.querySelector(".ammo-val")?.classList.toggle("ammo-empty", rem === 0);
+  });
   // Weapon rows: struck out if their limb is destroyed OR manually disabled.
   const manual = new Set(dmg.tics ?? []);
   Array.from(output.querySelectorAll<HTMLElement>(".mweapons tbody tr")).forEach((tr, ti) => {
@@ -1079,6 +1088,36 @@ function tabletopPanel(u: ForceUnit, result: AnyCard): string {
   return `<div class="ttop">${heatBlock}${toHit}</div>`;
 }
 
+// ---- Ammo counter ---------------------------------------------------------
+/** The unit's ammo lines (any card kind carries CardEquipment). */
+function unitAmmo(result: AnyCard): CardEquipment[] {
+  return ((result.card as { equipment?: CardEquipment[] }).equipment ?? []).filter((e) => e.category === "ammo");
+}
+const ammoKey = (e: CardEquipment): string => `${e.label}@${e.location}`;
+const ammoTotal = (e: CardEquipment): number => e.shots ?? e.count; // rounds if known, else tons
+
+/** Per-bin ammo counter for play mode: remaining rounds with fire (−) / reload (+). */
+function ammoTrackerHtml(u: ForceUnit, result: AnyCard): string {
+  const ammo = unitAmmo(result);
+  if (ammo.length === 0) return "";
+  const rows = ammo
+    .map((e) => {
+      const total = ammoTotal(e);
+      const unit = e.shots ? "rds" : e.count === 1 ? "ton" : "tons";
+      const rem = Math.max(0, total - (u.damage?.ammo?.[ammoKey(e)] ?? 0));
+      const loc = e.location === "CT" ? "T" : e.location;
+      const bins = e.count > 1 ? ` ×${e.count}` : "";
+      return `<div class="ammo-row" data-ammo="${esc(ammoKey(e))}" data-total="${total}">
+        <span class="ammo-name">${esc(e.label)}${bins} <span class="eq-loc">(${esc(loc)})</span></span>
+        <button class="ammo-btn" type="button" data-ammo-d="1" title="Fire one shot">−</button>
+        <span class="ammo-val${rem === 0 ? " ammo-empty" : ""}"><span class="ammo-rem">${rem}</span><span class="ammo-tot">/${total} ${unit}</span></span>
+        <button class="ammo-btn" type="button" data-ammo-d="-1" title="Reload one shot">+</button>
+      </div>`;
+    })
+    .join("");
+  return `<div class="ammo-track"><span class="ttop-h">Ammo</span>${rows}</div>`;
+}
+
 /** Refresh the heat readout, heat-scale highlight, and the to-hit table. */
 function updateTabletop(): void {
   if (editingForceIdx == null) return;
@@ -1128,6 +1167,22 @@ output.addEventListener("click", (e) => {
     u.damage.heat = hb.dataset.heat === "cool" ? Math.max(0, cur - editSinks) : Math.max(0, cur + Number(hb.dataset.heat));
     saveForce();
     updateTabletop();
+    return;
+  }
+  const ab = t.closest<HTMLElement>(".ammo-btn");
+  if (ab?.dataset.ammoD) {
+    const row = ab.closest<HTMLElement>(".ammo-row");
+    if (row?.dataset.ammo) {
+      const total = Number(row.dataset.total) || 0;
+      u.damage ??= {};
+      u.damage.ammo ??= {};
+      const cur = u.damage.ammo[row.dataset.ammo] ?? 0;
+      const next = Math.min(total, Math.max(0, cur + Number(ab.dataset.ammoD)));
+      if (next === 0) delete u.damage.ammo[row.dataset.ammo];
+      else u.damage.ammo[row.dataset.ammo] = next;
+      saveForce();
+      applyDamageMarks();
+    }
     return;
   }
   const cm = t.closest<HTMLElement>(".cm-pip");
@@ -1276,6 +1331,8 @@ interface ForceUnit {
     tics?: number[];
     /** Current heat level (tabletop assistant). */
     heat?: number;
+    /** Rounds expended per ammo line (key = "label@location"); remaining = total − this. */
+    ammo?: Record<string, number>;
   };
 }
 /** A named force: a roster of units the user can save, switch, export, share. */
