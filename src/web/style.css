@@ -465,7 +465,7 @@ footer {
   outline-offset: 1px;
 }
 .browse-list {
-  max-height: 240px;
+  max-height: min(60vh, 520px);
   overflow-y: auto;
   border: 1px solid var(--line);
   border-radius: 7px;

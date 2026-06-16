@@ -58,8 +58,6 @@ async function initBrowser(): Promise<void> {
   const browseBody = document.getElementById("browse-body") as HTMLElement;
   if (!statusEl || !listEl || !catSel || !searchInput || !toggleBtn || !browseBody) return;
 
-  const MAX_RESULTS = 80;
-
   const unitsOrNull = await loadUnitsIndex();
   if (!unitsOrNull) {
     statusEl.textContent = "Unit index not found — run 'npm run extract-units' then restart the dev server.";
@@ -97,6 +95,28 @@ async function initBrowser(): Promise<void> {
     if (eraSel) eraSel.style.display = "none";
   }
 
+  const PAGE = 80; // units rendered per batch; more load as you scroll
+  let filtered: UnitEntry[] = [];
+  let shownCount = 0;
+
+  const itemHtml = (u: UnitEntry): string =>
+    `<div class="browse-item" role="option" tabindex="0" data-path="${esc(u.path)}" data-name="${esc(u.name)}">
+            <span class="browse-item-name">${esc(u.name)}</span>
+            <span class="browse-item-meta muted">${esc(u.category)}${u.era ? ` · ${esc(u.era)}` : ""}</span>
+            <button class="browse-add" type="button" data-path="${esc(u.path)}" data-name="${esc(u.name)}" title="Add to force" aria-label="Add ${esc(u.name)} to force">＋</button>
+          </div>`;
+
+  function appendMore(): void {
+    const next = filtered.slice(shownCount, shownCount + PAGE);
+    if (next.length === 0) return;
+    listEl!.insertAdjacentHTML("beforeend", next.map(itemHtml).join(""));
+    shownCount += next.length;
+    statusEl!.textContent =
+      shownCount < filtered.length
+        ? `Showing ${shownCount.toLocaleString()} of ${filtered.length.toLocaleString()} — scroll for more.`
+        : "";
+  }
+
   function render(): void {
     const q = searchInput.value.trim().toLowerCase();
     const cat = catSel.value;
@@ -104,36 +124,29 @@ async function initBrowser(): Promise<void> {
     const eraId = eraSel?.value ?? "";
     const eraBit = eraId && availIndex ? availIndex.eras.findIndex((e) => String(e.id) === eraId) : -1;
     const useAvail = !!availIndex && (facId !== "" || eraId !== "");
-    const filtered = units.filter(
+    filtered = units.filter(
       (u) =>
         (!cat || u.category === cat) &&
         (!q || u.name.toLowerCase().includes(q) || u.era.toLowerCase().includes(q)) &&
         (!useAvail || isAvailable(u.path, facId, eraBit)),
     );
     if (countEl) countEl.textContent = `(${filtered.length.toLocaleString()} units)`;
-    statusEl!.textContent = "";
 
-    const shown = filtered.slice(0, MAX_RESULTS);
+    shownCount = 0;
+    listEl!.innerHTML = "";
+    listEl!.scrollTop = 0;
     if (filtered.length === 0) {
-      listEl!.innerHTML = "";
       statusEl!.textContent = "No units match.";
       return;
     }
-
-    listEl!.innerHTML = shown
-      .map(
-        (u, i) =>
-          `<div class="browse-item" role="option" tabindex="0" data-idx="${i}" data-path="${esc(u.path)}" data-name="${esc(u.name)}">
-            <span class="browse-item-name">${esc(u.name)}</span>
-            <span class="browse-item-meta muted">${esc(u.category)}${u.era ? ` · ${esc(u.era)}` : ""}</span>
-            <button class="browse-add" type="button" data-path="${esc(u.path)}" data-name="${esc(u.name)}" title="Add to force" aria-label="Add ${esc(u.name)} to force">＋</button>
-          </div>`,
-      )
-      .join("");
-    if (filtered.length > MAX_RESULTS) {
-      statusEl!.textContent = `Showing ${MAX_RESULTS} of ${filtered.length.toLocaleString()} — refine your search.`;
-    }
+    statusEl!.textContent = "";
+    appendMore(); // first batch; the scroll listener loads the rest
   }
+
+  // Infinite scroll: pull in the next batch as you near the bottom of the list.
+  listEl.addEventListener("scroll", () => {
+    if (listEl.scrollTop + listEl.clientHeight >= listEl.scrollHeight - 120) appendMore();
+  });
 
   async function loadUnit(path: string, name: string): Promise<void> {
     statusEl!.textContent = `Loading ${name}…`;
