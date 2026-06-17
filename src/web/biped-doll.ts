@@ -82,6 +82,7 @@ export function bipedDoll(card: OverrideCard): string {
   const a = card.armor;
   const s = card.structure;
   const tripod = a.centerLeg !== undefined || s.centerLeg !== undefined;
+  const spread = tripod ? 22 : 0; // tripods: splay the outer legs to clear the center leg
   const seg =
     // Head + visor + neck
     rr(144, 18, 52, 40, 7) +
@@ -98,10 +99,10 @@ export function bipedDoll(card: OverrideCard): string {
     rr(244, 100, 34, 54, 8) + rr(246, 152, 34, 60, 8) + rr(248, 210, 32, 16, 4) +
     // Tripod center leg (behind, in the gap): thigh (armor) + shin (structure) + foot.
     (tripod ? rr(153, 200, 34, 64, 9, DARK) + rr(156, 266, 28, 86, 9, DARK) + rr(154, 350, 32, 18, 5, DARK) : "") +
-    // Hips + legs: thigh (armor) + shin (structure) + foot
-    rr(124, 176, 92, 22, 7) +
-    rr(112, 196, 40, 70, 9) + rr(114, 264, 34, 90, 9) + rr(102, 352, 50, 20, 5) +
-    rr(188, 196, 40, 70, 9) + rr(192, 264, 34, 90, 9) + rr(188, 352, 50, 20, 5) +
+    // Hips + legs: thigh (armor) + shin (structure) + foot. Tripods splay the legs out.
+    rr(124 - spread, 176, 92 + 2 * spread, 22, 7) +
+    rr(112 - spread, 196, 40, 70, 9) + rr(114 - spread, 264, 34, 90, 9) + rr(102 - spread, 352, 50, 20, 5) +
+    rr(188 + spread, 196, 40, 70, 9) + rr(192 + spread, 264, 34, 90, 9) + rr(188 + spread, 352, 50, 20, 5) +
     // Torso-rear box
     rr(142, 382, 56, 24, 5, "#e7e7e1");
 
@@ -110,8 +111,8 @@ export function bipedDoll(card: OverrideCard): string {
     loc("la", [63, 102, 32, 50], [61, 154, 32, 56], a.leftArm, s.leftArm) +
     loc("ra", [245, 102, 32, 50], [247, 154, 32, 56], a.rightArm, s.rightArm) +
     loc("ct", [133, 64, 74, 66], [142, 134, 56, 42], a.torso, s.torso) +
-    loc("ll", [113, 198, 38, 66], [115, 266, 32, 86], a.leftLeg, s.leftLeg) +
-    loc("rl", [189, 198, 38, 66], [193, 266, 32, 86], a.rightLeg, s.rightLeg) +
+    loc("ll", [113 - spread, 198, 38, 66], [115 - spread, 266, 32, 86], a.leftLeg, s.leftLeg) +
+    loc("rl", [189 + spread, 198, 38, 66], [193 + spread, 266, 32, 86], a.rightLeg, s.rightLeg) +
     (tripod ? loc("cl", [155, 202, 30, 60], [158, 268, 24, 82], a.centerLeg ?? 0, s.centerLeg ?? 0) : "") +
     loc("tr", [144, 384, 52, 20], [0, 0, 0, 0], a.rear, 0);
 
@@ -126,8 +127,8 @@ export function bipedDoll(card: OverrideCard): string {
     ctl("la", "L ARM", "10,11", a.leftArm + s.leftArm, 8, 30) +
     ctl("ra", "R ARM", "3,4", a.rightArm + s.rightArm, 92, 30) +
     ctl("ct", "TORSO", "6,7,8", a.torso + s.torso, 50, 43) +
-    ctl("ll", "L LEG", tripod ? "d6 1-2" : "9", a.leftLeg + s.leftLeg, 16, 71) +
-    ctl("rl", "R LEG", tripod ? "d6 5-6" : "5", a.rightLeg + s.rightLeg, 84, 71) +
+    ctl("ll", "L LEG", tripod ? "d6 1-2" : "9", a.leftLeg + s.leftLeg, tripod ? 9 : 16, 71) +
+    ctl("rl", "R LEG", tripod ? "d6 5-6" : "5", a.rightLeg + s.rightLeg, tripod ? 91 : 84, 71) +
     (tripod ? ctl("cl", "C LEG", "d6 3-4", (a.centerLeg ?? 0) + (s.centerLeg ?? 0), 50, 73) : "") +
     ctl("tr", "REAR", "2,12", a.rear + s.torso, 50, 91); // rear armor bleeds into torso structure
 
