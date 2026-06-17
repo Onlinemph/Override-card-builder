@@ -126,7 +126,7 @@ export function bipedDoll(card: OverrideCard): string {
     ctl("hd", "HEAD", "12", a.head + s.head, 50, 4) +
     ctl("la", "L ARM", "10,11", a.leftArm + s.leftArm, 8, 30) +
     ctl("ra", "R ARM", "3,4", a.rightArm + s.rightArm, 92, 30) +
-    ctl("ct", "TORSO", "6,7,8", a.torso + s.torso, 50, 43) +
+    ctl("ct", "TORSO", "6,7,8", a.torso + s.torso, 50, tripod ? 37 : 43) +
     ctl("ll", "L LEG", tripod ? "d6 1-2" : "9", a.leftLeg + s.leftLeg, tripod ? 9 : 16, 71) +
     ctl("rl", "R LEG", tripod ? "d6 5-6" : "5", a.rightLeg + s.rightLeg, tripod ? 91 : 84, 71) +
     (tripod ? ctl("cl", "C LEG", "d6 3-4", (a.centerLeg ?? 0) + (s.centerLeg ?? 0), 50, 73) : "") +
