@@ -24,6 +24,7 @@
     "build-avail-index": "node scripts/build-avail-index.mjs",
     "build-rat-index": "node scripts/build-rat-index.mjs",
     "build-quirk-index": "node scripts/build-quirk-index.mjs",
+    "build-weaponquirk-index": "node scripts/build-weaponquirk-index.mjs",
     "make-icons": "node scripts/make-icons.mjs",
     "build:web": "node scripts/extract-units.mjs && vite build && node scripts/inline.mjs",
     "preview:web": "vite preview",

@@ -12,6 +12,7 @@ import {
   dropshipWeaponRows,
   fighterWeaponRows,
   groupingLocation,
+  normalizeWeaponName,
   ParseError,
   protoWeaponRows,
   vehicleWeaponRows,
@@ -595,12 +596,63 @@ function lookupQuirks(name: string, file?: string): Quirks | undefined {
   }
   return quirkIndex[bvKey(name)];
 }
-/** Inject a (CSS-hidden) quirks line after the card title; revealed by body.show-quirks. */
-function withQuirks(html: string, quirks: Quirks | undefined): string {
-  if (!quirks || (quirks.u.length === 0 && quirks.w.length === 0)) return html;
+
+// Per-weapon quirks from the unit FILES (public/weaponquirk-index.json): which
+// weapon carries which quirk, keyed by filename. Richer than the MUL summary.
+let weaponQuirkIndex: Record<string, [string, string][]> = {};
+async function loadWeaponQuirkIndex(): Promise<void> {
+  try {
+    const resp = await fetch("./weaponquirk-index.json");
+    if (resp.ok) weaponQuirkIndex = (await resp.json()) as Record<string, [string, string][]>;
+  } catch {
+    /* no per-weapon data — falls back to the MUL summary */
+  }
+}
+const WEAPON_QUIRK_LABEL: Record<string, string> = {
+  stable_weapon: "Stable",
+  direct_torso_mount: "Direct Torso Mount",
+  mod_weapons: "Modular",
+  jettison_capable: "Jettison-Capable",
+  exposed_linkage: "Exposed Linkage",
+  fast_reload: "Fast Reload",
+  imp_cooling: "Improved Cooling Jacket",
+  ammo_feed_problems: "Ammo Feed Problems",
+  accurate: "Accurate",
+  static_feed: "Static Feed",
+  em_interference: "EM Interference",
+  poor_cooling: "Poor Cooling Jacket",
+  no_cooling: "No Cooling Jacket",
+  inaccurate: "Inaccurate",
+};
+const WEAPON_QUIRK_ACRONYMS = new Set(["er", "ppc", "ac", "lb", "hag", "srm", "lrm", "mrm", "mml", "mg", "ams", "tag", "ecm", "narc", "atm", "rac", "lac", "si", "c3", "ba", "sb", "os", "x"]);
+/** Title-case a normalized weapon name, upper-casing known acronyms ("er ppc" -> "ER PPC"). */
+function titleCaseWeapon(s: string): string {
+  return s.replace(/[a-z0-9]+/gi, (w) => {
+    const lw = w.toLowerCase();
+    return WEAPON_QUIRK_ACRONYMS.has(lw) ? w.toUpperCase() : lw.charAt(0).toUpperCase() + lw.slice(1);
+  });
+}
+/** Per-weapon quirks for a unit, grouped by weapon: "ER PPC — Jettison-Capable; Medium Laser — Stable". */
+function lookupWeaponQuirks(file?: string): string | null {
+  if (!file) return null;
+  const rows = weaponQuirkIndex[bvKey(fileStem(file))];
+  if (!rows?.length) return null;
+  const byWeapon = new Map<string, Set<string>>();
+  for (const [code, raw] of rows) {
+    const label = titleCaseWeapon(normalizeWeaponName(raw));
+    const q = WEAPON_QUIRK_LABEL[code] ?? code.replace(/_/g, " ");
+    (byWeapon.get(label) ?? byWeapon.set(label, new Set()).get(label)!).add(q);
+  }
+  return [...byWeapon].map(([w, qs]) => `${esc(w)} — ${[...qs].map(esc).join(", ")}`).join("; ");
+}
+/** Inject a (CSS-hidden) quirks line after the card title; revealed by body.show-quirks.
+ * Prefers file-sourced per-weapon detail over the MUL weapon-quirk summary. */
+function withQuirks(html: string, quirks: Quirks | undefined, weaponDetail?: string | null): string {
   const parts: string[] = [];
-  if (quirks.u.length) parts.push(`<b>Quirks:</b> ${quirks.u.map(esc).join(", ")}`);
-  if (quirks.w.length) parts.push(`<b>Weapon:</b> ${quirks.w.map(esc).join(", ")}`);
+  if (quirks?.u.length) parts.push(`<b>Quirks:</b> ${quirks.u.map(esc).join(", ")}`);
+  const wpn = weaponDetail || (quirks?.w.length ? quirks.w.map(esc).join(", ") : "");
+  if (wpn) parts.push(`<b>Weapon:</b> ${wpn}`);
+  if (parts.length === 0) return html;
   const line = `<div class="card-quirks">${parts.join(' <span class="q-sep">·</span> ')}</div>`;
   return html.replace(/(<div class="(?:ms-title|ba-title)\b[^>]*>[\s\S]*?<\/div>)/, `$1${line}`);
 }
@@ -749,7 +801,7 @@ function rawCardHtml(result: AnyCard): string {
 /** Card HTML with the BV badge + (hidden) quirks line (used for previews/print). */
 function cardHtml(result: AnyCard): string {
   const c = result.card as { bv?: number; sourceFile?: string };
-  return withQuirks(withBv(rawCardHtml(result), c.bv), lookupQuirks(result.card.name, c.sourceFile));
+  return withQuirks(withBv(rawCardHtml(result), c.bv), lookupQuirks(result.card.name, c.sourceFile), lookupWeaponQuirks(c.sourceFile));
 }
 
 // ---- Manual TIC editor wiring ---------------------------------------------
@@ -920,7 +972,7 @@ function renderForceEdit(): void {
     raw = rawCardHtml(r.result);
   }
   const sk = unitSkills(u);
-  const card = withQuirks(withSkills(withBv(raw, unitBv(u)), sk.gunnery, sk.piloting), lookupQuirks(u.name, u.file));
+  const card = withQuirks(withSkills(withBv(raw, unitBv(u)), sk.gunnery, sk.piloting), lookupQuirks(u.name, u.file), lookupWeaponQuirks(u.file));
   editWeapons = weaponsForToHit(r.result); // for the to-hit table (reflects current TIC grouping)
   editSinks = unitSinks(r.result);
   output.classList.add("force-play"); // enables pip cursors / damage tracking
@@ -2036,7 +2088,7 @@ quirksToggle?.addEventListener("change", () => {
 renderForce();
 // Load the BV + quirk indexes, then refresh so badges/quirks appear once in.
 void loadBvIndex().then(renderForce);
-void loadQuirkIndex().then(() => {
+void Promise.all([loadQuirkIndex(), loadWeaponQuirkIndex()]).then(() => {
   if (editingForceIdx != null) renderForceEdit();
 });
 // Import a shared force from the URL hash, if present.
