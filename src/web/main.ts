@@ -77,6 +77,7 @@ async function initBrowser(): Promise<void> {
 
   // MUL availability: faction + era filters (only if the index loaded).
   await loadAvailIndex();
+  await loadRoleIndex(); // roles shown + searchable in the unit list
   if (availIndex && factionSel && eraSel) {
     for (const f of availIndex.factions) {
       const o = document.createElement("option");
@@ -100,12 +101,14 @@ async function initBrowser(): Promise<void> {
   let filtered: UnitEntry[] = [];
   let shownCount = 0;
 
-  const itemHtml = (u: UnitEntry): string =>
-    `<div class="browse-item" role="option" tabindex="0" data-path="${esc(u.path)}" data-name="${esc(u.name)}">
+  const itemHtml = (u: UnitEntry): string => {
+    const role = lookupRole(u.name, u.path);
+    return `<div class="browse-item" role="option" tabindex="0" data-path="${esc(u.path)}" data-name="${esc(u.name)}">
             <span class="browse-item-name">${esc(u.name)}</span>
-            <span class="browse-item-meta muted">${esc(u.category)}${u.era ? ` · ${esc(u.era)}` : ""}</span>
+            <span class="browse-item-meta muted">${esc(u.category)}${u.era ? ` · ${esc(u.era)}` : ""}${role ? ` · <span class="browse-role">${esc(role)}</span>` : ""}</span>
             <button class="browse-add" type="button" data-path="${esc(u.path)}" data-name="${esc(u.name)}" title="Add to force" aria-label="Add ${esc(u.name)} to force">＋</button>
           </div>`;
+  };
 
   function appendMore(): void {
     const next = filtered.slice(shownCount, shownCount + PAGE);
@@ -128,7 +131,10 @@ async function initBrowser(): Promise<void> {
     filtered = units.filter(
       (u) =>
         (!cat || u.category === cat) &&
-        (!q || u.name.toLowerCase().includes(q) || u.era.toLowerCase().includes(q)) &&
+        (!q ||
+          u.name.toLowerCase().includes(q) ||
+          u.era.toLowerCase().includes(q) ||
+          (lookupRole(u.name, u.path) ?? "").toLowerCase().includes(q)) &&
         (!useAvail || isAvailable(u.path, facId, eraBit)),
     );
     if (countEl) countEl.textContent = `(${filtered.length.toLocaleString()} units)`;
@@ -610,14 +616,19 @@ async function loadWeaponQuirkIndex(): Promise<void> {
 }
 
 // MUL battlefield role (Sniper, Brawler, Skirmisher, …) — public/role-index.json.
+// Memoized: the browser and the analytics panel share a single fetch.
 let roleIndex: Record<string, string> = {};
-async function loadRoleIndex(): Promise<void> {
-  try {
-    const resp = await fetch("./role-index.json");
-    if (resp.ok) roleIndex = (await resp.json()) as Record<string, string>;
-  } catch {
-    /* no role data — the analytics role breakdown just stays empty */
-  }
+let roleIndexPromise: Promise<void> | null = null;
+function loadRoleIndex(): Promise<void> {
+  roleIndexPromise ??= (async () => {
+    try {
+      const resp = await fetch("./role-index.json");
+      if (resp.ok) roleIndex = (await resp.json()) as Record<string, string>;
+    } catch {
+      /* no role data — the role label/breakdown just stays empty */
+    }
+  })();
+  return roleIndexPromise;
 }
 function lookupRole(name: string, file?: string): string | undefined {
   if (file) {
@@ -672,6 +683,12 @@ function withQuirks(html: string, quirks: Quirks | undefined, weaponDetail?: str
   if (wpn) parts.push(`<b>Weapon:</b> ${wpn}`);
   if (parts.length === 0) return html;
   const line = `<div class="card-quirks">${parts.join(' <span class="q-sep">·</span> ')}</div>`;
+  return html.replace(/(<div class="(?:ms-title|ba-title)\b[^>]*>[\s\S]*?<\/div>)/, `$1${line}`);
+}
+/** Inject the MUL battlefield role as a small subtitle under the card title. */
+function withRole(html: string, role: string | undefined): string {
+  if (!role) return html;
+  const line = `<div class="card-role">${esc(role)}</div>`;
   return html.replace(/(<div class="(?:ms-title|ba-title)\b[^>]*>[\s\S]*?<\/div>)/, `$1${line}`);
 }
 
@@ -819,7 +836,7 @@ function rawCardHtml(result: AnyCard): string {
 /** Card HTML with the BV badge + (hidden) quirks line (used for previews/print). */
 function cardHtml(result: AnyCard): string {
   const c = result.card as { bv?: number; sourceFile?: string };
-  return withQuirks(withBv(rawCardHtml(result), c.bv), lookupQuirks(result.card.name, c.sourceFile), lookupWeaponQuirks(c.sourceFile));
+  return withRole(withQuirks(withBv(rawCardHtml(result), c.bv), lookupQuirks(result.card.name, c.sourceFile), lookupWeaponQuirks(c.sourceFile)), lookupRole(result.card.name, c.sourceFile));
 }
 
 // ---- Manual TIC editor wiring ---------------------------------------------
@@ -990,7 +1007,7 @@ function renderForceEdit(): void {
     raw = rawCardHtml(r.result);
   }
   const sk = unitSkills(u);
-  const card = withQuirks(withSkills(withBv(raw, unitBv(u)), sk.gunnery, sk.piloting), lookupQuirks(u.name, u.file), lookupWeaponQuirks(u.file));
+  const card = withRole(withQuirks(withSkills(withBv(raw, unitBv(u)), sk.gunnery, sk.piloting), lookupQuirks(u.name, u.file), lookupWeaponQuirks(u.file)), lookupRole(u.name, u.file));
   editWeapons = weaponsForToHit(r.result); // for the to-hit table (reflects current TIC grouping)
   editSinks = unitSinks(r.result);
   output.classList.add("force-play"); // enables pip cursors / damage tracking
