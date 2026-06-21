@@ -2136,6 +2136,10 @@ type MpMsg = {
   round?: number;
   value?: number;
   roll?: { host: number | null; guest: number | null };
+  bonus?: { host: number; guest: number };
+  acted?: string[];
+  key?: string;
+  on?: boolean;
 };
 let myRole: Role = "host"; // your side; "host" for a solo battle
 let mpClient: RealtimeClient | null = null;
@@ -2243,18 +2247,65 @@ function mpBroadcast(side: "you" | "foe", idx: number, u: ForceUnit): void {
   mpSend({ type: "damage", role: side === "you" ? myRole : otherRole(), idx, damage: u.damage });
 }
 
-// --- Initiative. A shared round counter + per-side 2d6 roll. Online: each
-// player rolls their own side and it syncs; local: one click rolls both sides.
-interface BattleInit { round: number; roll: { host: number | null; guest: number | null } }
+// --- Cinematic Initiative (BattleTech: Override). Each force rolls 2d6 + a
+// bonus; high roll wins. Units then activate by TMM bracket (lowest first), and
+// within each bracket the LOSER of initiative activates first, then the winner —
+// matching the Override "Cinematic Initiative" rules. "Act early" is allowed
+// (any of your un-acted units may activate). Optional "Modified Reactions"
+// lowers a unit's bracket by its condition-monitor + critical hits.
+interface BattleInit {
+  round: number;
+  roll: { host: number | null; guest: number | null }; // raw 2d6 per side
+  bonus: { host: number; guest: number }; // initiative bonus added to the roll
+  acted: string[]; // unit keys activated this round ("host:0", "guest:2", …)
+  modReactions: boolean; // optional rule toggle
+}
 const INIT_KEY = "mtf2override.battleInit";
-const freshInit = (): BattleInit => ({ round: 1, roll: { host: null, guest: null } });
+const freshInit = (): BattleInit => ({
+  round: 1,
+  roll: { host: null, guest: null },
+  bonus: { host: 0, guest: 0 },
+  acted: [],
+  modReactions: false,
+});
 let battleInit: BattleInit = freshInit();
+const tmmCache = new Map<string, number>();
 const roll2d6 = (): number => 2 + Math.floor(Math.random() * 6) + Math.floor(Math.random() * 6);
+/** Side total = raw 2d6 + bonus (null until that side has rolled). */
+const initTotal = (r: Role): number | null => (battleInit.roll[r] == null ? null : battleInit.roll[r]! + battleInit.bonus[r]);
+/** "you"/"foe" → the owning role key (consistent across both clients). */
+const sideRole = (side: "you" | "foe"): Role => (side === "you" ? myRole : otherRole());
+const unitKey = (side: "you" | "foe", idx: number): string => `${sideRole(side)}:${idx}`;
+/** Base TMM for a unit (memoised — convertOne parses the source text). */
+function unitTmm(u: ForceUnit): number {
+  const key = `${u.name}|${u.file ?? ""}`;
+  const hit = tmmCache.get(key);
+  if (hit != null) return hit;
+  let t = 0;
+  try {
+    const r = convertOne(u.text, u.file ?? u.name);
+    if (r.ok) {
+      const c = r.result.card as { tmm?: number };
+      if (typeof c?.tmm === "number") t = c.tmm;
+    }
+  } catch { /* ignore */ }
+  tmmCache.set(key, t);
+  return t;
+}
+/** Activation bracket: base TMM, lowered by damage when Modified Reactions is on. */
+function unitBracket(u: ForceUnit): number {
+  let t = unitTmm(u);
+  if (battleInit.modReactions) {
+    const d = u.damage ?? {};
+    t -= (d.condition ?? 0) + (d.engine ?? 0) + (d.gyro ?? 0) + (d.avionics ?? 0);
+  }
+  return Math.max(0, t);
+}
 function saveInit(): void { try { localStorage.setItem(INIT_KEY, JSON.stringify(battleInit)); } catch { /* ignore */ } }
 function loadInit(): void {
   try {
-    const s = JSON.parse(localStorage.getItem(INIT_KEY) ?? "null") as BattleInit | null;
-    battleInit = s && typeof s.round === "number" && s.roll ? s : freshInit();
+    const s = JSON.parse(localStorage.getItem(INIT_KEY) ?? "null") as Partial<BattleInit> | null;
+    battleInit = s && typeof s.round === "number" ? { ...freshInit(), ...s } as BattleInit : freshInit();
   } catch { battleInit = freshInit(); }
 }
 function resetInit(): void { battleInit = freshInit(); saveInit(); }
@@ -2268,33 +2319,81 @@ function initRoll(): void {
   } else {
     battleInit.roll.host = roll2d6();
     battleInit.roll.guest = roll2d6();
-    while (battleInit.roll.host === battleInit.roll.guest) battleInit.roll.guest = roll2d6();
+    while (initTotal("host") === initTotal("guest")) battleInit.roll.guest = roll2d6();
     saveInit();
   }
   renderBattle();
 }
 function initNextRound(): void {
-  battleInit.round += 1;
-  battleInit.roll = { host: null, guest: null };
+  battleInit = { ...battleInit, round: battleInit.round + 1, roll: { host: null, guest: null }, acted: [] };
   saveInit();
   if (mpInfo) mpSend({ type: "init-round", round: battleInit.round });
   renderBattle();
 }
-/** Send a full initiative snapshot (so a late joiner syncs round + rolls). */
+/** Adjust the initiative bonus for a side I control (±). */
+function initSetBonus(role: Role, delta: number): void {
+  battleInit.bonus[role] = Math.max(-5, Math.min(5, battleInit.bonus[role] + delta));
+  saveInit();
+  if (mpInfo) mpSend({ type: "init-bonus", role, value: battleInit.bonus[role] });
+  renderBattle();
+}
+function initToggleMod(): void {
+  battleInit.modReactions = !battleInit.modReactions;
+  saveInit();
+  if (mpInfo) mpSend({ type: "init-mod", on: battleInit.modReactions });
+  renderBattle();
+}
+/** Mark a unit activated / un-activated this round. */
+function initToggleActed(key: string): void {
+  const i = battleInit.acted.indexOf(key);
+  if (i >= 0) battleInit.acted.splice(i, 1);
+  else battleInit.acted.push(key);
+  saveInit();
+  if (mpInfo) mpSend({ type: "init-act", key, on: i < 0 });
+  renderBattle();
+}
+/** Send a full initiative snapshot (so a late joiner syncs everything). */
 function initSyncSend(): void {
-  if (mpInfo) mpSend({ type: "init-sync", round: battleInit.round, roll: battleInit.roll });
+  if (mpInfo) mpSend({
+    type: "init-sync",
+    round: battleInit.round,
+    roll: battleInit.roll,
+    bonus: battleInit.bonus,
+    acted: battleInit.acted,
+    on: battleInit.modReactions,
+  });
 }
 /** Handle an incoming initiative message. Returns true if it was one. */
 function initHandle(m: MpMsg): boolean {
   if (m.type === "init-roll" && (m.role === "host" || m.role === "guest") && typeof m.value === "number") {
-    if (typeof m.round === "number" && m.round > battleInit.round) battleInit = { round: m.round, roll: { host: null, guest: null } };
+    if (typeof m.round === "number" && m.round > battleInit.round) battleInit = { ...freshInit(), round: m.round, bonus: battleInit.bonus, modReactions: battleInit.modReactions };
     battleInit.roll[m.role] = m.value;
     saveInit();
     renderBattle();
     return true;
   }
   if (m.type === "init-round" && typeof m.round === "number") {
-    if (m.round !== battleInit.round) { battleInit = { round: m.round, roll: { host: null, guest: null } }; saveInit(); renderBattle(); }
+    if (m.round !== battleInit.round) { battleInit = { ...freshInit(), round: m.round, bonus: battleInit.bonus, modReactions: battleInit.modReactions }; saveInit(); renderBattle(); }
+    return true;
+  }
+  if (m.type === "init-bonus" && (m.role === "host" || m.role === "guest") && typeof m.value === "number") {
+    battleInit.bonus[m.role] = m.value;
+    saveInit();
+    renderBattle();
+    return true;
+  }
+  if (m.type === "init-mod" && typeof m.on === "boolean") {
+    battleInit.modReactions = m.on;
+    saveInit();
+    renderBattle();
+    return true;
+  }
+  if (m.type === "init-act" && typeof m.key === "string") {
+    const i = battleInit.acted.indexOf(m.key);
+    if (m.on && i < 0) battleInit.acted.push(m.key);
+    else if (!m.on && i >= 0) battleInit.acted.splice(i, 1);
+    saveInit();
+    renderBattle();
     return true;
   }
   if (m.type === "init-sync" && typeof m.round === "number" && m.roll) {
@@ -2302,6 +2401,9 @@ function initHandle(m: MpMsg): boolean {
       battleInit.round = m.round;
       if (m.roll.host != null) battleInit.roll.host = m.roll.host;
       if (m.roll.guest != null) battleInit.roll.guest = m.roll.guest;
+      if (m.bonus) battleInit.bonus = m.bonus;
+      if (Array.isArray(m.acted)) battleInit.acted = m.acted;
+      if (typeof m.on === "boolean") battleInit.modReactions = m.on;
       saveInit();
       renderBattle();
     }
@@ -2427,7 +2529,10 @@ function renderBattle(): void {
     document.body.classList.remove("battle-mode");
     return;
   }
+  const actedSet = new Set(battleInit.acted);
+  const iControl = (s: "you" | "foe"): boolean => !mpInfo || s === "you";
   const side = (f: SavedForce, fIdx: number, label: string): string => {
+    const sStr = f.battle as "you" | "foe";
     let live = 0;
     const chips = f.units
       .map((u, i) => {
@@ -2435,9 +2540,11 @@ function renderBattle(): void {
         if (bv && !u.damage?.out) live += bv;
         const cls = u.damage?.out ? "ko" : isDamaged(u) ? "hit" : "ok";
         const active = activeForce === fIdx && editingForceIdx === i;
-        return `<div class="bt-unit${u.damage?.out ? " bt-out" : ""}${active ? " bt-active" : ""}">
+        const acted = actedSet.has(unitKey(sStr, i));
+        return `<div class="bt-unit${u.damage?.out ? " bt-out" : ""}${active ? " bt-active" : ""}${acted ? " bt-acted" : ""}">
           <span class="bt-dot bt-${cls}"></span>
           <button class="bt-track" type="button" data-f="${fIdx}" data-i="${i}">${esc(u.name)}</button>
+          ${acted ? '<span class="bt-acted-tag" title="Activated this round">✓</span>' : ""}
           ${bv ? `<span class="bt-bv">${bv.toLocaleString()}</span>` : ""}
           <button class="bt-kill" type="button" data-f="${fIdx}" data-ko="${i}" title="Mark out of action / revive" aria-label="Toggle out of action">💀</button>
         </div>`;
@@ -2453,33 +2560,90 @@ function renderBattle(): void {
     ? `<span class="bt-conn bt-conn-${mpStatus}">${mpStatus === "online" ? `● ${mpPresence} online` : mpStatus === "connecting" ? "● connecting…" : "● offline"}</span>` +
       (myRole === "host" ? `<button id="bt-copylink" type="button">Copy room link</button>` : "")
     : "";
-  // Initiative strip: round counter, per-side 2d6, and the winner.
-  const mine = mpInfo ? battleInit.roll[myRole] : battleInit.roll.host;
-  const theirs = mpInfo ? battleInit.roll[otherRole()] : battleInit.roll.guest;
+
+  // --- Initiative strip: round, per-side 2d6 + bonus, winner, mod-reactions.
+  const youRole = myRole;
+  const foeRole = otherRole();
   const youName = mpInfo ? "You" : esc(you.name);
   const foeName = mpInfo ? "Opponent" : esc(foe.name);
-  const rolled = mine != null && theirs != null;
-  const youWin = rolled && mine! > theirs!;
-  const foeWin = rolled && theirs! > mine!;
-  const rollChip = (label: string, v: number | null, win: boolean): string =>
-    `<span class="bt-init-roll${win ? " is-win" : ""}">${label} <b>${v ?? "—"}</b></span>`;
+  const youTot = initTotal(youRole);
+  const foeTot = initTotal(foeRole);
+  const rolled = youTot != null && foeTot != null;
+  const tie = rolled && youTot === foeTot;
+  const youWin = rolled && youTot! > foeTot!;
+  const foeWin = rolled && foeTot! > youTot!;
+  const rollChip = (s: "you" | "foe", label: string, role: Role, total: number | null, win: boolean): string => {
+    const raw = battleInit.roll[role];
+    const bonus = battleInit.bonus[role];
+    const big = raw == null ? "—" : String(total);
+    const sub = raw != null && bonus !== 0 ? ` <span class="muted">(${raw}${bonus >= 0 ? "+" : ""}${bonus})</span>` : "";
+    const ctl = iControl(s)
+      ? `<span class="bt-bonus" title="Initiative bonus"><button class="bt-bonus-btn" type="button" data-bonus-role="${role}" data-delta="-1">−</button><span class="bt-bonus-v">${bonus >= 0 ? "+" : ""}${bonus}</span><button class="bt-bonus-btn" type="button" data-bonus-role="${role}" data-delta="1">＋</button></span>`
+      : bonus !== 0
+        ? `<span class="muted">bonus ${bonus >= 0 ? "+" : ""}${bonus}</span>`
+        : "";
+    return `<span class="bt-init-roll${win ? " is-win" : ""}">${label} <b>${big}</b>${sub}${ctl}</span>`;
+  };
   let verdict = "";
-  if (rolled) {
-    verdict = mine === theirs
-      ? `<span class="bt-init-tie">Tie — roll again</span>`
-      : `<span class="bt-init-win">🏆 ${youWin ? youName : foeName} wins</span><span class="muted">loser moves first</span>`;
-  } else if (mpInfo && (mine != null || theirs != null)) {
-    verdict = `<span class="muted">waiting for ${mine == null ? "you" : "opponent"} to roll…</span>`;
-  }
+  if (tie) verdict = `<span class="bt-init-tie">Tie — roll again</span>`;
+  else if (rolled) verdict = `<span class="bt-init-win">🏆 ${youWin ? youName : foeName} wins</span><span class="muted">loser activates first</span>`;
+  else if (mpInfo && (battleInit.roll[youRole] != null || battleInit.roll[foeRole] != null))
+    verdict = `<span class="muted">waiting for ${battleInit.roll[youRole] == null ? "you" : "opponent"} to roll…</span>`;
+  const modBtn = `<button id="bt-mod-react" type="button" class="bt-toggle${battleInit.modReactions ? " is-on" : ""}" title="Optional: lower a unit's activation bracket by its condition-monitor + critical hits">${battleInit.modReactions ? "☑" : "☐"} Modified reactions</button>`;
   const init = `<div class="bt-init">
       <span class="bt-init-round">Round ${battleInit.round}</span>
       <button id="bt-roll-init" type="button">🎲 Roll initiative</button>
-      ${rollChip(youName, mine, youWin)}
-      ${rollChip(foeName, theirs, foeWin)}
+      ${rollChip("you", youName, youRole, youTot, youWin)}
+      ${rollChip("foe", foeName, foeRole, foeTot, foeWin)}
       ${verdict}
       <span class="bt-spacer"></span>
+      ${modBtn}
       <button id="bt-next-round" type="button">Next round ▸</button>
     </div>`;
+
+  // --- Cinematic activation order: TMM brackets, loser-first within each.
+  let activation = "";
+  if (rolled && !tie) {
+    const loserSide: "you" | "foe" = youTot! < foeTot! ? "you" : "foe";
+    const winnerSide: "you" | "foe" = loserSide === "you" ? "foe" : "you";
+    type ActU = { s: "you" | "foe"; key: string; name: string; bracket: number };
+    const collect = (f: SavedForce, s: "you" | "foe"): ActU[] =>
+      f.units
+        .map((u, idx) => ({ s, key: unitKey(s, idx), name: u.name, bracket: unitBracket(u), out: u.damage?.out }))
+        .filter((a) => !a.out)
+        .map(({ s: ss, key, name, bracket }) => ({ s: ss, key, name, bracket }));
+    const all = [...collect(you, "you"), ...collect(foe, "foe")];
+    const brackets = [...new Set(all.map((a) => a.bracket))].sort((a, b) => a - b);
+    const ordered: ActU[] = [];
+    for (const b of brackets) {
+      ordered.push(...all.filter((a) => a.s === loserSide && a.bracket === b));
+      ordered.push(...all.filter((a) => a.s === winnerSide && a.bracket === b));
+    }
+    const nextUp = ordered.find((a) => !actedSet.has(a.key));
+    const allActed = ordered.length > 0 && !nextUp;
+    const actChip = (a: ActU): string => {
+      const acted = actedSet.has(a.key);
+      const isNext = nextUp?.key === a.key;
+      const mine = iControl(a.s);
+      return `<button class="bt-act bt-act-${a.s}${acted ? " is-acted" : ""}${isNext ? " is-next" : ""}" type="button" ${mine ? `data-act-key="${a.key}"` : "disabled"} title="${acted ? "Activated — click to undo" : mine ? "Mark activated" : "Opponent's unit"}">${esc(a.name)}${acted ? " ✓" : ""}</button>`;
+    };
+    const rows = brackets
+      .map((b) => {
+        const inB = [...all.filter((a) => a.s === loserSide && a.bracket === b), ...all.filter((a) => a.s === winnerSide && a.bracket === b)];
+        return `<div class="bt-brk"><span class="bt-brk-h">TMM ${b}</span><div class="bt-brk-units">${inB.map(actChip).join("")}</div></div>`;
+      })
+      .join("");
+    const status = allActed
+      ? `<span class="bt-init-win">round complete — Next round ▸</span>`
+      : nextUp
+        ? `<span class="muted">next: <b>${esc(nextUp.name)}</b> (${nextUp.s === loserSide ? "loser" : "winner"})</span>`
+        : "";
+    activation = `<div class="bt-activation">
+      <div class="bt-act-head"><b>Activation order</b><span class="muted">lowest TMM first · loser activates first${battleInit.modReactions ? " · modified reactions" : ""}</span>${status}</div>
+      ${rows || '<p class="muted">No active units.</p>'}
+    </div>`;
+  }
+
   cont.innerHTML = `<div class="bt-bar">
       <span class="bt-title">⚔ Battle</span>
       <span class="bt-vs">${esc(you.name)} <span class="muted">vs</span> ${esc(foe.name)}</span>
@@ -2488,6 +2652,7 @@ function renderBattle(): void {
       <button id="bt-end" type="button">End battle</button>
     </div>
     ${init}
+    ${activation}
     <div class="bt-rosters">${side(you, youI, "Your force")}${side(foe, foeI, "Enemy")}</div>`;
 }
 
@@ -2509,6 +2674,20 @@ document.getElementById("battle")?.addEventListener("click", (e) => {
   }
   if (t.closest("#bt-next-round")) {
     initNextRound();
+    return;
+  }
+  if (t.closest("#bt-mod-react")) {
+    initToggleMod();
+    return;
+  }
+  const bonus = t.closest<HTMLElement>(".bt-bonus-btn");
+  if (bonus?.dataset.bonusRole) {
+    initSetBonus(bonus.dataset.bonusRole as Role, Number(bonus.dataset.delta));
+    return;
+  }
+  const act = t.closest<HTMLElement>(".bt-act");
+  if (act?.dataset.actKey) {
+    initToggleActed(act.dataset.actKey);
     return;
   }
   if (t.closest("#bt-copylink")) {
