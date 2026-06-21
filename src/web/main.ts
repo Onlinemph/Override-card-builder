@@ -1784,8 +1784,12 @@ function forceCardHtml(u: ForceUnit): string {
  * lose) and uses nearly the whole cell. The winner is centered and uniformly
  * scaled (with a little headroom so print metric drift never clips). */
 function fitCardsToCells(area: HTMLElement): void {
-  const SAFETY = 0.96; // headroom against print font-metric drift
-  const WIDTHS_MM = [130, 145, 160, 175, 190, 205]; // render widths to try
+  const SAFETY = 0.97; // headroom against print font-metric drift
+  // Render widths to try (mm). Finer steps + a narrower low end let the fitter
+  // match each card's aspect to the cell more closely — short/wide cards
+  // (vehicles, infantry) reflow taller to fill the cell height instead of
+  // floating with a big bottom gap.
+  const WIDTHS_MM = [120, 132, 144, 156, 168, 180, 195, 210];
   // Lay the sheet out off-screen so offset/scroll sizes are real (it is
   // display:none in normal flow); mm → px is the 96dpi CSS constant either way.
   area.style.cssText = "display:block;position:fixed;left:-10000px;top:0;";

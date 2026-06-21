@@ -1461,7 +1461,7 @@ body.show-quirks .card-quirks { display: block; }
 #print-area { display: none; }
 .sheet {
   display: grid;
-  gap: 6mm;
+  gap: 5mm;
   align-items: start;
 }
 .sheet.cols-1 { grid-template-columns: 1fr; }
@@ -1478,15 +1478,15 @@ body.show-quirks .card-quirks { display: block; }
 /* Cell heights leave room for the per-page sheet header (force name / BV /
    page no.) while the 2×2 block still fits Letter AND A4 (10mm margins). */
 .sheet.fit-portrait {
-  grid-template-columns: repeat(2, 92mm);
-  grid-template-rows: repeat(2, 120mm);
+  grid-template-columns: repeat(2, 95mm);
+  grid-template-rows: repeat(2, 128mm);
 }
-.sheet.fit-portrait .fit-cell { width: 92mm; height: 120mm; }
+.sheet.fit-portrait .fit-cell { width: 95mm; height: 128mm; }
 .sheet.fit-landscape {
-  grid-template-columns: repeat(2, 122mm);
-  grid-template-rows: repeat(2, 84mm);
+  grid-template-columns: repeat(2, 126mm);
+  grid-template-rows: repeat(2, 87mm);
 }
-.sheet.fit-landscape .fit-cell { width: 122mm; height: 84mm; }
+.sheet.fit-landscape .fit-cell { width: 126mm; height: 87mm; }
 .print-page { display: flex; flex-direction: column; }
 
 /* Per-sheet header: force name (left), total BV, page x of y (right). */
