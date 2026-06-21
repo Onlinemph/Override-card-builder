@@ -315,39 +315,38 @@ export function protoDoll(card: ProtoMechCard): string {
   const miss = (n: number) => `<s class="loc-miss">${n}</s>`;
   const seg =
     // Head + visor + neck
-    rr(146, 16, 48, 38, 8) +
-    `<rect x="158" y="23" width="24" height="7" rx="2" fill="${DARK}"/>` +
-    rr(160, 52, 20, 10, 3) +
+    rr(146, 14, 48, 44, 9) +
+    `<rect x="158" y="21" width="24" height="7" rx="2" fill="${DARK}"/>` +
+    rr(160, 56, 20, 10, 3) +
     // Shoulders
-    poly([[78, 76], [128, 62], [128, 98], [86, 108]]) +
-    poly([[262, 76], [212, 62], [212, 98], [254, 108]]) +
-    // Torso (chest + abdomen)
-    rr(126, 62, 88, 74, 10) +
-    rr(136, 134, 68, 46, 8) +
+    poly([[80, 78], [126, 64], [126, 100], [88, 110]]) +
+    poly([[260, 78], [214, 64], [214, 100], [252, 110]]) +
+    // Torso (single block: armor over structure)
+    rr(124, 64, 92, 92, 12) +
     // Arms (upper + lower)
-    rr(80, 96, 34, 50, 8) + rr(78, 148, 34, 52, 8) +
-    rr(226, 96, 34, 50, 8) + rr(228, 148, 34, 52, 8) +
+    rr(82, 98, 34, 50, 8) + rr(80, 150, 34, 52, 8) +
+    rr(224, 98, 34, 50, 8) + rr(226, 150, 34, 52, 8) +
     // Optional torso Main Gun: left outboard pod + barrel
-    (mg ? rr(34, 90, 42, 76, 10) + `<rect x="50" y="72" width="10" height="22" rx="2" fill="${DARK}"/>` : "") +
-    // Hips + single legs block + foot
-    rr(122, 178, 96, 22, 7) +
-    rr(132, 198, 76, 102, 14) +
-    rr(120, 300, 100, 20, 6);
+    (mg ? rr(34, 92, 42, 76, 10) + `<rect x="50" y="74" width="10" height="22" rx="2" fill="${DARK}"/>` : "") +
+    // Waist + single legs block + foot
+    rr(146, 156, 48, 20, 6) +
+    rr(128, 174, 84, 106, 14) +
+    rr(118, 280, 104, 20, 6);
 
   const dolls =
-    loc("hd", [150, 36, 40, 9], [150, 46, 40, 8], a.head, s.head) +
-    loc("la", [82, 100, 30, 44], [80, 150, 30, 46], a.leftArm, s.leftArm) +
-    loc("ra", [228, 100, 30, 44], [230, 150, 30, 46], a.rightArm, s.rightArm) +
-    loc("ct", [132, 68, 76, 60], [140, 136, 60, 42], a.torso, s.torso) +
-    loc("lg", [138, 206, 64, 42], [138, 250, 64, 44], a.legs, s.legs) +
-    (mg ? loc("mg", [40, 96, 30, 30], [40, 128, 30, 30], a.mainGun ?? 0, s.mainGun ?? 0) : "");
+    loc("hd", [150, 40, 40, 8], [150, 49, 40, 7], a.head, s.head) +
+    loc("la", [84, 102, 30, 42], [82, 152, 30, 46], a.leftArm, s.leftArm) +
+    loc("ra", [226, 102, 30, 42], [228, 152, 30, 46], a.rightArm, s.rightArm) +
+    loc("ct", [130, 70, 80, 30], [130, 104, 80, 28], a.torso, s.torso) +
+    loc("lg", [136, 182, 68, 42], [136, 226, 68, 48], a.legs, s.legs) +
+    (mg ? loc("mg", [40, 98, 30, 30], [40, 130, 30, 30], a.mainGun ?? 0, s.mainGun ?? 0) : "");
 
   const controls =
-    ctl("hd", "HEAD", "12", a.head + s.head, 50, 4) +
+    ctl("hd", "HEAD", "12", a.head + s.head, 50, 3) +
     ctl("la", "L ARM", `10,${miss(11)}`, a.leftArm + s.leftArm, 16, 30) +
     ctl("ra", "R ARM", `${miss(3)},4`, a.rightArm + s.rightArm, 84, 30) +
-    ctl("ct", "TORSO", "6,7,8", a.torso + s.torso, 50, 37) +
-    ctl("lg", "LEGS", "5,9", a.legs + s.legs, 50, 73) +
+    ctl("ct", "TORSO", "6,7,8", a.torso + s.torso, 50, 34) +
+    ctl("lg", "LEGS", "5,9", a.legs + s.legs, 50, 72) +
     (mg ? ctl("mg", "M GUN", "2", (a.mainGun ?? 0) + (s.mainGun ?? 0), 7, 33) : "");
 
   return `<div class="bdoll-wrap"><svg class="bdoll" viewBox="-18 0 376 470" xmlns="http://www.w3.org/2000/svg">${seg}${dolls}${DOLL_LEGEND}</svg>${controls}</div>
