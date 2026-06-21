@@ -106,6 +106,9 @@ export function renderFighterCard(card: FighterCard): string {
     : "";
   const type = card.conventional ? "Conventional Fighter" : "Aerospace Fighter";
   const sinks = card.conventional ? "" : ` <b>Sinks:</b> ${esc(card.sinks)}`;
+  // Fuel tonnage: 80 points/ton for aerospace, 160/ton for conventional (double).
+  const fuelTons = card.fuel ? +(card.fuel / (card.conventional ? 160 : 80)).toFixed(1) : 0;
+  const fuel = card.fuel ? `<div><b>Fuel:</b> ${esc(card.fuel)} pts <span class="muted">(${esc(fuelTons)} t)</span></div>` : "";
   return `<article class="card mech-sheet">
     <div class="ms-grid">
       <div class="ms-left">
@@ -118,6 +121,7 @@ export function renderFighterCard(card: FighterCard): string {
               <div><b>Mass:</b> ${esc(card.tonnage)} Tons</div>
               <div class="ms-ud-move"><b>Thrust:</b> ${esc(card.move)}${sinks}</div>
               <div><b>TMM:</b> ${esc(card.tmm)} <b>DThr:</b> ${esc(card.dthr)}</div>
+              ${fuel}
             </div>
             ${card.conventional ? "" : heatScale()}
           </div>

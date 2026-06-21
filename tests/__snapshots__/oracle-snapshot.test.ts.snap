@@ -3211,6 +3211,7 @@ exports[`oracle lock-in: full-unit conversions > converts Test Fighter TF-1.blk 
         "label": "SRM-6 Ammo",
       },
     ],
+    "fuel": 0,
     "kind": "fighter",
     "maxThrust": 8,
     "model": "TF-1",

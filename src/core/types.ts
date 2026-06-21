@@ -652,6 +652,8 @@ export interface FighterUnit {
   heatSinkCount: number;
   /** Heat-sink tech from `<sink_type>`: 1 = double, 0 = single. */
   heatSinkType: HeatSinkType;
+  /** Fuel points from `<fuel>` (0 if absent). */
+  fuel: number;
   armor: FighterArmorRaw;
   mounts: FighterMount[];
   sourceFile?: string;
@@ -694,6 +696,8 @@ export interface FighterCard {
   armor: FighterCardArmor;
   /** Single airframe-wide Structural Integrity (best-effort from tonnage). */
   structure: number;
+  /** Fuel points (from BLK <fuel>). Fuel tonnage = fuel / (conventional ? 160 : 80). */
+  fuel: number;
   weapons: VehicleWeaponRow[];
   /** Raw per-arc weapons (rawLocation = facing) — source for the manual TIC editor. */
   weaponMounts: CardWeapon[];

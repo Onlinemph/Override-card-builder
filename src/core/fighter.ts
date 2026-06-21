@@ -201,6 +201,7 @@ export function convertFighter(unit: FighterUnit): FighterCard {
     dthr,
     armor,
     structure,
+    fuel: unit.fuel,
     weapons,
     weaponMounts: allWeapons,
     tics: allTics,

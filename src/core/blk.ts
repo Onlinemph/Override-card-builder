@@ -419,6 +419,7 @@ export function parseBlkFighter(text: string, file = "<unknown>"): FighterUnit {
   const maxThrust = maxRaw !== undefined ? intOr(maxRaw, 0) : Math.ceil(safeThrust * RUN_MP_MULTIPLIER);
   const heatSinkCount = intOr(scalar(blocks, "heatsinks"), 0);
   const heatSinkType: HeatSinkType = intOr(scalar(blocks, "sink_type"), 0) === 1 ? "double" : "single";
+  const fuel = intOr(scalar(blocks, "fuel"), 0);
 
   return {
     kind: "fighter",
@@ -432,6 +433,7 @@ export function parseBlkFighter(text: string, file = "<unknown>"): FighterUnit {
     maxThrust,
     heatSinkCount,
     heatSinkType,
+    fuel,
     armor: parseFighterArmor(blocks),
     mounts: parseFighterMounts(blocks),
   };
