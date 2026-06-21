@@ -812,7 +812,9 @@ function withSkills(html: string, gunnery?: number, piloting?: number): string {
 function convertOne(text: string, file: string): ConvertResult {
   try {
     const result = convertAny(text, file);
-    (result.card as { bv?: number }).bv = lookupBv(result.card.name, file);
+    const c = result.card as { bv?: number; sourceFile?: string };
+    c.bv = lookupBv(result.card.name, file);
+    c.sourceFile ??= file; // enable file-keyed lookups (quirks, weapon-quirk binding, role)
     return { ok: true, result };
   } catch (err) {
     const message =
