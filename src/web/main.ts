@@ -2133,6 +2133,9 @@ type MpMsg = {
   idx?: number;
   damage?: unknown;
   force?: { name: string; units: ForceUnit[] };
+  round?: number;
+  value?: number;
+  roll?: { host: number | null; guest: number | null };
 };
 let myRole: Role = "host"; // your side; "host" for a solo battle
 let mpClient: RealtimeClient | null = null;
@@ -2210,6 +2213,7 @@ function mpDisconnectTransport(): void {
   if (mpClient) { try { mpClient.disconnect(); } catch { /* ignore */ } mpClient = null; }
 }
 function mpHandle(m: MpMsg): void {
+  if (initHandle(m)) return;
   if (m.type === "hello" && m.force) {
     // The other player (the foe) announced their force. Adopt it as the enemy.
     const foeI = battleIdx("foe");
@@ -2219,7 +2223,7 @@ function mpHandle(m: MpMsg): void {
       saveForce();
       renderBattle();
     }
-    if (!m.reply) mpSendHello(true); // send mine back so they see my force too
+    if (!m.reply) { mpSendHello(true); initSyncSend(); } // send mine back + current initiative
   } else if (m.type === "damage" && (m.role === "host" || m.role === "guest") && typeof m.idx === "number") {
     const side = m.role === myRole ? "you" : "foe";
     const u = forces[battleIdx(side)]?.units[m.idx];
@@ -2237,6 +2241,73 @@ function mpHandle(m: MpMsg): void {
 function mpBroadcast(side: "you" | "foe", idx: number, u: ForceUnit): void {
   if (!mpChannel || mpStatus !== "online" || applyingRemote) return;
   mpSend({ type: "damage", role: side === "you" ? myRole : otherRole(), idx, damage: u.damage });
+}
+
+// --- Initiative. A shared round counter + per-side 2d6 roll. Online: each
+// player rolls their own side and it syncs; local: one click rolls both sides.
+interface BattleInit { round: number; roll: { host: number | null; guest: number | null } }
+const INIT_KEY = "mtf2override.battleInit";
+const freshInit = (): BattleInit => ({ round: 1, roll: { host: null, guest: null } });
+let battleInit: BattleInit = freshInit();
+const roll2d6 = (): number => 2 + Math.floor(Math.random() * 6) + Math.floor(Math.random() * 6);
+function saveInit(): void { try { localStorage.setItem(INIT_KEY, JSON.stringify(battleInit)); } catch { /* ignore */ } }
+function loadInit(): void {
+  try {
+    const s = JSON.parse(localStorage.getItem(INIT_KEY) ?? "null") as BattleInit | null;
+    battleInit = s && typeof s.round === "number" && s.roll ? s : freshInit();
+  } catch { battleInit = freshInit(); }
+}
+function resetInit(): void { battleInit = freshInit(); saveInit(); }
+/** Roll initiative. Online: roll my side only and broadcast; local: roll both. */
+function initRoll(): void {
+  if (mpInfo) {
+    const v = roll2d6();
+    battleInit.roll[myRole] = v;
+    saveInit();
+    mpSend({ type: "init-roll", role: myRole, round: battleInit.round, value: v });
+  } else {
+    battleInit.roll.host = roll2d6();
+    battleInit.roll.guest = roll2d6();
+    while (battleInit.roll.host === battleInit.roll.guest) battleInit.roll.guest = roll2d6();
+    saveInit();
+  }
+  renderBattle();
+}
+function initNextRound(): void {
+  battleInit.round += 1;
+  battleInit.roll = { host: null, guest: null };
+  saveInit();
+  if (mpInfo) mpSend({ type: "init-round", round: battleInit.round });
+  renderBattle();
+}
+/** Send a full initiative snapshot (so a late joiner syncs round + rolls). */
+function initSyncSend(): void {
+  if (mpInfo) mpSend({ type: "init-sync", round: battleInit.round, roll: battleInit.roll });
+}
+/** Handle an incoming initiative message. Returns true if it was one. */
+function initHandle(m: MpMsg): boolean {
+  if (m.type === "init-roll" && (m.role === "host" || m.role === "guest") && typeof m.value === "number") {
+    if (typeof m.round === "number" && m.round > battleInit.round) battleInit = { round: m.round, roll: { host: null, guest: null } };
+    battleInit.roll[m.role] = m.value;
+    saveInit();
+    renderBattle();
+    return true;
+  }
+  if (m.type === "init-round" && typeof m.round === "number") {
+    if (m.round !== battleInit.round) { battleInit = { round: m.round, roll: { host: null, guest: null } }; saveInit(); renderBattle(); }
+    return true;
+  }
+  if (m.type === "init-sync" && typeof m.round === "number" && m.roll) {
+    if (m.round >= battleInit.round) {
+      battleInit.round = m.round;
+      if (m.roll.host != null) battleInit.roll.host = m.roll.host;
+      if (m.roll.guest != null) battleInit.roll.guest = m.roll.guest;
+      saveInit();
+      renderBattle();
+    }
+    return true;
+  }
+  return false;
 }
 const payloadFromUrl = (s: string): string => s.match(/[#?&]f=([^&\s]+)/)?.[1] ?? s.trim();
 /** True if the unit has any tracked damage (ignoring the "out" flag). */
@@ -2317,6 +2388,7 @@ async function startBattle(): Promise<void> {
     { name: foe?.name ?? (online ? "Waiting for opponent…" : "Enemy Force"), units: foe ? structuredClone(foe.units) : [], battle: "foe" },
   );
   myRole = battleMode === "join" ? "guest" : "host";
+  resetInit(); // new battle starts at round 1
   saveForce();
   document.getElementById("battle-setup")?.setAttribute("hidden", "");
   enterBattle();
@@ -2324,6 +2396,7 @@ async function startBattle(): Promise<void> {
 }
 function enterBattle(): void {
   document.body.classList.add("battle-mode");
+  loadInit(); // restore the round/rolls (fresh battles were just reset above)
   exitForceEditor();
   renderBattle();
   output.innerHTML = `<p class="muted bt-prompt">Click a unit above to track its damage, heat, and ammo.</p>`;
@@ -2332,6 +2405,7 @@ function enterBattle(): void {
 function endBattle(): void {
   if (!confirm("End the battle? This clears the battle copies (your saved forces are untouched).")) return;
   mpDisconnect();
+  resetInit();
   forces = forces.filter((f) => !f.battle);
   if (forces.length === 0) forces.push({ name: "Force 1", units: [] });
   activeForce = Math.min(activeForce, forces.length - 1);
@@ -2379,6 +2453,33 @@ function renderBattle(): void {
     ? `<span class="bt-conn bt-conn-${mpStatus}">${mpStatus === "online" ? `● ${mpPresence} online` : mpStatus === "connecting" ? "● connecting…" : "● offline"}</span>` +
       (myRole === "host" ? `<button id="bt-copylink" type="button">Copy room link</button>` : "")
     : "";
+  // Initiative strip: round counter, per-side 2d6, and the winner.
+  const mine = mpInfo ? battleInit.roll[myRole] : battleInit.roll.host;
+  const theirs = mpInfo ? battleInit.roll[otherRole()] : battleInit.roll.guest;
+  const youName = mpInfo ? "You" : esc(you.name);
+  const foeName = mpInfo ? "Opponent" : esc(foe.name);
+  const rolled = mine != null && theirs != null;
+  const youWin = rolled && mine! > theirs!;
+  const foeWin = rolled && theirs! > mine!;
+  const rollChip = (label: string, v: number | null, win: boolean): string =>
+    `<span class="bt-init-roll${win ? " is-win" : ""}">${label} <b>${v ?? "—"}</b></span>`;
+  let verdict = "";
+  if (rolled) {
+    verdict = mine === theirs
+      ? `<span class="bt-init-tie">Tie — roll again</span>`
+      : `<span class="bt-init-win">🏆 ${youWin ? youName : foeName} wins</span><span class="muted">loser moves first</span>`;
+  } else if (mpInfo && (mine != null || theirs != null)) {
+    verdict = `<span class="muted">waiting for ${mine == null ? "you" : "opponent"} to roll…</span>`;
+  }
+  const init = `<div class="bt-init">
+      <span class="bt-init-round">Round ${battleInit.round}</span>
+      <button id="bt-roll-init" type="button">🎲 Roll initiative</button>
+      ${rollChip(youName, mine, youWin)}
+      ${rollChip(foeName, theirs, foeWin)}
+      ${verdict}
+      <span class="bt-spacer"></span>
+      <button id="bt-next-round" type="button">Next round ▸</button>
+    </div>`;
   cont.innerHTML = `<div class="bt-bar">
       <span class="bt-title">⚔ Battle</span>
       <span class="bt-vs">${esc(you.name)} <span class="muted">vs</span> ${esc(foe.name)}</span>
@@ -2386,6 +2487,7 @@ function renderBattle(): void {
       <span class="bt-spacer"></span>
       <button id="bt-end" type="button">End battle</button>
     </div>
+    ${init}
     <div class="bt-rosters">${side(you, youI, "Your force")}${side(foe, foeI, "Enemy")}</div>`;
 }
 
@@ -2399,6 +2501,14 @@ document.getElementById("battle")?.addEventListener("click", (e) => {
   const t = e.target as HTMLElement;
   if (t.closest("#bt-end")) {
     endBattle();
+    return;
+  }
+  if (t.closest("#bt-roll-init")) {
+    initRoll();
+    return;
+  }
+  if (t.closest("#bt-next-round")) {
+    initNextRound();
     return;
   }
   if (t.closest("#bt-copylink")) {

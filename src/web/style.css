@@ -1579,6 +1579,24 @@ body.battle-mode #battle { display: block; }
 .bt-conn-connecting { color: #facc15; }
 .bt-conn-offline { color: #f87171; }
 
+/* Initiative strip */
+.bt-init {
+  display: flex; align-items: center; gap: 0.7rem; flex-wrap: wrap;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+  padding: 0.45rem 0.75rem; margin-bottom: 1rem; font-size: 0.9rem;
+}
+.bt-init-round { font-weight: 800; letter-spacing: 0.02em; }
+.bt-init button { background: #b45309; color: #fff; border: none; border-radius: 6px; padding: 0.3rem 0.8rem; cursor: pointer; font: inherit; font-weight: 700; }
+.bt-init-roll {
+  display: inline-flex; align-items: center; gap: 0.35rem;
+  background: rgba(127, 127, 127, 0.12); border: 1px solid var(--line);
+  border-radius: 6px; padding: 0.2rem 0.55rem;
+}
+.bt-init-roll b { font-size: 1.05rem; }
+.bt-init-roll.is-win { background: rgba(74, 222, 128, 0.18); border-color: #4ade80; }
+.bt-init-win { font-weight: 800; color: #16a34a; }
+.bt-init-tie { font-weight: 700; color: #facc15; }
+
 /* ---- On-screen print preview (WYSIWYG) ---- */
 .pp-bar { display: none; }
 body.previewing { overflow: hidden; }
