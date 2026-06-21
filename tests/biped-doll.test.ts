@@ -5,7 +5,7 @@ import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { convertUnit, parseMtf } from "../src/core/index.js";
-import { bipedDoll, isBipedDoll } from "../src/web/biped-doll.js";
+import { bipedDoll, isBipedDoll, isQuadDoll, quadDoll } from "../src/web/biped-doll.js";
 
 const FIXTURES = join(dirname(fileURLToPath(import.meta.url)), "fixtures");
 const load = (f: string) => parseMtf(readFileSync(join(FIXTURES, f), "utf8"), f);
@@ -37,5 +37,25 @@ describe("biped/tripod silhouette doll", () => {
     expect(svg).toContain("d6 1-2"); // left leg relabeled
     expect(svg).toContain("d6 5-6"); // right leg relabeled
     expect(svg).toContain("roll 1d6"); // tripod leg-location note
+  });
+
+  it("detects quads/quadvees for the four-leg doll", () => {
+    expect(isQuadDoll(quad)).toBe(true);
+    expect(isQuadDoll(biped)).toBe(false);
+    expect(isBipedDoll(quad)).toBe(false);
+  });
+
+  it("renders four legs with front/rear labels and all area codes", () => {
+    const svg = quadDoll(quad);
+    for (const area of ["hd", "la", "ra", "ct", "ll", "rl", "tr"]) {
+      expect(svg).toContain(`class="mloc ${area}"`);
+      expect(svg).toContain(`data-area="${area}"`);
+    }
+    expect(svg).toContain("L FRONT");
+    expect(svg).toContain("R FRONT");
+    expect(svg).toContain("L REAR");
+    expect(svg).toContain("R REAR");
+    expect(svg).not.toContain("ARM"); // quads have no arms
+    expect(svg).toContain("front legs take arm hits");
   });
 });

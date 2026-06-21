@@ -138,3 +138,65 @@ export function bipedDoll(card: OverrideCard): string {
   return `<div class="bdoll-wrap"><svg class="bdoll" viewBox="-18 0 376 470" xmlns="http://www.w3.org/2000/svg">${seg}${dolls}${legend}</svg>${controls}</div>
   <p class="mdoll-legend">Armor (circles) over Structure (squares) · set damage per part — lower the number to heal</p>${tripodNote}`;
 }
+
+/** Armor/structure key swatch (shared by the biped and quad dolls). */
+const DOLL_LEGEND =
+  `<circle class="bpip armor" cx="6" cy="456" r="4.5"/><text class="bdoll-lbl" x="15" y="459" text-anchor="start">armor</text>` +
+  `<rect class="bpip struct" x="62" y="451" width="9" height="9"/><text class="bdoll-lbl" x="76" y="459" text-anchor="start">structure</text>`;
+
+/** True for Quad and QuadVee 'Mechs (top-down four-leg doll). */
+export function isQuadDoll(card: OverrideCard): boolean {
+  return /quad/i.test(card.config); // "Quad" and "QuadVee"
+}
+
+/**
+ * Top-down doll for QUADS / QuadVees: a central body with a head at the front,
+ * four legs at the corners, and the rear box at the back. The card stores the
+ * front legs in the arm slots and the rear legs in the leg slots, so the area
+ * codes (la/ra = front, ll/rl = rear) and hit numbers match a biped — only the
+ * labels change (front legs take arm hits 3-4 / 10-11, rear legs 5 / 9).
+ */
+export function quadDoll(card: OverrideCard): string {
+  const a = card.armor;
+  const s = card.structure;
+  const seg =
+    // Head + visor + neck (front)
+    rr(150, 16, 56, 42, 8) +
+    `<rect x="166" y="24" width="24" height="8" rx="2" fill="${DARK}"/>` +
+    rr(168, 54, 20, 34, 6) +
+    // Leg joints (under the legs + body)
+    rr(104, 126, 24, 34, 5, DARK) + rr(228, 126, 24, 34, 5, DARK) +
+    rr(104, 242, 24, 34, 5, DARK) + rr(228, 242, 24, 34, 5, DARK) +
+    // Body (torso): armor upper, structure lower
+    rr(118, 84, 124, 228, 16) +
+    // Four legs at the corners: front L / R, rear L / R
+    rr(50, 96, 62, 104, 14) + rr(248, 96, 62, 104, 14) +
+    rr(50, 212, 62, 104, 14) + rr(248, 212, 62, 104, 14) +
+    // Outer foot pads
+    rr(40, 150, 16, 24, 4) + rr(320, 150, 16, 24, 4) +
+    rr(40, 266, 16, 24, 4) + rr(320, 266, 16, 24, 4) +
+    // Rear box (back)
+    rr(150, 316, 56, 28, 6, "#e7e7e1");
+
+  const dolls =
+    loc("hd", [156, 35, 44, 9], [156, 45, 44, 9], a.head, s.head) +
+    loc("la", [54, 100, 54, 46], [54, 150, 54, 46], a.leftArm, s.leftArm) +
+    loc("ra", [252, 100, 54, 46], [252, 150, 54, 46], a.rightArm, s.rightArm) +
+    loc("ct", [124, 92, 112, 104], [124, 200, 112, 104], a.torso, s.torso) +
+    loc("ll", [54, 216, 54, 46], [54, 266, 54, 46], a.leftLeg, s.leftLeg) +
+    loc("rl", [252, 216, 54, 46], [252, 266, 54, 46], a.rightLeg, s.rightLeg) +
+    loc("tr", [152, 320, 52, 22], [0, 0, 0, 0], a.rear, 0);
+
+  const controls =
+    ctl("hd", "HEAD", "12", a.head + s.head, 50, 5) +
+    ctl("la", "L FRONT", "10,11", a.leftArm + s.leftArm, 25, 30) +
+    ctl("ra", "R FRONT", "3,4", a.rightArm + s.rightArm, 75, 30) +
+    ctl("ct", "TORSO", "6,7,8", a.torso + s.torso, 50, 42) +
+    ctl("ll", "L REAR", "9", a.leftLeg + s.leftLeg, 25, 58) +
+    ctl("rl", "R REAR", "5", a.rightLeg + s.rightLeg, 75, 58) +
+    ctl("tr", "REAR", "2,12", a.rear + s.torso, 50, 73); // rear armor bleeds into torso structure
+
+  return `<div class="bdoll-wrap"><svg class="bdoll" viewBox="-18 0 376 470" xmlns="http://www.w3.org/2000/svg">${seg}${dolls}${DOLL_LEGEND}</svg>${controls}</div>
+  <p class="mdoll-legend">Armor (circles) over Structure (squares) · set damage per part — lower the number to heal</p>
+  <p class="mdoll-legend">Quad: front legs take arm hits (3-4 / 10-11), rear legs take leg hits (5 / 9).</p>`;
+}
