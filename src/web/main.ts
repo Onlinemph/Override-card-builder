@@ -25,6 +25,7 @@ import { renderMechCard } from "./mech-card.js";
 import { renderProtoCard } from "./proto-card.js";
 import { renderVehicleCard } from "./vehicle-card.js";
 import { applyMove, groupingFromTics, renderTicEditorHtml, ticsFromGrouping } from "./tic-editor.js";
+import { quirkEffect } from "./quirk-effects.js";
 import type { EditorFacets, Grouping } from "./tic-editor.js";
 
 // ---------------------------------------------------------------------------
@@ -661,29 +662,48 @@ function titleCaseWeapon(s: string): string {
     return WEAPON_QUIRK_ACRONYMS.has(lw) ? w.toUpperCase() : lw.charAt(0).toUpperCase() + lw.slice(1);
   });
 }
-/** Per-weapon quirks for a unit, grouped by weapon: "ER PPC — Jettison-Capable; Medium Laser — Stable". */
-function lookupWeaponQuirks(file?: string): string | null {
-  if (!file) return null;
-  const rows = weaponQuirkIndex[bvKey(fileStem(file))];
-  if (!rows?.length) return null;
-  const byWeapon = new Map<string, Set<string>>();
-  for (const [code, raw] of rows) {
-    const label = titleCaseWeapon(normalizeWeaponName(raw));
-    const q = WEAPON_QUIRK_LABEL[code] ?? code.replace(/_/g, " ");
-    (byWeapon.get(label) ?? byWeapon.set(label, new Set()).get(label)!).add(q);
+/** Per-weapon quirks for a unit as structured entries (file-sourced if available,
+ * else the MUL summary with no weapon binding). */
+function weaponQuirkEntries(file: string | undefined, mulW: string[] | undefined): { weapon?: string; name: string }[] {
+  const rows = file ? weaponQuirkIndex[bvKey(fileStem(file))] : undefined;
+  if (rows?.length) {
+    const out: { weapon?: string; name: string }[] = [];
+    const seen = new Set<string>();
+    for (const [code, raw] of rows) {
+      const weapon = titleCaseWeapon(normalizeWeaponName(raw));
+      const name = WEAPON_QUIRK_LABEL[code] ?? code.replace(/_/g, " ");
+      const k = `${weapon}|${name}`;
+      if (!seen.has(k)) {
+        seen.add(k);
+        out.push({ weapon, name });
+      }
+    }
+    return out;
   }
-  return [...byWeapon].map(([w, qs]) => `${esc(w)} — ${[...qs].map(esc).join(", ")}`).join("; ");
+  return (mulW ?? []).map((name) => ({ name }));
 }
-/** Inject a (CSS-hidden) quirks line after the card title; revealed by body.show-quirks.
- * Prefers file-sourced per-weapon detail over the MUL weapon-quirk summary. */
-function withQuirks(html: string, quirks: Quirks | undefined, weaponDetail?: string | null): string {
-  const parts: string[] = [];
-  if (quirks?.u.length) parts.push(`<b>Quirks:</b> ${quirks.u.map(esc).join(", ")}`);
-  const wpn = weaponDetail || (quirks?.w.length ? quirks.w.map(esc).join(", ") : "");
-  if (wpn) parts.push(`<b>Weapon:</b> ${wpn}`);
-  if (parts.length === 0) return html;
-  const line = `<div class="card-quirks">${parts.join(' <span class="q-sep">·</span> ')}</div>`;
-  return html.replace(/(<div class="(?:ms-title|ba-title)\b[^>]*>[\s\S]*?<\/div>)/, `$1${line}`);
+
+/** One quirk row: optional weapon, name, and its Override effect, signed pos/neg/none. */
+function quirkRowHtml(weapon: string | undefined, name: string): string {
+  const e = quirkEffect(name);
+  const cls = e ? ` cq-${e.sign}` : "";
+  const w = weapon ? `<span class="cq-w">${esc(weapon)}:</span> ` : "";
+  const eff = e ? ` — <span class="cq-e">${esc(e.effect)}</span>` : "";
+  return `<div class="cq-row${cls}">${w}<span class="cq-n">${esc(name)}</span>${eff}</div>`;
+}
+
+/** Inject the (CSS-hidden) Design Quirks block with Override effects after the
+ * card title; revealed by body.show-quirks. */
+function withQuirks(html: string, quirks: Quirks | undefined, file?: string): string {
+  const unitNames = quirks?.u ?? [];
+  const weaponEntries = weaponQuirkEntries(file, quirks?.w);
+  if (unitNames.length === 0 && weaponEntries.length === 0) return html;
+  const rows = [
+    ...unitNames.map((n) => quirkRowHtml(undefined, n)),
+    ...weaponEntries.map((e) => quirkRowHtml(e.weapon, e.name)),
+  ].join("");
+  const block = `<div class="card-quirks"><div class="cq-h">Design Quirks</div>${rows}</div>`;
+  return html.replace(/(<div class="(?:ms-title|ba-title)\b[^>]*>[\s\S]*?<\/div>)/, `$1${block}`);
 }
 /** Inject the MUL battlefield role as a small subtitle under the card title. */
 function withRole(html: string, role: string | undefined): string {
@@ -836,7 +856,7 @@ function rawCardHtml(result: AnyCard): string {
 /** Card HTML with the BV badge + (hidden) quirks line (used for previews/print). */
 function cardHtml(result: AnyCard): string {
   const c = result.card as { bv?: number; sourceFile?: string };
-  return withRole(withQuirks(withBv(rawCardHtml(result), c.bv), lookupQuirks(result.card.name, c.sourceFile), lookupWeaponQuirks(c.sourceFile)), lookupRole(result.card.name, c.sourceFile));
+  return withRole(withQuirks(withBv(rawCardHtml(result), c.bv), lookupQuirks(result.card.name, c.sourceFile), c.sourceFile), lookupRole(result.card.name, c.sourceFile));
 }
 
 // ---- Manual TIC editor wiring ---------------------------------------------
@@ -1007,7 +1027,7 @@ function renderForceEdit(): void {
     raw = rawCardHtml(r.result);
   }
   const sk = unitSkills(u);
-  const card = withRole(withQuirks(withSkills(withBv(raw, unitBv(u)), sk.gunnery, sk.piloting), lookupQuirks(u.name, u.file), lookupWeaponQuirks(u.file)), lookupRole(u.name, u.file));
+  const card = withRole(withQuirks(withSkills(withBv(raw, unitBv(u)), sk.gunnery, sk.piloting), lookupQuirks(u.name, u.file), u.file), lookupRole(u.name, u.file));
   editWeapons = weaponsForToHit(r.result); // for the to-hit table (reflects current TIC grouping)
   editSinks = unitSinks(r.result);
   output.classList.add("force-play"); // enables pip cursors / damage tracking
