@@ -1923,9 +1923,13 @@ function refreshPreview(): void {
 }
 function printFromPreview(): void {
   document.body.classList.remove("previewing");
-  document.body.classList.add("print-mode");
   const area = document.getElementById("print-area");
-  if (area) (area.style as CSSStyleDeclaration & { zoom?: string }).zoom = ""; // print at real size
+  if (area) area.style.cssText = ""; // drop the preview zoom/overlay inline styles
+  // Recompute the fit in a clean (non-preview) context so the print matches the
+  // current Fill — the preview-context transforms don't translate to the print
+  // render. This mirrors the original (working) build → fit → print flow.
+  buildSheet();
+  document.body.classList.add("print-mode");
   const cleanup = (): void => {
     document.body.classList.remove("print-mode");
     pageStyle.textContent = "";
