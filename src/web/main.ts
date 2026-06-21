@@ -1557,13 +1557,12 @@ function weightClass(tons: number): string | null {
   return "Assault";
 }
 interface FpWeapon { profile: { kind: string; byRange: number[]; max: number }; range: { s: number | null; m: number | null; l: number | null } | null }
-/** Damage-bearing entries (TICs for 'Mechs, weapon rows otherwise) for the firepower curve. */
+/** TICs (which carry the damage `profile` + `range`) for the firepower curve.
+ * Every weapon-bearing card exposes `.tics`; cards without it (e.g. infantry)
+ * fall through to an empty list. NB: the weapon *rows* (card.weapons) have no
+ * `profile`, so the curve must read TICs. */
 function unitWeapons(result: AnyCard): FpWeapon[] {
-  const c = result.card as { tics?: FpWeapon[]; weapons?: FpWeapon[] };
-  if (result.kind === "mech") return c.tics ?? [];
-  if (result.kind === "vehicle" || result.kind === "fighter" || result.kind === "protomech" || result.kind === "dropship")
-    return c.weapons ?? [];
-  return []; // BA / infantry firepower is modeled per-trooper — excluded from the curve
+  return (result.card as { tics?: FpWeapon[] }).tics ?? [];
 }
 function damageAt(p: FpWeapon["profile"], band: 0 | 1 | 2): number {
   if (p.kind === "variable" && p.byRange.length) return p.byRange[Math.min(band, p.byRange.length - 1)] ?? 0;
