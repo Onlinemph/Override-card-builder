@@ -1,49 +1,53 @@
 # Live multiplayer (battle tracker)
 
-The battle tracker can sync a battle between two players in real time over a tiny
-[PartyKit](https://www.partykit.io/) relay (runs on Cloudflare's free tier). The
-relay only carries the two forces + per-unit damage — no accounts, no database.
+Online battle is powered by [Supabase Realtime](https://supabase.com/realtime)
+(free tier). The backend is **baked into the app** (`src/web/mp-config.ts`), so
+once it's set up, **everyone who opens the site can play online with zero setup**
+— no accounts, no server to run, no per-player configuration.
 
-## 1. Deploy the relay (one time)
+It only carries the two forces + per-unit damage between the two players. There's
+no database and no login.
 
-From the repo root:
+## One-time setup (site owner only — ~5 minutes, no terminal)
 
-```bash
-npx partykit deploy
-```
+You only do this once, ever. After it's committed, it ships with every GitHub
+Pages deploy and works for all your players.
 
-The first run asks you to log in (GitHub/Cloudflare — free). It deploys
-`party/battle.ts` and prints a host, e.g.:
+1. Go to **[supabase.com](https://supabase.com/)** → sign in with GitHub →
+   **New project**. Pick the **free** plan, any name, a region near you. Wait
+   ~2 minutes for it to provision.
+2. In the project, open **⚙ Project Settings → API**.
+3. Copy two values into `src/web/mp-config.ts`:
+   - **Project URL** (e.g. `https://abcdxyz.supabase.co`) → `SUPABASE_URL`
+   - **anon public** key (the long string) → `SUPABASE_ANON_KEY`
+4. Commit and push. The normal GitHub Pages build picks it up.
 
-```
-  Deployed override-battle to https://override-battle.YOURNAME.partykit.dev
-```
+> The **anon public** key is designed to live in browser code — it's safe to
+> commit. Supabase rate-limits and (optionally) Row Level Security protect the
+> project; for a hobby battle relay that carries only forces + damage, the
+> defaults are fine.
 
-Copy that host (`override-battle.YOURNAME.partykit.dev`).
+## Playing (everyone — no setup)
 
-## 2. Point the app at it
+In the app: **⚔ Battle**.
 
-In the app: **⚔ Battle → Host online** (or Join online). Paste the host into the
-**Server** field. It's remembered in your browser, so you only do this once.
-
-## 3. Play
-
-- **Host online**: pick your force, Start. You get a **room link** — send it to
-  your opponent (chat/Discord/etc.).
-- **Join online**: paste the room link (or code), pick your force, Start.
+- **Host online**: pick your force, **Start**. You get a **room link** — send it
+  to your opponent (chat/Discord/etc.).
+- **Join online**: paste the room link (or code) your opponent sent, pick your
+  force, **Start**.
 
 Both players now see the same battle: your force vs theirs. Mark damage / heat /
-ammo / out-of-action on any unit and it updates on the other screen. Refreshing
-re-syncs from the relay; the room stays alive as long as someone's connected.
+ammo / out-of-action on any unit and it updates on the other screen in real time.
+Refreshing re-syncs from your opponent; the room stays alive as long as someone's
+connected.
 
 ## Notes / limits
 
-- The relay is a thin pass-through: each player edits, the other sees it
-  (last-write-wins per unit — fine for turn-based play). No turn/initiative
-  enforcement yet.
-- It's free-tier; for a hobby group that's plenty. The PartyKit server API can
-  change between versions — if `npx partykit deploy` errors on `party/battle.ts`,
-  check the current [PartyKit server docs](https://docs.partykit.io/) for the
-  `Party.Room` / `broadcast` signatures and adjust.
-- Self-hosting instead: any WebSocket server that relays JSON messages and caches
-  the last `state` per room works; mirror the protocol in `party/battle.ts`.
+- Forces are exchanged peer-to-peer when the second player joins (a "hello"
+  handshake); there's no server-side state. If both players are mid-battle and
+  both refresh at the same instant, just have one re-open the room link.
+- Damage is last-write-wins per unit — fine for turn-based play. No turn /
+  initiative enforcement.
+- Free-tier Realtime is plenty for a hobby group. If you ever outgrow it, any
+  Supabase project (or self-hosted Supabase) works — just swap the two values in
+  `src/web/mp-config.ts`.

@@ -28,6 +28,9 @@ import { renderVehicleCard } from "./vehicle-card.js";
 import { applyMove, groupingFromTics, renderTicEditorHtml, ticsFromGrouping } from "./tic-editor.js";
 import { applyUnitQuirkToCard, applyWeaponQuirkToTic, quirkEffect, WEAPON_QUIRK_LABEL } from "./quirk-effects.js";
 import type { EditorFacets, Grouping } from "./tic-editor.js";
+import { RealtimeClient } from "@supabase/realtime-js";
+import type { RealtimeChannel } from "@supabase/realtime-js";
+import { MP_CONFIGURED, SUPABASE_ANON_KEY, SUPABASE_URL } from "./mp-config.js";
 
 // ---------------------------------------------------------------------------
 // Unit browser — powered by the pre-built index served as a STATIC asset at
@@ -2116,70 +2119,106 @@ async function importFromHash(): Promise<void> {
 function inBattle(): boolean { return forces.some((f) => f.battle); }
 function battleIdx(side: "you" | "foe"): number { return forces.findIndex((f) => f.battle === side); }
 
-// --- Live multiplayer (PartyKit relay). Each player's local "you" is their role;
-// "foe" is the other role. Damage is keyed by role so both sides converge. ---
+// --- Live multiplayer (Supabase Realtime). The backend is baked into the app
+// (see mp-config.ts), so online battle works for anyone who opens the site with
+// zero setup. A "room" is just a shared channel name (the room code). There is
+// no server-side state: the two players exchange their forces peer-to-peer via
+// a "hello" message, and relay per-unit damage. Each player's local "you" is
+// their role; "foe" is the other role, so damage stays consistent on both ends.
 type Role = "host" | "guest";
+type MpMsg = {
+  type?: string;
+  role?: Role;
+  reply?: boolean;
+  idx?: number;
+  damage?: unknown;
+  force?: { name: string; units: ForceUnit[] };
+};
 let myRole: Role = "host"; // your side; "host" for a solo battle
-let mpWs: WebSocket | null = null;
-let mpInfo: { host: string; room: string; role: Role } | null = null;
+let mpClient: RealtimeClient | null = null;
+let mpChannel: RealtimeChannel | null = null;
+let mpInfo: { room: string; role: Role } | null = null;
 let mpStatus: "off" | "connecting" | "online" | "offline" = "off";
 let mpPresence = 0;
 let applyingRemote = false; // guard so applying a remote change doesn't re-broadcast (no echo loop)
 const otherRole = (): Role => (myRole === "host" ? "guest" : "host");
 const MP_KEY = "mtf2override.battleMp";
-const mpHostSaved = (): string => { try { return localStorage.getItem("mtf2override.mpHost") ?? ""; } catch { return ""; } };
 
-function mpSend(o: unknown): void {
-  if (mpWs?.readyState === WebSocket.OPEN) mpWs.send(JSON.stringify(o));
+function mpSend(o: MpMsg): void {
+  void mpChannel?.send({ type: "broadcast", event: "msg", payload: o });
 }
 function mpRoomLink(): string {
   return mpInfo ? `${location.origin}${location.pathname}#battle=${mpInfo.room}` : "";
 }
-function mpSendHello(): void {
+function mpMyForce(): { name: string; units: ForceUnit[] } | null {
   const you = forces[battleIdx("you")];
-  if (you) mpSend({ type: "hello", role: myRole, force: { name: you.name, units: you.units } });
+  return you ? { name: you.name, units: you.units } : null;
+}
+function mpSendHello(reply = false): void {
+  const force = mpMyForce();
+  if (force) mpSend({ type: "hello", role: myRole, reply, force });
 }
 function mpDisconnect(): void {
   mpInfo = null;
   mpStatus = "off";
   try { localStorage.removeItem(MP_KEY); } catch { /* ignore */ }
-  if (mpWs) { mpWs.onclose = null; mpWs.close(); mpWs = null; }
+  if (mpChannel) { try { void mpChannel.unsubscribe(); } catch { /* ignore */ } mpChannel = null; }
+  if (mpClient) { try { mpClient.disconnect(); } catch { /* ignore */ } mpClient = null; }
 }
-function mpConnect(host: string, room: string, role: Role): void {
-  if (mpWs) { mpWs.onclose = null; mpWs.close(); }
+function mpConnect(room: string, role: Role): void {
+  mpDisconnectTransport();
   myRole = role;
-  mpInfo = { host, room, role };
+  mpInfo = { room, role };
   try { localStorage.setItem(MP_KEY, JSON.stringify(mpInfo)); } catch { /* ignore */ }
   mpStatus = "connecting";
   renderBattle();
-  let ws: WebSocket;
+  let client: RealtimeClient;
   try {
-    ws = new WebSocket(`wss://${host.replace(/^wss?:\/\//, "").replace(/\/$/, "")}/parties/main/${encodeURIComponent(room)}`);
+    const url = `${SUPABASE_URL.replace(/\/$/, "")}/realtime/v1`.replace(/^http/, "ws");
+    client = new RealtimeClient(url, { params: { apikey: SUPABASE_ANON_KEY } });
   } catch {
     mpStatus = "offline";
     renderBattle();
     return;
   }
-  mpWs = ws;
-  ws.onopen = () => { mpStatus = "online"; mpSendHello(); renderBattle(); };
-  ws.onmessage = (e) => { try { mpHandle(JSON.parse(String(e.data))); } catch { /* ignore */ } };
-  ws.onerror = () => { mpStatus = "offline"; };
-  ws.onclose = () => {
-    mpStatus = "offline";
+  mpClient = client;
+  const channel = client.channel(`battle-${room}`, {
+    config: { broadcast: { self: false }, presence: { key: role } },
+  });
+  mpChannel = channel;
+  channel.on("broadcast", { event: "msg" }, (e: { payload: MpMsg }) => mpHandle(e.payload));
+  channel.on("presence", { event: "sync" }, () => {
+    mpPresence = Object.keys(channel.presenceState()).length;
     renderBattle();
-    if (mpInfo && inBattle()) setTimeout(() => { if (mpInfo && inBattle() && (!mpWs || mpWs.readyState > 1)) mpConnect(mpInfo.host, mpInfo.room, mpInfo.role); }, 2500);
-  };
-}
-function mpHandle(m: { type?: string; role?: Role; idx?: number; damage?: unknown; count?: number; host?: { name: string; units: ForceUnit[] }; guest?: { name: string; units: ForceUnit[] } }): void {
-  if (m.type === "state") {
-    const other = (myRole === "host" ? m.guest : m.host) as { name: string; units: ForceUnit[] } | undefined;
-    const foeI = battleIdx("foe");
-    if (other && other.units?.length && foeI >= 0) {
-      forces[foeI]!.name = other.name || "Enemy Force";
-      forces[foeI]!.units = other.units;
-      saveForce();
+  });
+  channel.subscribe((status: string) => {
+    if (status === "SUBSCRIBED") {
+      mpStatus = "online";
+      void channel.track({ role });
+      mpSendHello(); // announce my force; the opponent replies with theirs
+      renderBattle();
+    } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
+      mpStatus = "offline";
+      renderBattle();
     }
-    renderBattle();
+  });
+}
+/** Tear down the socket without clearing mpInfo (used on reconnect). */
+function mpDisconnectTransport(): void {
+  if (mpChannel) { try { void mpChannel.unsubscribe(); } catch { /* ignore */ } mpChannel = null; }
+  if (mpClient) { try { mpClient.disconnect(); } catch { /* ignore */ } mpClient = null; }
+}
+function mpHandle(m: MpMsg): void {
+  if (m.type === "hello" && m.force) {
+    // The other player (the foe) announced their force. Adopt it as the enemy.
+    const foeI = battleIdx("foe");
+    if (foeI >= 0 && Array.isArray(m.force.units)) {
+      forces[foeI]!.name = m.force.name || "Enemy Force";
+      forces[foeI]!.units = m.force.units;
+      saveForce();
+      renderBattle();
+    }
+    if (!m.reply) mpSendHello(true); // send mine back so they see my force too
   } else if (m.type === "damage" && (m.role === "host" || m.role === "guest") && typeof m.idx === "number") {
     const side = m.role === myRole ? "you" : "foe";
     const u = forces[battleIdx(side)]?.units[m.idx];
@@ -2191,14 +2230,11 @@ function mpHandle(m: { type?: string; role?: Role; idx?: number; damage?: unknow
       if (editingForceIdx === m.idx && forces[activeForce]?.battle === side) applyDamageMarks();
       applyingRemote = false;
     }
-  } else if (m.type === "presence") {
-    mpPresence = m.count ?? 0;
-    renderBattle();
   }
 }
 /** Broadcast a unit's current damage (role-keyed) after a local change. */
 function mpBroadcast(side: "you" | "foe", idx: number, u: ForceUnit): void {
-  if (mpWs?.readyState !== WebSocket.OPEN || applyingRemote) return;
+  if (!mpChannel || mpStatus !== "online" || applyingRemote) return;
   mpSend({ type: "damage", role: side === "you" ? myRole : otherRole(), idx, damage: u.damage });
 }
 const payloadFromUrl = (s: string): string => s.match(/[#?&]f=([^&\s]+)/)?.[1] ?? s.trim();
@@ -2215,7 +2251,7 @@ function isDamaged(u: ForceUnit): boolean {
 let battleMode: "local" | "host" | "join" = "local";
 const BATTLE_HINTS: Record<typeof battleMode, string> = {
   local: "Track your own force; optionally paste an opponent's “Copy link” to load their force as the enemy. Offline.",
-  host: "Live game: pick your force and Start, then send the room link to your opponent. Needs a multiplayer server (see MULTIPLAYER.md).",
+  host: "Live game: pick your force and Start, then send the room link to your opponent. They join, and you both see the same battle in real time.",
   join: "Live game: paste the room link your opponent sent, pick your force, and Start.",
 };
 function setBattleMode(mode: typeof battleMode): void {
@@ -2224,9 +2260,13 @@ function setBattleMode(mode: typeof battleMode): void {
   const show = (sel: string, on: boolean) => document.querySelector<HTMLElement>(sel)?.toggleAttribute("hidden", !on);
   show(".bt-when-local", mode === "local");
   show(".bt-when-join", mode === "join");
-  show(".bt-when-online", mode !== "local");
   const hint = document.getElementById("battle-hint");
-  if (hint) hint.textContent = BATTLE_HINTS[mode];
+  if (hint) {
+    hint.textContent =
+      mode !== "local" && !MP_CONFIGURED
+        ? "Online play isn't configured for this site yet."
+        : BATTLE_HINTS[mode];
+  }
 }
 function openBattleSetup(): void {
   if (forces.every((f) => f.units.length === 0)) {
@@ -2243,8 +2283,6 @@ function openBattleSetup(): void {
   }
   const url = document.getElementById("battle-foe-url") as HTMLInputElement | null;
   if (url) url.value = "";
-  const srv = document.getElementById("battle-server") as HTMLInputElement | null;
-  if (srv) srv.value = mpHostSaved();
   const room = document.getElementById("battle-room") as HTMLInputElement | null;
   if (room) room.value = "";
   setBattleMode("local");
@@ -2254,12 +2292,9 @@ async function startBattle(): Promise<void> {
   const your = forces[Number((document.getElementById("battle-your") as HTMLSelectElement | null)?.value)];
   if (!your) return;
   const online = battleMode !== "local";
-  let host = "";
   let room = "";
   if (online) {
-    host = (document.getElementById("battle-server") as HTMLInputElement | null)?.value.trim() ?? "";
-    if (!host) { alert("Enter your multiplayer server (deploy it first — see MULTIPLAYER.md)."); return; }
-    try { localStorage.setItem("mtf2override.mpHost", host); } catch { /* ignore */ }
+    if (!MP_CONFIGURED) { alert("Online play isn't set up for this site yet."); return; }
     if (battleMode === "join") {
       const raw = (document.getElementById("battle-room") as HTMLInputElement | null)?.value.trim() ?? "";
       room = raw.match(/[#?&]battle=([^&\s]+)/)?.[1] ?? raw;
@@ -2284,7 +2319,7 @@ async function startBattle(): Promise<void> {
   saveForce();
   document.getElementById("battle-setup")?.setAttribute("hidden", "");
   enterBattle();
-  if (online) mpConnect(host, room, myRole);
+  if (online) mpConnect(room, myRole);
 }
 function enterBattle(): void {
   document.body.classList.add("battle-mode");
@@ -2710,7 +2745,7 @@ if (inBattle()) {
   enterBattle(); // resume a battle in progress after a reload
   try {
     const saved = JSON.parse(localStorage.getItem(MP_KEY) ?? "null") as typeof mpInfo;
-    if (saved?.host && saved.room) mpConnect(saved.host, saved.room, saved.role); // reconnect live battle
+    if (saved?.room && saved.role) mpConnect(saved.room, saved.role); // reconnect live battle
   } catch {
     /* ignore */
   }
