@@ -1808,10 +1808,19 @@ function fitCardsToCells(area: HTMLElement): void {
       if (!best || filled > best.area) best = { wmm, w, h, s, area: filled };
     }
     el.style.width = `${best!.wmm}mm`;
-    const s = best!.s * SAFETY;
-    const tx = Math.max(0, (cw - best!.w * s) / 2);
-    const ty = Math.max(0, (ch - best!.h * s) / 2);
-    el.style.transform = `translate(${tx}px, ${ty}px) scale(${s})`;
+    const { w, h } = best!;
+    // Scale up to fill the cell on BOTH axes (not just the constraining one),
+    // letting the card stretch up to STRETCH on the under-filled axis to eat the
+    // leftover gap. Beyond that it stays uniform so the distortion is never harsh.
+    const STRETCH = 1.16;
+    const sx = cw / w;
+    const sy = ch / h;
+    const base = Math.min(sx, sy);
+    const scaleX = Math.min(sx, base * STRETCH) * SAFETY;
+    const scaleY = Math.min(sy, base * STRETCH) * SAFETY;
+    const tx = Math.max(0, (cw - w * scaleX) / 2);
+    const ty = Math.max(0, (ch - h * scaleY) / 2);
+    el.style.transform = `translate(${tx}px, ${ty}px) scale(${scaleX}, ${scaleY})`;
   }
   area.style.cssText = ""; // hand display back to the stylesheet (#print-area)
 }
