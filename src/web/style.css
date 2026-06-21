@@ -1513,7 +1513,7 @@ body.show-quirks .card-quirks { display: block; }
 /* Doll cards (vehicle/fighter/proto/dropship) are content-light on the left — give
    the doll column more width (bigger doll → taller card → fills the cell better)
    and centre the short text column so it doesn't leave a bottom gap. */
-.sheet .doll-card .ms-grid { grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr) !important; }
+.sheet .doll-card .ms-grid { grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr) !important; }
 .sheet .doll-card .ms-left { align-self: center; }
 /* Infantry: stack the wide 3-column top into 2 columns (brand on its own row)
    so the card is taller/squarer instead of short-and-wide. */
@@ -1525,6 +1525,16 @@ body.show-quirks .card-quirks { display: block; }
    the dolls read as clean record-sheet diagrams. */
 .sheet .dmg-ctl select { display: none; }
 .sheet .dmg-ctl { gap: 0; }
+
+/* Doll cards print wide-and-short because the left column (weapons table + data)
+   forces a big minimum width, squeezing the doll. Compact the left column in
+   print so the doll claims more width and grows taller — the card's aspect drops
+   toward the cell's, filling the height instead of leaving a bottom gap. */
+.sheet .ba-note { display: none; } /* non-essential caveat — drop it on paper */
+.sheet .doll-card .ms-left { font-size: 0.86em; }
+.sheet .doll-card .mweapons th,
+.sheet .doll-card .mweapons td { padding: 0.04rem 0.16rem; }
+.sheet .doll-card .ms-equip { font-size: 0.92em; }
 
 /* Print: keep an arc's header with at least its first rows, avoid mid-arc breaks. */
 @media print {
