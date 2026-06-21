@@ -25,7 +25,7 @@ import { renderMechCard } from "./mech-card.js";
 import { renderProtoCard } from "./proto-card.js";
 import { renderVehicleCard } from "./vehicle-card.js";
 import { applyMove, groupingFromTics, renderTicEditorHtml, ticsFromGrouping } from "./tic-editor.js";
-import { quirkEffect } from "./quirk-effects.js";
+import { quirkEffect, WEAPON_QUIRK_LABEL } from "./quirk-effects.js";
 import type { EditorFacets, Grouping } from "./tic-editor.js";
 
 // ---------------------------------------------------------------------------
@@ -638,22 +638,6 @@ function lookupRole(name: string, file?: string): string | undefined {
   }
   return roleIndex[bvKey(name)];
 }
-const WEAPON_QUIRK_LABEL: Record<string, string> = {
-  stable_weapon: "Stable",
-  direct_torso_mount: "Direct Torso Mount",
-  mod_weapons: "Modular",
-  jettison_capable: "Jettison-Capable",
-  exposed_linkage: "Exposed Linkage",
-  fast_reload: "Fast Reload",
-  imp_cooling: "Improved Cooling Jacket",
-  ammo_feed_problems: "Ammo Feed Problems",
-  accurate: "Accurate",
-  static_feed: "Static Feed",
-  em_interference: "EM Interference",
-  poor_cooling: "Poor Cooling Jacket",
-  no_cooling: "No Cooling Jacket",
-  inaccurate: "Inaccurate",
-};
 const WEAPON_QUIRK_ACRONYMS = new Set(["er", "ppc", "ac", "lb", "hag", "srm", "lrm", "mrm", "mml", "mg", "ams", "tag", "ecm", "narc", "atm", "rac", "lac", "si", "c3", "ba", "sb", "os", "x"]);
 /** Title-case a normalized weapon name, upper-casing known acronyms ("er ppc" -> "ER PPC"). */
 function titleCaseWeapon(s: string): string {

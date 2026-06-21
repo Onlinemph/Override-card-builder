@@ -117,6 +117,26 @@ export const QUIRK_EFFECTS: Record<string, QuirkEffect> = {
 
 const norm = (s: string): string => s.toLowerCase().replace(/\s+/g, " ").trim();
 
+/** MTF/BLK `weaponquirk:` codes -> canonical MUL names (which must be keys above,
+ * so the effect resolves). NB: `stable_weapon` is "Stabilized Weapon", not the
+ * unit quirk "Stable". */
+export const WEAPON_QUIRK_LABEL: Record<string, string> = {
+  stable_weapon: "Stabilized Weapon",
+  direct_torso_mount: "Directional Torso Mounted Weapon",
+  mod_weapons: "Modular Weapon",
+  jettison_capable: "Jettison-Capable Weapon",
+  exposed_linkage: "Exposed Weapon Linkage",
+  fast_reload: "Fast Reload",
+  imp_cooling: "Improved Cooling Jacket",
+  ammo_feed_problems: "Ammo Feed Problems",
+  accurate: "Accurate Weapon",
+  static_feed: "Static Ammo Feed",
+  em_interference: "EM Interference",
+  poor_cooling: "Poor Cooling Jacket",
+  no_cooling: "No Cooling Jacket",
+  inaccurate: "Inaccurate Weapon",
+};
+
 /** Resolve a MUL quirk name to its Override effect. Tries the full name, then the
  * name with a trailing "(…)" suffix stripped (so "Battle Fists (LA)" → "battle fists"). */
 export function quirkEffect(name: string): QuirkEffect | undefined {
