@@ -1528,6 +1528,50 @@ body.show-quirks .card-quirks { display: block; }
 
 .sheet .ba-note { display: none; } /* non-essential caveat — drop it on paper */
 
+/* ---- Battle tracker ---- */
+#battle { display: none; }
+body.battle-mode #browse,
+body.battle-mode .input,
+body.battle-mode #force-panel,
+body.battle-mode footer { display: none; }
+body.battle-mode #battle { display: block; }
+.bt-bar {
+  display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
+  background: #15171c; color: #f4f4f1; padding: 0.6rem 1rem; border-radius: 10px; margin-bottom: 1rem;
+}
+.bt-title { font-weight: 800; letter-spacing: 0.02em; }
+.bt-vs { font-size: 0.95rem; }
+.bt-spacer { flex: 1 1 auto; }
+.bt-bar button { background: #b45309; color: #fff; border: none; border-radius: 6px; padding: 0.35rem 0.9rem; cursor: pointer; font: inherit; font-weight: 700; }
+.bt-rosters { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+@media (max-width: 720px) { .bt-rosters { grid-template-columns: 1fr; } }
+.bt-side { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 0.6rem 0.7rem; }
+.bt-side-h { display: flex; justify-content: space-between; align-items: baseline; gap: 0.5rem; margin-bottom: 0.5rem; padding-bottom: 0.4rem; border-bottom: 1px solid var(--line); font-size: 0.9rem; }
+.bt-units { display: flex; flex-direction: column; gap: 0.2rem; }
+.bt-unit { display: flex; align-items: center; gap: 0.55rem; padding: 0.25rem 0.4rem; border-radius: 6px; }
+.bt-unit.bt-active { background: rgba(180, 83, 9, 0.16); outline: 1.5px solid #b45309; }
+.bt-unit.bt-out { opacity: 0.55; }
+.bt-unit.bt-out .bt-track { text-decoration: line-through; }
+.bt-dot { width: 0.7rem; height: 0.7rem; border-radius: 50%; flex: 0 0 auto; }
+.bt-dot.bt-ok { background: #2e7d32; }
+.bt-dot.bt-hit { background: #e0a800; }
+.bt-dot.bt-ko { background: #c0392b; }
+.bt-track { flex: 1 1 auto; text-align: left; background: none; border: none; color: var(--ink); font: inherit; font-weight: 600; cursor: pointer; padding: 0.1rem 0; }
+.bt-track:hover { color: var(--accent); }
+.bt-bv { font-variant-numeric: tabular-nums; color: var(--accent); font-weight: 700; font-size: 0.82rem; }
+.bt-kill { background: none; border: none; cursor: pointer; font-size: 0.85rem; opacity: 0.5; }
+.bt-kill:hover { opacity: 1; }
+/* Battle setup dialog. */
+.bt-modal { position: fixed; inset: 0; z-index: 1100; background: rgba(0, 0, 0, 0.55); display: flex; align-items: center; justify-content: center; padding: 1rem; }
+.bt-modal[hidden] { display: none; }
+.bt-modal-box { background: var(--panel); color: var(--ink); border: 1px solid var(--line); border-radius: 12px; padding: 1.2rem 1.4rem; width: min(30rem, 100%); }
+.bt-modal-box h3 { margin: 0 0 0.8rem; }
+.bt-field { display: flex; flex-direction: column; gap: 0.3rem; font-size: 0.9rem; margin-bottom: 0.8rem; }
+.bt-field select, .bt-field input { background: var(--panel-2); color: var(--ink); border: 1px solid var(--line); border-radius: 6px; padding: 0.4rem 0.5rem; font: inherit; }
+.bt-hint { font-size: 0.78rem; line-height: 1.4; margin: 0 0 1rem; }
+.bt-modal-actions { display: flex; gap: 0.6rem; justify-content: flex-end; }
+.bt-prompt { text-align: center; padding: 2rem 1rem; font-size: 0.95rem; }
+
 /* ---- On-screen print preview (WYSIWYG) ---- */
 .pp-bar { display: none; }
 body.previewing { overflow: hidden; }

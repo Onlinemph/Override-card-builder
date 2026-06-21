@@ -1166,6 +1166,7 @@ function applyDamageMarks(): void {
     if (status) sheet.dataset.dead = status;
     else delete sheet.dataset.dead;
   }
+  if (inBattle()) renderBattle(); // keep the battle rosters (dots / live BV) current
 }
 
 // Weapon-row location code (the .loc cell) -> paper-doll area class.
@@ -1471,10 +1472,12 @@ interface ForceUnit {
     heat?: number;
     /** Rounds expended per ammo line (key = "label@location"); remaining = total − this. */
     ammo?: Record<string, number>;
+    /** Battle tracker: marked out of action (destroyed / withdrawn). */
+    out?: boolean;
   };
 }
 /** A named force: a roster of units the user can save, switch, export, share. */
-interface SavedForce { name: string; units: ForceUnit[]; }
+interface SavedForce { name: string; units: ForceUnit[]; battle?: "you" | "foe" }
 const FORCE_KEY = "mtf2override.force"; // legacy single-force key (migrated once)
 const FORCES_KEY = "mtf2override.forces"; // { active, forces: SavedForce[] }
 
@@ -2073,20 +2076,174 @@ $("force-share").addEventListener("click", () => {
   })();
 });
 
+/** Decode a `f=…` share payload into a force object (gzip 'g' or raw 'r' prefix). */
+async function decodeForcePayload(payload: string): Promise<{ name: string; units: ForceUnit[] } | null> {
+  try {
+    const bytes = fromB64url(payload.slice(1));
+    const json = payload[0] === "g" ? await gunzip(bytes) : new TextDecoder().decode(bytes);
+    const o = JSON.parse(json) as { name?: unknown; units?: unknown };
+    const units = (Array.isArray(o?.units) ? o.units : Array.isArray(o) ? o : null) as ForceUnit[] | null;
+    if (!units || !units.every((u) => u && typeof u.text === "string")) return null;
+    return { name: String(o?.name ?? "Imported Force"), units };
+  } catch {
+    return null;
+  }
+}
+
 /** Import a force from a #f=… share link, then strip it from the URL. */
 async function importFromHash(): Promise<void> {
   const m = location.hash.match(/[#&]f=([^&]+)/);
   if (!m) return;
-  try {
-    const payload = m[1]!;
-    const bytes = fromB64url(payload.slice(1));
-    const json = payload[0] === "g" ? await gunzip(bytes) : new TextDecoder().decode(bytes);
-    importForceObj(JSON.parse(json));
-  } catch {
-    /* ignore a malformed share link */
+  const decoded = await decodeForcePayload(m[1]!);
+  if (decoded) {
+    forces.push({ name: decoded.name, units: decoded.units });
+    setActiveForce(forces.length - 1);
   }
   history.replaceState(null, "", location.pathname + location.search);
 }
+
+// ---- Battle tracker -------------------------------------------------------
+// A battle is two temporary, marked SavedForces (deep copies, so your real
+// roster stays undamaged): your force + an enemy decoded from a share link. The
+// existing per-unit tracker (setActiveForce + openForceEditor) drives damage.
+function inBattle(): boolean { return forces.some((f) => f.battle); }
+function battleIdx(side: "you" | "foe"): number { return forces.findIndex((f) => f.battle === side); }
+const payloadFromUrl = (s: string): string => s.match(/[#?&]f=([^&\s]+)/)?.[1] ?? s.trim();
+/** True if the unit has any tracked damage (ignoring the "out" flag). */
+function isDamaged(u: ForceUnit): boolean {
+  const d = u.damage;
+  if (!d) return false;
+  return (["groups", "loc", "condition", "engine", "gyro", "avionics", "tics", "heat", "ammo"] as const).some((k) => {
+    const v = d[k];
+    return v != null && (typeof v !== "object" || Object.keys(v).length > 0);
+  });
+}
+
+function openBattleSetup(): void {
+  if (force.length === 0 && forces.every((f) => f.units.length === 0)) {
+    alert("Build or pick a force first, then start a battle.");
+    return;
+  }
+  const sel = document.getElementById("battle-your") as HTMLSelectElement | null;
+  if (sel) {
+    sel.innerHTML = forces
+      .map((f, i) => ({ f, i }))
+      .filter(({ f }) => !f.battle && f.units.length > 0)
+      .map(({ f, i }) => `<option value="${i}"${i === activeForce ? " selected" : ""}>${esc(f.name)} (${f.units.length})</option>`)
+      .join("");
+  }
+  const url = document.getElementById("battle-foe-url") as HTMLInputElement | null;
+  if (url) url.value = "";
+  document.getElementById("battle-setup")?.removeAttribute("hidden");
+}
+async function startBattle(): Promise<void> {
+  const yourIdx = Number((document.getElementById("battle-your") as HTMLSelectElement | null)?.value);
+  const your = forces[yourIdx];
+  if (!your) return;
+  let foe: { name: string; units: ForceUnit[] } | null = null;
+  const raw = (document.getElementById("battle-foe-url") as HTMLInputElement | null)?.value.trim();
+  if (raw) {
+    foe = await decodeForcePayload(payloadFromUrl(raw));
+    if (!foe) {
+      alert("Couldn't read that enemy force link.");
+      return;
+    }
+  }
+  forces.push(
+    { name: your.name, units: structuredClone(your.units), battle: "you" },
+    { name: foe?.name ?? "Enemy Force", units: foe ? structuredClone(foe.units) : [], battle: "foe" },
+  );
+  saveForce();
+  document.getElementById("battle-setup")?.setAttribute("hidden", "");
+  enterBattle();
+}
+function enterBattle(): void {
+  document.body.classList.add("battle-mode");
+  exitForceEditor();
+  renderBattle();
+  output.innerHTML = `<p class="muted bt-prompt">Click a unit above to track its damage, heat, and ammo.</p>`;
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+function endBattle(): void {
+  if (!confirm("End the battle? This clears the battle copies (your saved forces are untouched).")) return;
+  forces = forces.filter((f) => !f.battle);
+  if (forces.length === 0) forces.push({ name: "Force 1", units: [] });
+  activeForce = Math.min(activeForce, forces.length - 1);
+  force = forces[activeForce]!.units;
+  saveForce();
+  document.body.classList.remove("battle-mode");
+  exitForceEditor();
+  renderForce();
+}
+/** Render the two-side battle rosters into #battle. */
+function renderBattle(): void {
+  const cont = document.getElementById("battle");
+  if (!cont) return;
+  const youI = battleIdx("you");
+  const foeI = battleIdx("foe");
+  const you = forces[youI];
+  const foe = forces[foeI];
+  if (!you || !foe) {
+    document.body.classList.remove("battle-mode");
+    return;
+  }
+  const side = (f: SavedForce, fIdx: number, label: string): string => {
+    let live = 0;
+    const chips = f.units
+      .map((u, i) => {
+        const bv = unitBv(u);
+        if (bv && !u.damage?.out) live += bv;
+        const cls = u.damage?.out ? "ko" : isDamaged(u) ? "hit" : "ok";
+        const active = activeForce === fIdx && editingForceIdx === i;
+        return `<div class="bt-unit${u.damage?.out ? " bt-out" : ""}${active ? " bt-active" : ""}">
+          <span class="bt-dot bt-${cls}"></span>
+          <button class="bt-track" type="button" data-f="${fIdx}" data-i="${i}">${esc(u.name)}</button>
+          ${bv ? `<span class="bt-bv">${bv.toLocaleString()}</span>` : ""}
+          <button class="bt-kill" type="button" data-f="${fIdx}" data-ko="${i}" title="Mark out of action / revive" aria-label="Toggle out of action">💀</button>
+        </div>`;
+      })
+      .join("");
+    return `<div class="bt-side">
+      <div class="bt-side-h"><b>${esc(f.name)}</b><span class="muted">${label} · ${live.toLocaleString()} BV live</span></div>
+      <div class="bt-units">${chips || '<p class="muted">No units.</p>'}</div>
+    </div>`;
+  };
+  cont.innerHTML = `<div class="bt-bar">
+      <span class="bt-title">⚔ Battle</span>
+      <span class="bt-vs">${esc(you.name)} <span class="muted">vs</span> ${esc(foe.name)}</span>
+      <span class="bt-spacer"></span>
+      <button id="bt-end" type="button">End battle</button>
+    </div>
+    <div class="bt-rosters">${side(you, youI, "Your force")}${side(foe, foeI, "Enemy")}</div>`;
+}
+
+document.getElementById("force-battle")?.addEventListener("click", openBattleSetup);
+document.getElementById("battle-cancel")?.addEventListener("click", () => document.getElementById("battle-setup")?.setAttribute("hidden", ""));
+document.getElementById("battle-start")?.addEventListener("click", () => void startBattle());
+document.getElementById("battle")?.addEventListener("click", (e) => {
+  const t = e.target as HTMLElement;
+  if (t.closest("#bt-end")) {
+    endBattle();
+    return;
+  }
+  const ko = t.closest<HTMLElement>(".bt-kill");
+  if (ko?.dataset.ko != null) {
+    const u = forces[Number(ko.dataset.f)]?.units[Number(ko.dataset.ko)];
+    if (u) {
+      u.damage = u.damage ?? {};
+      u.damage.out = !u.damage.out;
+      saveForce();
+      renderBattle();
+    }
+    return;
+  }
+  const tr = t.closest<HTMLElement>(".bt-track");
+  if (tr?.dataset.i != null) {
+    setActiveForce(Number(tr.dataset.f));
+    openForceEditor(Number(tr.dataset.i));
+    renderBattle(); // re-highlight the active chip + refresh live BV
+  }
+});
 
 // ---- RAT weighted random force generator ----------------------------------
 interface RatTable { name: string; type: string; weight: string; e: [number, number][] }
@@ -2398,6 +2555,7 @@ quirksToggle?.addEventListener("change", () => {
 });
 
 renderForce();
+if (inBattle()) enterBattle(); // resume a battle in progress after a reload
 // Load the BV + quirk indexes, then refresh so badges/quirks appear once in.
 void loadBvIndex().then(renderForce);
 void Promise.all([loadQuirkIndex(), loadWeaponQuirkIndex()]).then(() => {

@@ -95,6 +95,7 @@
           <button id="force-import" type="button">Import</button>
           <input id="force-import-file" type="file" accept="application/json,.json" hidden />
           <button id="force-share" type="button">Copy link</button>
+          <button id="force-battle" type="button">⚔ Battle</button>
           <button id="force-clear" type="button">Clear</button>
         </div>
         <div class="rat-gen">
@@ -144,6 +145,8 @@
         </div>
       </section>
 
+      <section id="battle"></section>
+
       <section id="output" class="output" aria-live="polite"></section>
 
       <footer>
@@ -154,6 +157,24 @@
         <p class="muted" id="build"></p>
       </footer>
     </main>
+
+    <!-- Battle setup dialog. -->
+    <div id="battle-setup" class="bt-modal" hidden>
+      <div class="bt-modal-box">
+        <h3>Start a battle</h3>
+        <label class="bt-field">Your force
+          <select id="battle-your"></select>
+        </label>
+        <label class="bt-field">Enemy force link <span class="muted">(optional)</span>
+          <input id="battle-foe-url" type="text" placeholder="Paste a force share link…" />
+        </label>
+        <p class="muted bt-hint">Your opponent builds a force, hits <b>Copy link</b>, and sends you the URL. Paste it here to load their force as the enemy. Leave blank to track only your own.</p>
+        <div class="bt-modal-actions">
+          <button id="battle-start" type="button" class="primary">Start battle</button>
+          <button id="battle-cancel" type="button">Cancel</button>
+        </div>
+      </div>
+    </div>
 
     <!-- Print preview toolbar (shown only while previewing). -->
     <div id="pp-bar" class="pp-bar">
