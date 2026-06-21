@@ -10,6 +10,7 @@
  */
 
 import type { FighterCard, RangeBrackets } from "../core/index.js";
+import { fighterDoll } from "./biped-doll.js";
 
 function esc(s: string | number): string {
   return String(s).replace(
@@ -26,42 +27,6 @@ function bracket(v: number | null | undefined): string {
 function rangeCells(r: RangeBrackets | null): string {
   const vals = r ? [r.pb, r.s, r.m, r.l, r.x] : [null, null, null, null, null];
   return vals.map((v) => `<td class="num rng">${esc(bracket(v))}</td>`).join("");
-}
-
-/** A row of hex pips of a given class (armor = purple, struct = red). */
-function hexPips(n: number, cls: string): string {
-  if (n <= 0) return "";
-  return `<span class="hexrow">${`<i class="hex ${cls}"></i>`.repeat(n)}</span>`;
-}
-
-/** One facing box: label + hit numbers, armor hexes (fighters track SI globally). */
-function facingBox(area: string, label: string, hits: string, armor: number): string {
-  const hitTxt = hits ? ` <span class="loc-hits">(${esc(hits)})</span>` : "";
-  return `<div class="vloc ${area}">
-    <div class="vloc-name">${esc(label)}${hitTxt}</div>
-    <div class="vloc-pips">${hexPips(armor, "armor")}</div>
-  </div>`;
-}
-
-/**
- * Facing armor diagram: Nose on top, wings flanking the center, Aft at bottom.
- * Unlike 'Mechs/vehicles, a fighter has a SINGLE Structural Integrity track (not
- * per-location), shown once below the armor facings.
- */
-function armorDiagram(card: FighterCard): string {
-  const a = card.armor;
-  return `<div class="fdoll">
-    ${facingBox("fnose", "Nose", "6,7,8", a.nose)}
-    ${facingBox("flwing", "Left Wing", "9,10,11", a.leftWing)}
-    ${facingBox("frwing", "Right Wing", "3,4,5", a.rightWing)}
-    ${facingBox("faft", "Aft", "2,12", a.aft)}
-  </div>
-  <div class="fsi">
-    <span class="fsi-label">Structural Integrity</span>
-    <span class="fsi-pips">${hexPips(card.structure, "struct")}</span>
-    <span class="fsi-val">${esc(card.structure)}</span>
-  </div>
-  <p class="mdoll-legend"><i class="hex armor"></i> armor &nbsp; <i class="hex struct"></i> SI (airframe-wide)</p>`;
 }
 
 /** The weapons table: one row per facing TIC. */
@@ -170,7 +135,7 @@ export function renderFighterCard(card: FighterCard): string {
           </div>
           <div class="ms-wordmark">B<span class="ms-wm-a">▲</span>TTLETECH<br><b>OVERRIDE</b></div>
         </div>
-        ${armorDiagram(card)}
+        ${fighterDoll(card)}
       </div>
     </div>
   </article>`;

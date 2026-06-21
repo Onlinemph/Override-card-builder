@@ -13,7 +13,7 @@
  * "cl" flows through the dropdown + applyDamageMarks generically. Quads keep the
  * grid doll (mech-card's paperDoll).
  */
-import type { OverrideCard } from "../core/index.js";
+import type { FighterCard, OverrideCard } from "../core/index.js";
 
 const FILL = "#c7c7c0", STROKE = "#4c4c46", DARK = "#9a9a92";
 const rr = (x: number, y: number, w: number, h: number, r = 5, fill = FILL): string =>
@@ -196,4 +196,48 @@ export function quadDoll(card: OverrideCard): string {
   return `<div class="bdoll-wrap"><svg class="bdoll" viewBox="-18 0 376 470" xmlns="http://www.w3.org/2000/svg">${seg}${dolls}${DOLL_LEGEND}</svg>${controls}</div>
   <p class="mdoll-legend">Armor (circles) over Structure (squares) · set damage per part — lower the number to heal</p>
   <p class="mdoll-legend">Quad: front legs take arm hits (3-4 / 10-11), rear legs take leg hits (5 / 9).</p>`;
+}
+
+/**
+ * Top-down doll for AEROSPACE / Conventional fighters: a fighter silhouette with
+ * armor circles per facing (nose / wings / aft) over a single airframe-wide SI
+ * track (squares) down the fuselage. Uses the same `.mloc {area}` + dropdown
+ * contract as the 'Mech dolls, so play-mode damage tracking works unchanged
+ * (areas nose/lw/rw/aft carry armor; si carries the structure track).
+ */
+export function fighterDoll(card: FighterCard): string {
+  const a = card.armor;
+  const si = card.structure;
+  const seg =
+    // Nose cone + canopy
+    poly([[170, 14], [132, 108], [208, 108]]) +
+    `<rect x="158" y="62" width="24" height="30" rx="6" fill="${DARK}"/>` +
+    // Fuselage
+    rr(140, 100, 60, 250, 14) +
+    // Swept wings (left / right)
+    poly([[140, 150], [22, 242], [80, 262], [140, 214]]) +
+    poly([[200, 150], [318, 242], [260, 262], [200, 214]]) +
+    // Tail fins
+    poly([[140, 300], [110, 360], [150, 344]]) +
+    poly([[200, 300], [290, 360], [250, 344]]) +
+    // Aft / engines + exhaust
+    rr(146, 338, 48, 54, 10) +
+    `<rect x="150" y="386" width="40" height="10" rx="3" fill="${DARK}"/>`;
+
+  const dolls =
+    loc("nose", [142, 64, 56, 38], [0, 0, 0, 0], a.nose, 0) +
+    loc("lw", [54, 196, 74, 34], [0, 0, 0, 0], a.leftWing, 0) +
+    loc("rw", [212, 196, 74, 34], [0, 0, 0, 0], a.rightWing, 0) +
+    loc("si", [0, 0, 0, 0], [146, 130, 48, 58], 0, si) +
+    loc("aft", [150, 344, 40, 30], [0, 0, 0, 0], a.aft, 0);
+
+  const controls =
+    ctl("nose", "NOSE", "6,7,8", a.nose, 50, 7) +
+    ctl("lw", "L WING", "9,10,11", a.leftWing, 12, 42) +
+    ctl("rw", "R WING", "3,4,5", a.rightWing, 88, 42) +
+    ctl("si", "SI", "", si, 50, 47) +
+    ctl("aft", "AFT", "2,12", a.aft, 50, 90);
+
+  return `<div class="bdoll-wrap"><svg class="bdoll" viewBox="-18 0 376 470" xmlns="http://www.w3.org/2000/svg">${seg}${dolls}${DOLL_LEGEND}</svg>${controls}</div>
+  <p class="mdoll-legend">Armor (circles) per facing over a single SI track (squares, airframe-wide).</p>`;
 }

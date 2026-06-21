@@ -4,8 +4,8 @@ import { dirname, join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { convertUnit, parseMtf } from "../src/core/index.js";
-import { bipedDoll, isBipedDoll, isQuadDoll, quadDoll } from "../src/web/biped-doll.js";
+import { convertAny, convertUnit, parseMtf } from "../src/core/index.js";
+import { bipedDoll, fighterDoll, isBipedDoll, isQuadDoll, quadDoll } from "../src/web/biped-doll.js";
 
 const FIXTURES = join(dirname(fileURLToPath(import.meta.url)), "fixtures");
 const load = (f: string) => parseMtf(readFileSync(join(FIXTURES, f), "utf8"), f);
@@ -57,5 +57,20 @@ describe("biped/tripod silhouette doll", () => {
     expect(svg).toContain("R REAR");
     expect(svg).not.toContain("ARM"); // quads have no arms
     expect(svg).toContain("front legs take arm hits");
+  });
+
+  it("renders a fighter doll with the four facings + a single SI track", () => {
+    const r = convertAny(readFileSync(join(FIXTURES, "Test Fighter TF-1.blk"), "utf8"), "Test Fighter TF-1.blk");
+    expect(r.kind).toBe("fighter");
+    const svg = r.kind === "fighter" ? fighterDoll(r.card) : "";
+    for (const area of ["nose", "lw", "rw", "aft", "si"]) {
+      expect(svg).toContain(`class="mloc ${area}"`);
+      expect(svg).toContain(`data-area="${area}"`);
+    }
+    expect(svg).toContain("NOSE");
+    expect(svg).toContain("L WING");
+    expect(svg).toContain("R WING");
+    expect(svg).toContain("AFT");
+    expect(svg).toContain("SI");
   });
 });
