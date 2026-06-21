@@ -11,8 +11,9 @@
  *   - Project URL  → SUPABASE_URL
  *   - anon public  → SUPABASE_ANON_KEY
  */
-export const SUPABASE_URL = "https://YOUR_PROJECT.supabase.co";
-export const SUPABASE_ANON_KEY = "PASTE_YOUR_ANON_PUBLIC_KEY_HERE";
+export const SUPABASE_URL = "https://aivfdcjedwpuuenauljh.supabase.co";
+export const SUPABASE_ANON_KEY =
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFpdmZkY2plZHdwdXVlbmF1bGpoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIwNDU3NjAsImV4cCI6MjA5NzYyMTc2MH0.ULAUzMxUah3Wqh1w6YEisEBnktSS_8ISKRHhYHt-k7o";
 
 /** True once real credentials have been filled in above. */
 export const MP_CONFIGURED =

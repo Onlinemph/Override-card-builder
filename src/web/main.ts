@@ -2176,6 +2176,7 @@ function mpConnect(room: string, role: Role): void {
   try {
     const url = `${SUPABASE_URL.replace(/\/$/, "")}/realtime/v1`.replace(/^http/, "ws");
     client = new RealtimeClient(url, { params: { apikey: SUPABASE_ANON_KEY } });
+    client.setAuth(SUPABASE_ANON_KEY); // authorize channel joins (anon role)
   } catch {
     mpStatus = "offline";
     renderBattle();
