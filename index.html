@@ -162,13 +162,24 @@
     <div id="battle-setup" class="bt-modal" hidden>
       <div class="bt-modal-box">
         <h3>Start a battle</h3>
+        <div class="bt-modes">
+          <button type="button" class="bt-mode is-on" data-mode="local">Solo / local</button>
+          <button type="button" class="bt-mode" data-mode="host">Host online</button>
+          <button type="button" class="bt-mode" data-mode="join">Join online</button>
+        </div>
         <label class="bt-field">Your force
           <select id="battle-your"></select>
         </label>
-        <label class="bt-field">Enemy force link <span class="muted">(optional)</span>
+        <label class="bt-field bt-when-local">Enemy force link <span class="muted">(optional)</span>
           <input id="battle-foe-url" type="text" placeholder="Paste a force share link…" />
         </label>
-        <p class="muted bt-hint">Your opponent builds a force, hits <b>Copy link</b>, and sends you the URL. Paste it here to load their force as the enemy. Leave blank to track only your own.</p>
+        <label class="bt-field bt-when-join" hidden>Room link or code
+          <input id="battle-room" type="text" placeholder="Paste the room link your opponent sent…" />
+        </label>
+        <label class="bt-field bt-when-online" hidden>Multiplayer server
+          <input id="battle-server" type="text" placeholder="your-project.username.partykit.dev" />
+        </label>
+        <p class="muted bt-hint" id="battle-hint"></p>
         <div class="bt-modal-actions">
           <button id="battle-start" type="button" class="primary">Start battle</button>
           <button id="battle-cancel" type="button">Cancel</button>

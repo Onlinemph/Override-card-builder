@@ -1571,6 +1571,13 @@ body.battle-mode #battle { display: block; }
 .bt-hint { font-size: 0.78rem; line-height: 1.4; margin: 0 0 1rem; }
 .bt-modal-actions { display: flex; gap: 0.6rem; justify-content: flex-end; }
 .bt-prompt { text-align: center; padding: 2rem 1rem; font-size: 0.95rem; }
+.bt-modes { display: flex; gap: 0.4rem; margin-bottom: 0.9rem; }
+.bt-mode { flex: 1; background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px; padding: 0.4rem; cursor: pointer; font: inherit; color: var(--ink); }
+.bt-mode.is-on { background: #b45309; color: #fff; border-color: #b45309; font-weight: 700; }
+.bt-conn { font-size: 0.8rem; font-weight: 700; }
+.bt-conn-online { color: #4ade80; }
+.bt-conn-connecting { color: #facc15; }
+.bt-conn-offline { color: #f87171; }
 
 /* ---- On-screen print preview (WYSIWYG) ---- */
 .pp-bar { display: none; }

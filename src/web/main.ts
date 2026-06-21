@@ -1166,7 +1166,14 @@ function applyDamageMarks(): void {
     if (status) sheet.dataset.dead = status;
     else delete sheet.dataset.dead;
   }
-  if (inBattle()) renderBattle(); // keep the battle rosters (dots / live BV) current
+  if (inBattle()) {
+    renderBattle(); // keep the battle rosters (dots / live BV) current
+    // Broadcast the tracked unit's damage to the opponent (mpBroadcast skips the
+    // echo when we're applying a remote change).
+    const marker = forces[activeForce]?.battle;
+    const u = editingForceIdx != null ? force[editingForceIdx] : undefined;
+    if (marker && u && editingForceIdx != null) mpBroadcast(marker, editingForceIdx, u);
+  }
 }
 
 // Weapon-row location code (the .loc cell) -> paper-doll area class.
@@ -2108,6 +2115,92 @@ async function importFromHash(): Promise<void> {
 // existing per-unit tracker (setActiveForce + openForceEditor) drives damage.
 function inBattle(): boolean { return forces.some((f) => f.battle); }
 function battleIdx(side: "you" | "foe"): number { return forces.findIndex((f) => f.battle === side); }
+
+// --- Live multiplayer (PartyKit relay). Each player's local "you" is their role;
+// "foe" is the other role. Damage is keyed by role so both sides converge. ---
+type Role = "host" | "guest";
+let myRole: Role = "host"; // your side; "host" for a solo battle
+let mpWs: WebSocket | null = null;
+let mpInfo: { host: string; room: string; role: Role } | null = null;
+let mpStatus: "off" | "connecting" | "online" | "offline" = "off";
+let mpPresence = 0;
+let applyingRemote = false; // guard so applying a remote change doesn't re-broadcast (no echo loop)
+const otherRole = (): Role => (myRole === "host" ? "guest" : "host");
+const MP_KEY = "mtf2override.battleMp";
+const mpHostSaved = (): string => { try { return localStorage.getItem("mtf2override.mpHost") ?? ""; } catch { return ""; } };
+
+function mpSend(o: unknown): void {
+  if (mpWs?.readyState === WebSocket.OPEN) mpWs.send(JSON.stringify(o));
+}
+function mpRoomLink(): string {
+  return mpInfo ? `${location.origin}${location.pathname}#battle=${mpInfo.room}` : "";
+}
+function mpSendHello(): void {
+  const you = forces[battleIdx("you")];
+  if (you) mpSend({ type: "hello", role: myRole, force: { name: you.name, units: you.units } });
+}
+function mpDisconnect(): void {
+  mpInfo = null;
+  mpStatus = "off";
+  try { localStorage.removeItem(MP_KEY); } catch { /* ignore */ }
+  if (mpWs) { mpWs.onclose = null; mpWs.close(); mpWs = null; }
+}
+function mpConnect(host: string, room: string, role: Role): void {
+  if (mpWs) { mpWs.onclose = null; mpWs.close(); }
+  myRole = role;
+  mpInfo = { host, room, role };
+  try { localStorage.setItem(MP_KEY, JSON.stringify(mpInfo)); } catch { /* ignore */ }
+  mpStatus = "connecting";
+  renderBattle();
+  let ws: WebSocket;
+  try {
+    ws = new WebSocket(`wss://${host.replace(/^wss?:\/\//, "").replace(/\/$/, "")}/parties/main/${encodeURIComponent(room)}`);
+  } catch {
+    mpStatus = "offline";
+    renderBattle();
+    return;
+  }
+  mpWs = ws;
+  ws.onopen = () => { mpStatus = "online"; mpSendHello(); renderBattle(); };
+  ws.onmessage = (e) => { try { mpHandle(JSON.parse(String(e.data))); } catch { /* ignore */ } };
+  ws.onerror = () => { mpStatus = "offline"; };
+  ws.onclose = () => {
+    mpStatus = "offline";
+    renderBattle();
+    if (mpInfo && inBattle()) setTimeout(() => { if (mpInfo && inBattle() && (!mpWs || mpWs.readyState > 1)) mpConnect(mpInfo.host, mpInfo.room, mpInfo.role); }, 2500);
+  };
+}
+function mpHandle(m: { type?: string; role?: Role; idx?: number; damage?: unknown; count?: number; host?: { name: string; units: ForceUnit[] }; guest?: { name: string; units: ForceUnit[] } }): void {
+  if (m.type === "state") {
+    const other = (myRole === "host" ? m.guest : m.host) as { name: string; units: ForceUnit[] } | undefined;
+    const foeI = battleIdx("foe");
+    if (other && other.units?.length && foeI >= 0) {
+      forces[foeI]!.name = other.name || "Enemy Force";
+      forces[foeI]!.units = other.units;
+      saveForce();
+    }
+    renderBattle();
+  } else if (m.type === "damage" && (m.role === "host" || m.role === "guest") && typeof m.idx === "number") {
+    const side = m.role === myRole ? "you" : "foe";
+    const u = forces[battleIdx(side)]?.units[m.idx];
+    if (u) {
+      applyingRemote = true;
+      u.damage = m.damage as ForceUnit["damage"];
+      saveForce();
+      renderBattle();
+      if (editingForceIdx === m.idx && forces[activeForce]?.battle === side) applyDamageMarks();
+      applyingRemote = false;
+    }
+  } else if (m.type === "presence") {
+    mpPresence = m.count ?? 0;
+    renderBattle();
+  }
+}
+/** Broadcast a unit's current damage (role-keyed) after a local change. */
+function mpBroadcast(side: "you" | "foe", idx: number, u: ForceUnit): void {
+  if (mpWs?.readyState !== WebSocket.OPEN || applyingRemote) return;
+  mpSend({ type: "damage", role: side === "you" ? myRole : otherRole(), idx, damage: u.damage });
+}
 const payloadFromUrl = (s: string): string => s.match(/[#?&]f=([^&\s]+)/)?.[1] ?? s.trim();
 /** True if the unit has any tracked damage (ignoring the "out" flag). */
 function isDamaged(u: ForceUnit): boolean {
@@ -2119,8 +2212,24 @@ function isDamaged(u: ForceUnit): boolean {
   });
 }
 
+let battleMode: "local" | "host" | "join" = "local";
+const BATTLE_HINTS: Record<typeof battleMode, string> = {
+  local: "Track your own force; optionally paste an opponent's “Copy link” to load their force as the enemy. Offline.",
+  host: "Live game: pick your force and Start, then send the room link to your opponent. Needs a multiplayer server (see MULTIPLAYER.md).",
+  join: "Live game: paste the room link your opponent sent, pick your force, and Start.",
+};
+function setBattleMode(mode: typeof battleMode): void {
+  battleMode = mode;
+  document.querySelectorAll<HTMLElement>(".bt-mode").forEach((b) => b.classList.toggle("is-on", b.dataset.mode === mode));
+  const show = (sel: string, on: boolean) => document.querySelector<HTMLElement>(sel)?.toggleAttribute("hidden", !on);
+  show(".bt-when-local", mode === "local");
+  show(".bt-when-join", mode === "join");
+  show(".bt-when-online", mode !== "local");
+  const hint = document.getElementById("battle-hint");
+  if (hint) hint.textContent = BATTLE_HINTS[mode];
+}
 function openBattleSetup(): void {
-  if (force.length === 0 && forces.every((f) => f.units.length === 0)) {
+  if (forces.every((f) => f.units.length === 0)) {
     alert("Build or pick a force first, then start a battle.");
     return;
   }
@@ -2134,28 +2243,48 @@ function openBattleSetup(): void {
   }
   const url = document.getElementById("battle-foe-url") as HTMLInputElement | null;
   if (url) url.value = "";
+  const srv = document.getElementById("battle-server") as HTMLInputElement | null;
+  if (srv) srv.value = mpHostSaved();
+  const room = document.getElementById("battle-room") as HTMLInputElement | null;
+  if (room) room.value = "";
+  setBattleMode("local");
   document.getElementById("battle-setup")?.removeAttribute("hidden");
 }
 async function startBattle(): Promise<void> {
-  const yourIdx = Number((document.getElementById("battle-your") as HTMLSelectElement | null)?.value);
-  const your = forces[yourIdx];
+  const your = forces[Number((document.getElementById("battle-your") as HTMLSelectElement | null)?.value)];
   if (!your) return;
+  const online = battleMode !== "local";
+  let host = "";
+  let room = "";
+  if (online) {
+    host = (document.getElementById("battle-server") as HTMLInputElement | null)?.value.trim() ?? "";
+    if (!host) { alert("Enter your multiplayer server (deploy it first — see MULTIPLAYER.md)."); return; }
+    try { localStorage.setItem("mtf2override.mpHost", host); } catch { /* ignore */ }
+    if (battleMode === "join") {
+      const raw = (document.getElementById("battle-room") as HTMLInputElement | null)?.value.trim() ?? "";
+      room = raw.match(/[#?&]battle=([^&\s]+)/)?.[1] ?? raw;
+      if (!room) { alert("Paste the room link/code your opponent sent."); return; }
+    } else {
+      room = Math.random().toString(36).slice(2, 8);
+    }
+  }
   let foe: { name: string; units: ForceUnit[] } | null = null;
-  const raw = (document.getElementById("battle-foe-url") as HTMLInputElement | null)?.value.trim();
-  if (raw) {
-    foe = await decodeForcePayload(payloadFromUrl(raw));
-    if (!foe) {
-      alert("Couldn't read that enemy force link.");
-      return;
+  if (battleMode === "local") {
+    const raw = (document.getElementById("battle-foe-url") as HTMLInputElement | null)?.value.trim();
+    if (raw) {
+      foe = await decodeForcePayload(payloadFromUrl(raw));
+      if (!foe) { alert("Couldn't read that enemy force link."); return; }
     }
   }
   forces.push(
     { name: your.name, units: structuredClone(your.units), battle: "you" },
-    { name: foe?.name ?? "Enemy Force", units: foe ? structuredClone(foe.units) : [], battle: "foe" },
+    { name: foe?.name ?? (online ? "Waiting for opponent…" : "Enemy Force"), units: foe ? structuredClone(foe.units) : [], battle: "foe" },
   );
+  myRole = battleMode === "join" ? "guest" : "host";
   saveForce();
   document.getElementById("battle-setup")?.setAttribute("hidden", "");
   enterBattle();
+  if (online) mpConnect(host, room, myRole);
 }
 function enterBattle(): void {
   document.body.classList.add("battle-mode");
@@ -2166,6 +2295,7 @@ function enterBattle(): void {
 }
 function endBattle(): void {
   if (!confirm("End the battle? This clears the battle copies (your saved forces are untouched).")) return;
+  mpDisconnect();
   forces = forces.filter((f) => !f.battle);
   if (forces.length === 0) forces.push({ name: "Force 1", units: [] });
   activeForce = Math.min(activeForce, forces.length - 1);
@@ -2203,14 +2333,20 @@ function renderBattle(): void {
         </div>`;
       })
       .join("");
+    const empty = mpInfo ? '<p class="muted">Waiting for opponent to join…</p>' : '<p class="muted">No units.</p>';
     return `<div class="bt-side">
       <div class="bt-side-h"><b>${esc(f.name)}</b><span class="muted">${label} · ${live.toLocaleString()} BV live</span></div>
-      <div class="bt-units">${chips || '<p class="muted">No units.</p>'}</div>
+      <div class="bt-units">${chips || empty}</div>
     </div>`;
   };
+  const conn = mpInfo
+    ? `<span class="bt-conn bt-conn-${mpStatus}">${mpStatus === "online" ? `● ${mpPresence} online` : mpStatus === "connecting" ? "● connecting…" : "● offline"}</span>` +
+      (myRole === "host" ? `<button id="bt-copylink" type="button">Copy room link</button>` : "")
+    : "";
   cont.innerHTML = `<div class="bt-bar">
       <span class="bt-title">⚔ Battle</span>
       <span class="bt-vs">${esc(you.name)} <span class="muted">vs</span> ${esc(foe.name)}</span>
+      ${conn}
       <span class="bt-spacer"></span>
       <button id="bt-end" type="button">End battle</button>
     </div>
@@ -2220,20 +2356,35 @@ function renderBattle(): void {
 document.getElementById("force-battle")?.addEventListener("click", openBattleSetup);
 document.getElementById("battle-cancel")?.addEventListener("click", () => document.getElementById("battle-setup")?.setAttribute("hidden", ""));
 document.getElementById("battle-start")?.addEventListener("click", () => void startBattle());
+document.querySelectorAll<HTMLElement>(".bt-mode").forEach((b) =>
+  b.addEventListener("click", () => setBattleMode((b.dataset.mode as typeof battleMode) ?? "local")),
+);
 document.getElementById("battle")?.addEventListener("click", (e) => {
   const t = e.target as HTMLElement;
   if (t.closest("#bt-end")) {
     endBattle();
     return;
   }
+  if (t.closest("#bt-copylink")) {
+    const link = mpRoomLink();
+    void navigator.clipboard?.writeText(link).then(
+      () => alert("Room link copied — send it to your opponent."),
+      () => prompt("Copy this room link:", link),
+    );
+    return;
+  }
   const ko = t.closest<HTMLElement>(".bt-kill");
   if (ko?.dataset.ko != null) {
-    const u = forces[Number(ko.dataset.f)]?.units[Number(ko.dataset.ko)];
+    const fIdx = Number(ko.dataset.f);
+    const i = Number(ko.dataset.ko);
+    const u = forces[fIdx]?.units[i];
     if (u) {
       u.damage = u.damage ?? {};
       u.damage.out = !u.damage.out;
       saveForce();
       renderBattle();
+      const marker = forces[fIdx]?.battle;
+      if (marker) mpBroadcast(marker, i, u);
     }
     return;
   }
@@ -2555,7 +2706,27 @@ quirksToggle?.addEventListener("change", () => {
 });
 
 renderForce();
-if (inBattle()) enterBattle(); // resume a battle in progress after a reload
+if (inBattle()) {
+  enterBattle(); // resume a battle in progress after a reload
+  try {
+    const saved = JSON.parse(localStorage.getItem(MP_KEY) ?? "null") as typeof mpInfo;
+    if (saved?.host && saved.room) mpConnect(saved.host, saved.room, saved.role); // reconnect live battle
+  } catch {
+    /* ignore */
+  }
+} else {
+  // A room link (#battle=…) opens the Join dialog pre-filled.
+  const room = location.hash.match(/[#&]battle=([^&]+)/)?.[1];
+  if (room) {
+    history.replaceState(null, "", location.pathname + location.search);
+    if (!forces.every((f) => f.units.length === 0)) {
+      openBattleSetup();
+      setBattleMode("join");
+      const r = document.getElementById("battle-room") as HTMLInputElement | null;
+      if (r) r.value = room;
+    }
+  }
+}
 // Load the BV + quirk indexes, then refresh so badges/quirks appear once in.
 void loadBvIndex().then(renderForce);
 void Promise.all([loadQuirkIndex(), loadWeaponQuirkIndex()]).then(() => {
