@@ -11,6 +11,7 @@
  */
 
 import type { DropshipCard, RangeBrackets } from "../core/index.js";
+import { dropshipDoll } from "./biped-doll.js";
 
 function esc(s: string | number): string {
   return String(s).replace(
@@ -27,14 +28,6 @@ function bracket(v: number | null | undefined): string {
 function rangeCells(r: RangeBrackets | null): string {
   const vals = r ? [r.pb, r.s, r.m, r.l, r.x] : [null, null, null, null, null];
   return vals.map((v) => `<td class="num rng">${esc(bracket(v))}</td>`).join("");
-}
-
-/** One arc box: label + hit numbers over a large numeric armor value. */
-function arcBox(area: string, label: string, hits: string, armor: number): string {
-  return `<div class="dloc ${area}">
-    <div class="dloc-name">${esc(label)} <span class="loc-hits">(${esc(hits)})</span></div>
-    <div class="dloc-val">${esc(armor)}</div>
-  </div>`;
 }
 
 /** One WarShip arc box: label over a numeric armor value (no 2d6 hit row —
@@ -54,8 +47,8 @@ function siBox(card: DropshipCard): string {
     </div>`;
 }
 
-/** Arc armor diagram. DropShips: a 4-arc diamond with 2d6 hit numbers. WarShips:
- * the SIX hex sides (nose / fore-L/R / aft-L/R / aft) around the SI core. */
+/** Arc armor diagram. DropShips get an Aerodyne/Spheroid hull doll; WarShips
+ * keep the SIX hex sides (nose / fore-L/R / aft-L/R / aft) around the SI core. */
 function armorDiagram(card: DropshipCard): string {
   const a = card.armor;
   if (card.shipClass === "WarShip") {
@@ -70,14 +63,7 @@ function armorDiagram(card: DropshipCard): string {
   </div>
   <p class="mdoll-legend">Armor per hex side (capital ÷ 3) · SI = structural integrity</p>`;
   }
-  return `<div class="ddoll">
-    ${arcBox("dnose", "Nose", "6,7,8", a.nose)}
-    ${arcBox("dls", "Left Side", "9,10,11", a.leftSide)}
-    ${siBox(card)}
-    ${arcBox("drs", "Right Side", "3,4,5", a.rightSide)}
-    ${arcBox("daft", "Aft", "2,12", a.aft)}
-  </div>
-  <p class="mdoll-legend">Armor per arc (TW ÷ 4) · SI = structural integrity</p>`;
+  return dropshipDoll(card);
 }
 
 /** The weapons table: one row per arc TIC. */

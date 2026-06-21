@@ -13,7 +13,7 @@
  * "cl" flows through the dropdown + applyDamageMarks generically. Quads keep the
  * grid doll (mech-card's paperDoll).
  */
-import type { FighterCard, OverrideCard, ProtoMechCard, VehicleCard } from "../core/index.js";
+import type { DropshipCard, FighterCard, OverrideCard, ProtoMechCard, VehicleCard } from "../core/index.js";
 
 const FILL = "#c7c7c0", STROKE = "#4c4c46", DARK = "#9a9a92";
 const rr = (x: number, y: number, w: number, h: number, r = 5, fill = FILL): string =>
@@ -351,4 +351,49 @@ export function protoDoll(card: ProtoMechCard): string {
 
   return `<div class="bdoll-wrap"><svg class="bdoll" viewBox="-18 0 376 470" xmlns="http://www.w3.org/2000/svg">${seg}${dolls}${DOLL_LEGEND}</svg>${controls}</div>
   <p class="mdoll-legend">Armor (circles) over Structure (squares) · single Legs location · <s class="loc-miss">3</s>/<s class="loc-miss">11</s> = miss.</p>`;
+}
+
+/**
+ * Doll for DropShips (Aerodyne or Spheroid hull). Armor runs into the hundreds,
+ * so each arc shows a NUMERIC value (not pips) placed on the hull silhouette,
+ * with SI in the centre. Hit numbers follow the fighter table (Nose 6-8, R-Side
+ * 3-5, L-Side 9-11, Aft 2 & 12). Visual only — no per-point damage tracking.
+ */
+export function dropshipDoll(card: DropshipCard): string {
+  const a = card.armor;
+  const aero = /aero/i.test(card.motionLabel);
+  const arc = (x: number, y: number, label: string, hits: string, val: number): string =>
+    `<text class="bdoll-lbl" x="${x}" y="${y}">${label}</text>` +
+    `<text class="bdoll-hit" x="${x}" y="${y + 10}">${hits}</text>` +
+    `<text class="bdoll-num" x="${x}" y="${y + 30}">${val}</text>`;
+
+  const seg = aero
+    ? // Aerodyne: winged lifting body
+      poly([[170, 16], [120, 120], [220, 120]]) +
+      rr(118, 114, 104, 254, 28) +
+      poly([[120, 178], [14, 300], [80, 322], [120, 262]]) +
+      poly([[220, 178], [326, 300], [260, 322], [220, 262]]) +
+      rr(126, 360, 88, 30, 8) +
+      `<rect x="136" y="386" width="16" height="14" rx="2" fill="${DARK}"/><rect x="162" y="386" width="16" height="14" rx="2" fill="${DARK}"/><rect x="188" y="386" width="16" height="14" rx="2" fill="${DARK}"/>`
+    : // Spheroid: egg body on landing legs
+      rr(120, 350, 14, 44, 4, DARK) + rr(163, 356, 14, 44, 4, DARK) + rr(206, 350, 14, 44, 4, DARK) +
+      `<ellipse cx="170" cy="206" rx="94" ry="152" fill="${FILL}" stroke="${STROKE}" stroke-width="1.6"/>` +
+      `<path d="M92,150 Q170,118 248,150" fill="none" stroke="${STROKE}" stroke-width="1.2"/>` +
+      `<path d="M86,262 Q170,290 254,262" fill="none" stroke="${STROKE}" stroke-width="1.2"/>` +
+      `<rect x="134" y="96" width="14" height="9" rx="2" fill="${DARK}"/><rect x="156" y="90" width="14" height="9" rx="2" fill="${DARK}"/><rect x="192" y="96" width="14" height="9" rx="2" fill="${DARK}"/>`;
+
+  const labels = aero
+    ? arc(170, 60, "NOSE", "6,7,8", a.nose) +
+      arc(56, 248, "L SIDE", "9,10,11", a.leftSide) +
+      arc(284, 248, "R SIDE", "3,4,5", a.rightSide) +
+      `<text class="bdoll-lbl" x="170" y="196">SI</text><text class="bdoll-num" x="170" y="218">${card.structure}</text>` +
+      arc(170, 326, "AFT", "2,12", a.aft)
+    : arc(170, 122, "NOSE", "6,7,8", a.nose) +
+      arc(112, 214, "L SIDE", "9,10,11", a.leftSide) +
+      arc(228, 214, "R SIDE", "3,4,5", a.rightSide) +
+      `<text class="bdoll-lbl" x="170" y="170">SI</text><text class="bdoll-num" x="170" y="192">${card.structure}</text>` +
+      arc(170, 300, "AFT", "2,12", a.aft);
+
+  return `<div class="bdoll-wrap"><svg class="bdoll" viewBox="-18 0 376 470" xmlns="http://www.w3.org/2000/svg">${seg}${labels}</svg></div>
+  <p class="mdoll-legend">${aero ? "Aerodyne" : "Spheroid"} DropShip — armor per arc (TW ÷ 4) over SI · hit numbers in parentheses.</p>`;
 }
