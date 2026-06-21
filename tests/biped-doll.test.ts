@@ -5,7 +5,7 @@ import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { convertAny, convertUnit, parseMtf } from "../src/core/index.js";
-import { bipedDoll, fighterDoll, isBipedDoll, isQuadDoll, quadDoll, vehicleDoll } from "../src/web/biped-doll.js";
+import { bipedDoll, fighterDoll, isBipedDoll, isQuadDoll, protoDoll, quadDoll, vehicleDoll } from "../src/web/biped-doll.js";
 
 const FIXTURES = join(dirname(fileURLToPath(import.meta.url)), "fixtures");
 const load = (f: string) => parseMtf(readFileSync(join(FIXTURES, f), "utf8"), f);
@@ -91,5 +91,18 @@ describe("biped/tripod silhouette doll", () => {
     expect(svg).toContain('data-area="rotor"');
     expect(svg).toContain("ROTOR");
     expect(svg).not.toContain('data-area="turret"');
+  });
+
+  it("renders a protomech doll: single legs, miss markup, optional main gun", () => {
+    const noGun = convertAny(readFileSync(join(FIXTURES, "Test Proto PR-1.blk"), "utf8"), "Test Proto PR-1.blk");
+    expect(noGun.kind).toBe("protomech");
+    const svg = noGun.kind === "protomech" ? protoDoll(noGun.card) : "";
+    for (const area of ["hd", "la", "ra", "ct", "lg"]) {
+      expect(svg).toContain(`data-area="${area}"`);
+    }
+    expect(svg).toContain('class="loc-miss"'); // 3/11 misses struck through
+    expect(svg).toContain("LEGS"); // single legs location
+    // Main gun only when present.
+    expect(svg.includes('data-area="mg"')).toBe(noGun.kind === "protomech" && noGun.card.hasMainGun);
   });
 });

@@ -13,7 +13,7 @@
  * "cl" flows through the dropdown + applyDamageMarks generically. Quads keep the
  * grid doll (mech-card's paperDoll).
  */
-import type { FighterCard, OverrideCard, VehicleCard } from "../core/index.js";
+import type { FighterCard, OverrideCard, ProtoMechCard, VehicleCard } from "../core/index.js";
 
 const FILL = "#c7c7c0", STROKE = "#4c4c46", DARK = "#9a9a92";
 const rr = (x: number, y: number, w: number, h: number, r = 5, fill = FILL): string =>
@@ -300,4 +300,56 @@ export function vehicleDoll(card: VehicleCard): string {
 
   return `<div class="bdoll-wrap"><svg class="bdoll" viewBox="-18 0 376 470" xmlns="http://www.w3.org/2000/svg">${seg}${dolls}${DOLL_LEGEND}</svg>${controls}</div>
   <p class="mdoll-legend">Armor (circles) per facing over a single structure track (squares) · TAC (crit) on 2 &amp; 12.</p>`;
+}
+
+/**
+ * Doll for PROTOMECHS: a compact biped silhouette with head, two arms, torso, a
+ * SINGLE legs block, and an optional torso Main Gun pod. Same `.mloc {area}` +
+ * dropdown contract as the other dolls (areas hd/la/ra/ct/lg/mg). Hit table
+ * mirrors the 'Mech's except a roll of 3 or 11 is a MISS (struck through).
+ */
+export function protoDoll(card: ProtoMechCard): string {
+  const a = card.armor;
+  const s = card.structure;
+  const mg = card.hasMainGun;
+  const miss = (n: number) => `<s class="loc-miss">${n}</s>`;
+  const seg =
+    // Head + visor + neck
+    rr(146, 16, 48, 38, 8) +
+    `<rect x="158" y="23" width="24" height="7" rx="2" fill="${DARK}"/>` +
+    rr(160, 52, 20, 10, 3) +
+    // Shoulders
+    poly([[78, 76], [128, 62], [128, 98], [86, 108]]) +
+    poly([[262, 76], [212, 62], [212, 98], [254, 108]]) +
+    // Torso (chest + abdomen)
+    rr(126, 62, 88, 74, 10) +
+    rr(136, 134, 68, 46, 8) +
+    // Arms (upper + lower)
+    rr(80, 96, 34, 50, 8) + rr(78, 148, 34, 52, 8) +
+    rr(226, 96, 34, 50, 8) + rr(228, 148, 34, 52, 8) +
+    // Optional torso Main Gun: left outboard pod + barrel
+    (mg ? rr(34, 90, 42, 76, 10) + `<rect x="50" y="72" width="10" height="22" rx="2" fill="${DARK}"/>` : "") +
+    // Hips + single legs block + foot
+    rr(122, 178, 96, 22, 7) +
+    rr(132, 198, 76, 102, 14) +
+    rr(120, 300, 100, 20, 6);
+
+  const dolls =
+    loc("hd", [150, 36, 40, 9], [150, 46, 40, 8], a.head, s.head) +
+    loc("la", [82, 100, 30, 44], [80, 150, 30, 46], a.leftArm, s.leftArm) +
+    loc("ra", [228, 100, 30, 44], [230, 150, 30, 46], a.rightArm, s.rightArm) +
+    loc("ct", [132, 68, 76, 60], [140, 136, 60, 42], a.torso, s.torso) +
+    loc("lg", [138, 206, 64, 42], [138, 250, 64, 44], a.legs, s.legs) +
+    (mg ? loc("mg", [40, 96, 30, 30], [40, 128, 30, 30], a.mainGun ?? 0, s.mainGun ?? 0) : "");
+
+  const controls =
+    ctl("hd", "HEAD", "12", a.head + s.head, 50, 4) +
+    ctl("la", "L ARM", `10,${miss(11)}`, a.leftArm + s.leftArm, 16, 30) +
+    ctl("ra", "R ARM", `${miss(3)},4`, a.rightArm + s.rightArm, 84, 30) +
+    ctl("ct", "TORSO", "6,7,8", a.torso + s.torso, 50, 37) +
+    ctl("lg", "LEGS", "5,9", a.legs + s.legs, 50, 73) +
+    (mg ? ctl("mg", "M GUN", "2", (a.mainGun ?? 0) + (s.mainGun ?? 0), 7, 33) : "");
+
+  return `<div class="bdoll-wrap"><svg class="bdoll" viewBox="-18 0 376 470" xmlns="http://www.w3.org/2000/svg">${seg}${dolls}${DOLL_LEGEND}</svg>${controls}</div>
+  <p class="mdoll-legend">Armor (circles) over Structure (squares) · single Legs location · <s class="loc-miss">3</s>/<s class="loc-miss">11</s> = miss.</p>`;
 }
