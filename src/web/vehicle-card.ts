@@ -8,7 +8,8 @@
  * Punch/Kick row, and the weapons table's Loc column holds the firing facing.
  */
 
-import type { RangeBrackets, VehicleCard, VehicleCardArmor } from "../core/index.js";
+import type { RangeBrackets, VehicleCard } from "../core/index.js";
+import { vehicleDoll } from "./biped-doll.js";
 
 function esc(s: string | number): string {
   return String(s).replace(
@@ -25,59 +26,6 @@ function bracket(v: number | null | undefined): string {
 function rangeCells(r: RangeBrackets | null): string {
   const vals = r ? [r.pb, r.s, r.m, r.l, r.x] : [null, null, null, null, null];
   return vals.map((v) => `<td class="num rng">${esc(bracket(v))}</td>`).join("");
-}
-
-/** A row of hex pips of a given class (armor = purple, struct = red). */
-function hexPips(n: number, cls: string): string {
-  if (n <= 0) return "";
-  return `<span class="hexrow">${`<i class="hex ${cls}"></i>`.repeat(n)}</span>`;
-}
-
-/** One facing box: label + hit numbers, armor hexes over structure hexes. */
-function facingBox(
-  area: string,
-  label: string,
-  hits: string,
-  armor: number | undefined,
-  structure: number,
-): string {
-  if (armor === undefined) return `<div class="vloc ${area} vempty"></div>`;
-  const hitTxt = hits ? ` <span class="loc-hits">(${esc(hits)})</span>` : "";
-  return `<div class="vloc ${area}">
-    <div class="vloc-name">${esc(label)}${hitTxt}</div>
-    <div class="vloc-pips">${hexPips(armor, "armor")}${hexPips(structure, "struct")}</div>
-  </div>`;
-}
-
-/**
- * Facing armor diagram: Front on top, sides flanking the turret, Rear at bottom.
- *
- * Hit numbers follow the Override CV / VTOL location table (2d6): FR 6-8,
- * RS 3-4, LS 10-11, TAC (through-armor crit) on 2 & 12. Rolls 5 & 9 hit the
- * turret; on VTOLs they hit the Rotor instead. On a turretless ground vehicle
- * there is nowhere for 5 & 9 to land, so they reallocate to the adjacent sides
- * (5 -> Right with 3-4, 9 -> Left with 10-11). The rear carries no roll.
- */
-function armorDiagram(card: VehicleCard): string {
-  const a = card.armor;
-  const s = card.structure;
-  const vtol = card.hasRotor;
-  const turretless = !vtol && a.turret === undefined; // ground vehicle with no turret
-  // 5 & 9 hit the rotor on a VTOL, the turret on a turreted vehicle, else the sides.
-  const rotor = vtol ? facingBox("vrotor", "Rotor", "5,9", a.rotor, s) : "";
-  const turretHits = vtol ? "" : "5,9";
-  const rightHits = turretless ? "3,4,5" : "3,4";
-  const leftHits = turretless ? "9,10,11" : "10,11";
-  const cls = vtol ? "vdoll has-rotor" : "vdoll";
-  return `<div class="${cls}">
-    ${rotor}
-    ${facingBox("vfront", "Front", "6,7,8", a.front, s)}
-    ${facingBox("vleft", "Left Side", leftHits, a.left, s)}
-    ${facingBox("vturret", "Turret", turretHits, a.turret, s)}
-    ${facingBox("vright", "Right Side", rightHits, a.right, s)}
-    ${facingBox("vrear", "Rear", "", a.rear, s)}
-  </div>
-  <p class="mdoll-legend"><i class="hex armor"></i> armor &nbsp; <i class="hex struct"></i> structure &nbsp; · &nbsp; TAC (crit) on 2 &amp; 12</p>`;
 }
 
 /** The weapons table: one row per facing TIC (no Punch/Kick for vehicles). */
@@ -150,7 +98,7 @@ export function renderVehicleCard(card: VehicleCard): string {
           </div>
           <div class="ms-wordmark">B<span class="ms-wm-a">▲</span>TTLETECH<br><b>OVERRIDE</b></div>
         </div>
-        ${armorDiagram(card)}
+        ${vehicleDoll(card)}
       </div>
     </div>
   </article>`;

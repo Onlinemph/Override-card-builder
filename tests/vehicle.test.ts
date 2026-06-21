@@ -148,18 +148,19 @@ describe("hit-location diagram (turret rolls reallocate when turretless)", () =>
     const c = tank("20\n15\n15\n10\n12"); // 5 values -> turret
     expect(c.hasTurret).toBe(true);
     const html = renderVehicleCard(c);
-    expect(html).toContain("Turret <span class=\"loc-hits\">(5,9)</span>");
-    expect(html).toContain("Right Side <span class=\"loc-hits\">(3,4)</span>");
-    expect(html).toContain("Left Side <span class=\"loc-hits\">(10,11)</span>");
+    expect(html).toContain('data-area="turret"');
+    expect(html).toContain('<span class="dmg-name">TURRET</span><span class="dmg-hits">5,9</span>');
+    expect(html).toContain('<span class="dmg-name">R SIDE</span><span class="dmg-hits">3,4</span>');
+    expect(html).toContain('<span class="dmg-name">L SIDE</span><span class="dmg-hits">10,11</span>');
   });
 
   it("a turretless vehicle reallocates 5 -> Right and 9 -> Left", () => {
     const c = tank("20\n15\n15\n10"); // 4 values -> no turret
     expect(c.hasTurret).toBe(false);
     const html = renderVehicleCard(c);
-    expect(html).toContain("Right Side <span class=\"loc-hits\">(3,4,5)</span>");
-    expect(html).toContain("Left Side <span class=\"loc-hits\">(9,10,11)</span>");
-    expect(html).toContain("vturret vempty"); // empty turret slot, no roll lost
+    expect(html).not.toContain('data-area="turret"'); // no turret slot at all
+    expect(html).toContain('<span class="dmg-name">R SIDE</span><span class="dmg-hits">3,4,5</span>');
+    expect(html).toContain('<span class="dmg-name">L SIDE</span><span class="dmg-hits">9,10,11</span>');
   });
 });
 

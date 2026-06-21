@@ -13,7 +13,7 @@
  * "cl" flows through the dropdown + applyDamageMarks generically. Quads keep the
  * grid doll (mech-card's paperDoll).
  */
-import type { FighterCard, OverrideCard } from "../core/index.js";
+import type { FighterCard, OverrideCard, VehicleCard } from "../core/index.js";
 
 const FILL = "#c7c7c0", STROKE = "#4c4c46", DARK = "#9a9a92";
 const rr = (x: number, y: number, w: number, h: number, r = 5, fill = FILL): string =>
@@ -240,4 +240,64 @@ export function fighterDoll(card: FighterCard): string {
 
   return `<div class="bdoll-wrap"><svg class="bdoll" viewBox="-18 0 376 470" xmlns="http://www.w3.org/2000/svg">${seg}${dolls}${DOLL_LEGEND}</svg>${controls}</div>
   <p class="mdoll-legend">Armor (circles) per facing over a single SI track (squares, airframe-wide).</p>`;
+}
+
+/**
+ * Top-down doll for combat VEHICLES / VTOLs: a hull with armor circles per facing
+ * (front / sides / rear) flanking a central turret (or VTOL rotor), over a single
+ * internal-structure track (squares). Uses the 'Mech dolls' `.mloc {area}` +
+ * dropdown contract (areas front/left/right/rear/turret/rotor carry armor, is
+ * carries structure), so play-mode tracking works unchanged. Turretless ground
+ * vehicles drop the turret and shift the 5/9 rolls onto the sides.
+ */
+export function vehicleDoll(card: VehicleCard): string {
+  const a = card.armor;
+  const s = card.structure;
+  const vtol = card.hasRotor;
+  const turreted = !vtol && a.turret !== undefined;
+  const turretless = !vtol && a.turret === undefined;
+  const rightHits = turretless ? "3,4,5" : "3,4";
+  const leftHits = turretless ? "9,10,11" : "10,11";
+
+  const centre = vtol
+    ? `<ellipse cx="170" cy="206" rx="118" ry="15" fill="${FILL}" stroke="${STROKE}" stroke-width="1.6"/>` +
+      `<circle cx="170" cy="206" r="30" fill="${FILL}" stroke="${STROKE}" stroke-width="1.6"/>`
+    : turreted
+      ? `<rect x="164" y="120" width="12" height="92" rx="3" fill="${DARK}"/>` + // gun barrel
+        `<circle cx="170" cy="208" r="48" fill="${FILL}" stroke="${STROKE}" stroke-width="1.6"/>`
+      : "";
+  const seg =
+    // Hull + side treads
+    rr(86, 116, 168, 252, 16) +
+    rr(76, 126, 16, 232, 6, DARK) + rr(248, 126, 16, 232, 6, DARK) +
+    centre;
+
+  const centreLoc = vtol
+    ? loc("rotor", [150, 192, 40, 28], [0, 0, 0, 0], a.rotor ?? 0, 0)
+    : turreted
+      ? loc("turret", [142, 188, 56, 42], [0, 0, 0, 0], a.turret ?? 0, 0)
+      : "";
+  const dolls =
+    loc("front", [104, 122, 132, 26], [0, 0, 0, 0], a.front, 0) +
+    loc("left", [94, 170, 24, 118], [0, 0, 0, 0], a.left, 0) +
+    loc("right", [222, 170, 24, 118], [0, 0, 0, 0], a.right, 0) +
+    centreLoc +
+    loc("is", [0, 0, 0, 0], [122, 262, 96, 22], 0, s) +
+    loc("rear", [104, 340, 132, 24], [0, 0, 0, 0], a.rear, 0);
+
+  const centreCtl = vtol
+    ? ctl("rotor", "ROTOR", "5,9", a.rotor ?? 0, 50, 35)
+    : turreted
+      ? ctl("turret", "TURRET", "5,9", a.turret ?? 0, 50, 35)
+      : "";
+  const controls =
+    ctl("front", "FRONT", "6,7,8", a.front, 50, 9) +
+    ctl("left", "L SIDE", leftHits, a.left, 10, 44) +
+    ctl("right", "R SIDE", rightHits, a.right, 90, 44) +
+    centreCtl +
+    ctl("is", "IS", "", s, 50, 66) +
+    ctl("rear", "REAR", "", a.rear, 50, 91);
+
+  return `<div class="bdoll-wrap"><svg class="bdoll" viewBox="-18 0 376 470" xmlns="http://www.w3.org/2000/svg">${seg}${dolls}${DOLL_LEGEND}</svg>${controls}</div>
+  <p class="mdoll-legend">Armor (circles) per facing over a single structure track (squares) · TAC (crit) on 2 &amp; 12.</p>`;
 }
