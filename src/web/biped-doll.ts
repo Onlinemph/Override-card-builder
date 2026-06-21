@@ -217,9 +217,9 @@ export function fighterDoll(card: FighterCard): string {
     // Swept wings (left / right)
     poly([[140, 150], [22, 242], [80, 262], [140, 214]]) +
     poly([[200, 150], [318, 242], [260, 262], [200, 214]]) +
-    // Tail fins
-    poly([[140, 300], [110, 360], [150, 344]]) +
-    poly([[200, 300], [290, 360], [250, 344]]) +
+    // Tail fins (swept back, symmetric about x=170)
+    poly([[142, 298], [96, 362], [142, 340]]) +
+    poly([[198, 298], [244, 362], [198, 340]]) +
     // Aft / engines + exhaust
     rr(146, 338, 48, 54, 10) +
     `<rect x="150" y="386" width="40" height="10" rx="3" fill="${DARK}"/>`;
