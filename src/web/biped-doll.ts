@@ -159,42 +159,39 @@ export function isQuadDoll(card: OverrideCard): boolean {
 export function quadDoll(card: OverrideCard): string {
   const a = card.armor;
   const s = card.structure;
+  // Symmetric about the viewBox centre (x = 170). Legs touch the body so they
+  // read as connected; each location's dropdown sits BELOW its pips (like the
+  // biped) so armor + structure stay visible.
   const seg =
     // Head + visor + neck (front)
-    rr(150, 16, 56, 42, 8) +
-    `<rect x="166" y="24" width="24" height="8" rx="2" fill="${DARK}"/>` +
-    rr(168, 54, 20, 34, 6) +
-    // Leg joints (under the legs + body)
-    rr(104, 126, 24, 34, 5, DARK) + rr(228, 126, 24, 34, 5, DARK) +
-    rr(104, 242, 24, 34, 5, DARK) + rr(228, 242, 24, 34, 5, DARK) +
-    // Body (torso): armor upper, structure lower
-    rr(118, 84, 124, 228, 16) +
-    // Four legs at the corners: front L / R, rear L / R
-    rr(50, 96, 62, 104, 14) + rr(248, 96, 62, 104, 14) +
-    rr(50, 212, 62, 104, 14) + rr(248, 212, 62, 104, 14) +
-    // Outer foot pads
-    rr(40, 150, 16, 24, 4) + rr(320, 150, 16, 24, 4) +
-    rr(40, 266, 16, 24, 4) + rr(320, 266, 16, 24, 4) +
+    rr(141, 14, 58, 46, 9) +
+    `<rect x="158" y="22" width="24" height="8" rx="2" fill="${DARK}"/>` +
+    rr(159, 56, 22, 30, 6) +
+    // Body (torso)
+    rr(106, 82, 128, 270, 18) +
+    // Four legs at the corners, touching the body: front L / R, rear L / R
+    rr(42, 96, 64, 128, 16) + rr(234, 96, 64, 128, 16) +
+    rr(42, 246, 64, 128, 16) + rr(234, 246, 64, 128, 16) +
     // Rear box (back)
-    rr(150, 316, 56, 28, 6, "#e7e7e1");
+    rr(140, 354, 60, 30, 7, "#e7e7e1");
 
   const dolls =
-    loc("hd", [156, 35, 44, 9], [156, 45, 44, 9], a.head, s.head) +
-    loc("la", [54, 100, 54, 46], [54, 150, 54, 46], a.leftArm, s.leftArm) +
-    loc("ra", [252, 100, 54, 46], [252, 150, 54, 46], a.rightArm, s.rightArm) +
-    loc("ct", [124, 92, 112, 104], [124, 200, 112, 104], a.torso, s.torso) +
-    loc("ll", [54, 216, 54, 46], [54, 266, 54, 46], a.leftLeg, s.leftLeg) +
-    loc("rl", [252, 216, 54, 46], [252, 266, 54, 46], a.rightLeg, s.rightLeg) +
-    loc("tr", [152, 320, 52, 22], [0, 0, 0, 0], a.rear, 0);
+    loc("hd", [147, 40, 46, 9], [147, 50, 46, 8], a.head, s.head) +
+    loc("la", [46, 102, 56, 46], [46, 152, 56, 30], a.leftArm, s.leftArm) +
+    loc("ra", [238, 102, 56, 46], [238, 152, 56, 30], a.rightArm, s.rightArm) +
+    loc("ct", [112, 90, 116, 84], [112, 224, 116, 110], a.torso, s.torso) +
+    loc("ll", [46, 252, 56, 46], [46, 302, 56, 30], a.leftLeg, s.leftLeg) +
+    loc("rl", [238, 252, 56, 46], [238, 302, 56, 30], a.rightLeg, s.rightLeg) +
+    loc("tr", [146, 358, 48, 22], [0, 0, 0, 0], a.rear, 0);
 
   const controls =
-    ctl("hd", "HEAD", "12", a.head + s.head, 50, 5) +
-    ctl("la", "L FRONT", "10,11", a.leftArm + s.leftArm, 25, 30) +
-    ctl("ra", "R FRONT", "3,4", a.rightArm + s.rightArm, 75, 30) +
-    ctl("ct", "TORSO", "6,7,8", a.torso + s.torso, 50, 42) +
-    ctl("ll", "L REAR", "9", a.leftLeg + s.leftLeg, 25, 58) +
-    ctl("rl", "R REAR", "5", a.rightLeg + s.rightLeg, 75, 58) +
-    ctl("tr", "REAR", "2,12", a.rear + s.torso, 50, 73); // rear armor bleeds into torso structure
+    ctl("hd", "HEAD", "12", a.head + s.head, 50, 4) +
+    ctl("la", "L FRONT", "10,11", a.leftArm + s.leftArm, 24, 45) +
+    ctl("ra", "R FRONT", "3,4", a.rightArm + s.rightArm, 76, 45) +
+    ctl("ct", "TORSO", "6,7,8", a.torso + s.torso, 50, 43) +
+    ctl("ll", "L REAR", "9", a.leftLeg + s.leftLeg, 24, 76) +
+    ctl("rl", "R REAR", "5", a.rightLeg + s.rightLeg, 76, 76) +
+    ctl("tr", "REAR", "2,12", a.rear + s.torso, 50, 86); // rear armor bleeds into torso structure
 
   return `<div class="bdoll-wrap"><svg class="bdoll" viewBox="-18 0 376 470" xmlns="http://www.w3.org/2000/svg">${seg}${dolls}${DOLL_LEGEND}</svg>${controls}</div>
   <p class="mdoll-legend">Armor (circles) over Structure (squares) · set damage per part — lower the number to heal</p>
