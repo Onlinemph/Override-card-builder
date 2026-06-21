@@ -109,7 +109,7 @@ export function renderFighterCard(card: FighterCard): string {
   // Fuel tonnage: 80 points/ton for aerospace, 160/ton for conventional (double).
   const fuelTons = card.fuel ? +(card.fuel / (card.conventional ? 160 : 80)).toFixed(1) : 0;
   const fuel = card.fuel ? `<div><b>Fuel:</b> ${esc(card.fuel)} pts <span class="muted">(${esc(fuelTons)} t)</span></div>` : "";
-  return `<article class="card mech-sheet">
+  return `<article class="card mech-sheet doll-card">
     <div class="ms-grid">
       <div class="ms-left">
         <div class="ms-title">${esc(card.name)}</div>

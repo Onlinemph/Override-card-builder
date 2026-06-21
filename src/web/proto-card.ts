@@ -82,7 +82,7 @@ export function renderProtoCard(card: ProtoMechCard): string {
   const warnings = card.warnings.length
     ? `<ul class="warnings">${card.warnings.map((w) => `<li>${esc(w)}</li>`).join("")}</ul>`
     : "";
-  return `<article class="card mech-sheet">
+  return `<article class="card mech-sheet doll-card">
     <div class="ms-grid">
       <div class="ms-left">
         <div class="ms-title">${esc(card.name)}</div>

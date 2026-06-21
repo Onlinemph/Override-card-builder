@@ -1510,7 +1510,15 @@ body.show-quirks .card-quirks { display: block; }
    mismatching the off-screen measured scale. Scoped to .sheet so it applies in
    BOTH the measuring pass and the print (not gated by @media). */
 .sheet .ms-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important; }
-.sheet .inf-top { grid-template-columns: minmax(150px, 1fr) minmax(180px, 1.4fr) auto !important; }
+/* Doll cards (vehicle/fighter/proto/dropship) are content-light on the left — give
+   the doll column more width (bigger doll → taller card → fills the cell better)
+   and centre the short text column so it doesn't leave a bottom gap. */
+.sheet .doll-card .ms-grid { grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr) !important; }
+.sheet .doll-card .ms-left { align-self: center; }
+/* Infantry: stack the wide 3-column top into 2 columns (brand on its own row)
+   so the card is taller/squarer instead of short-and-wide. */
+.sheet .inf-top { grid-template-columns: 1fr 1fr !important; align-items: start; }
+.sheet .inf-top .ms-brand { grid-column: 1 / -1; }
 
 /* Print: keep an arc's header with at least its first rows, avoid mid-arc breaks. */
 @media print {
