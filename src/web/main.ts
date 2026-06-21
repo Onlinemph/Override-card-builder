@@ -608,6 +608,24 @@ async function loadWeaponQuirkIndex(): Promise<void> {
     /* no per-weapon data — falls back to the MUL summary */
   }
 }
+
+// MUL battlefield role (Sniper, Brawler, Skirmisher, …) — public/role-index.json.
+let roleIndex: Record<string, string> = {};
+async function loadRoleIndex(): Promise<void> {
+  try {
+    const resp = await fetch("./role-index.json");
+    if (resp.ok) roleIndex = (await resp.json()) as Record<string, string>;
+  } catch {
+    /* no role data — the analytics role breakdown just stays empty */
+  }
+}
+function lookupRole(name: string, file?: string): string | undefined {
+  if (file) {
+    const byFile = roleIndex[bvKey(fileStem(file))];
+    if (byFile) return byFile;
+  }
+  return roleIndex[bvKey(name)];
+}
 const WEAPON_QUIRK_LABEL: Record<string, string> = {
   stable_weapon: "Stable",
   direct_torso_mount: "Direct Torso Mount",
@@ -1537,11 +1555,11 @@ function renderForce(): void {
 }
 
 // ---- Force analytics ------------------------------------------------------
-interface RosterRow { name: string; type: string; tons: number; cls: string; move: string; skills: string; bv?: number }
+interface RosterRow { name: string; type: string; tons: number; cls: string; role: string; move: string; skills: string; bv?: number }
 interface ForceStats {
   count: number; totalBv: number; withBv: number; totalTons: number;
   fp: { short: number; med: number; long: number };
-  byType: Map<string, number>; byClass: Map<string, number>; roster: RosterRow[];
+  byType: Map<string, number>; byClass: Map<string, number>; byRole: Map<string, number>; roster: RosterRow[];
 }
 const TYPE_LABEL: Record<string, string> = {
   mech: "’Mech", vehicle: "Vehicle", fighter: "Fighter", protomech: "ProtoMech",
@@ -1572,30 +1590,33 @@ function analyzeForce(units: ForceUnit[]): ForceStats {
   const roster: RosterRow[] = [];
   const byType = new Map<string, number>();
   const byClass = new Map<string, number>();
+  const byRole = new Map<string, number>();
   let totalBv = 0, withBv = 0, totalTons = 0;
   const fp = { short: 0, med: 0, long: 0 };
   for (const u of units) {
     const r = convertOne(u.text, u.file ?? u.name);
-    if (!r.ok) { roster.push({ name: u.name, type: "—", tons: 0, cls: "—", move: "—", skills: "—" }); continue; }
+    if (!r.ok) { roster.push({ name: u.name, type: "—", tons: 0, cls: "—", role: "—", move: "—", skills: "—" }); continue; }
     const card = r.result.card as { tonnage?: number; mass?: number; move?: string };
     const tons = card.tonnage ?? card.mass ?? 0;
     const cls = weightClass(tons);
     const type = TYPE_LABEL[r.result.kind] ?? r.result.kind;
+    const role = lookupRole(u.name, u.file);
     const bv = unitBv(u);
     const sk = unitSkills(u);
     if (bv) { totalBv += bv; withBv += 1; }
     totalTons += tons;
     byType.set(type, (byType.get(type) ?? 0) + 1);
     if (cls) byClass.set(cls, (byClass.get(cls) ?? 0) + 1);
+    if (role) byRole.set(role, (byRole.get(role) ?? 0) + 1);
     for (const w of unitWeapons(r.result)) {
       if (!w.range) continue;
       if (w.range.s !== null) fp.short += damageAt(w.profile, 0);
       if (w.range.m !== null) fp.med += damageAt(w.profile, 1);
       if (w.range.l !== null) fp.long += damageAt(w.profile, 2);
     }
-    roster.push({ name: u.name, type, tons, cls: cls ?? "—", move: card.move ?? "—", skills: `${sk.gunnery}/${sk.piloting}`, bv });
+    roster.push({ name: u.name, type, tons, cls: cls ?? "—", role: role ?? "—", move: card.move ?? "—", skills: `${sk.gunnery}/${sk.piloting}`, bv });
   }
-  return { count: units.length, totalBv, withBv, totalTons, fp, byType, byClass, roster };
+  return { count: units.length, totalBv, withBv, totalTons, fp, byType, byClass, byRole, roster };
 }
 
 const anStat = (label: string, value: string): string =>
@@ -1617,18 +1638,24 @@ function firepowerHtml(a: ForceStats): string {
 function compositionHtml(a: ForceStats): string {
   const types = [...a.byType].map(([t, n]) => `<span class="an-chip">${esc(t)} <b>${n}</b></span>`).join("");
   const cls = CLASS_ORDER.filter((c) => a.byClass.get(c)).map((c) => `<span class="an-chip">${c} <b>${a.byClass.get(c)}</b></span>`).join("");
-  return `<div class="an-sec"><h4>Composition</h4><div class="an-chips">${types}</div>${cls ? `<div class="an-chips">${cls}</div>` : ""}</div>`;
+  const roles = [...a.byRole]
+    .sort((x, y) => y[1] - x[1])
+    .map(([role, n]) => `<span class="an-chip an-role">${esc(role)} <b>${n}</b></span>`)
+    .join("");
+  return `<div class="an-sec"><h4>Composition</h4><div class="an-chips">${types}</div>` +
+    `${cls ? `<div class="an-chips">${cls}</div>` : ""}` +
+    `${roles ? `<div class="an-chips">${roles}</div>` : ""}</div>`;
 }
 function musterHtml(a: ForceStats): string {
   const rows = a.roster
     .map((r, i) => `<tr><td class="num">${i + 1}</td><td>${esc(r.name)}</td><td>${esc(r.type)}</td>` +
-      `<td class="num">${r.tons || "—"}</td><td>${esc(r.cls)}</td><td>${esc(r.move)}</td><td class="num">${esc(r.skills)}</td>` +
+      `<td class="num">${r.tons || "—"}</td><td>${esc(r.cls)}</td><td>${esc(r.role)}</td><td>${esc(r.move)}</td><td class="num">${esc(r.skills)}</td>` +
       `<td class="num">${r.bv ? r.bv.toLocaleString() : "—"}</td></tr>`)
     .join("");
   return `<div class="an-sec"><h4>Muster sheet</h4><table class="an-muster"><thead><tr>` +
-    `<th class="num">#</th><th>Unit</th><th>Type</th><th class="num">Tons</th><th>Class</th><th>Move</th><th class="num">G/P</th><th class="num">BV</th>` +
+    `<th class="num">#</th><th>Unit</th><th>Type</th><th class="num">Tons</th><th>Class</th><th>Role</th><th>Move</th><th class="num">G/P</th><th class="num">BV</th>` +
     `</tr></thead><tbody>${rows}</tbody><tfoot><tr><td></td><td><b>Total</b></td><td></td>` +
-    `<td class="num"><b>${a.totalTons.toLocaleString()}</b></td><td colspan="3"></td><td class="num"><b>${a.totalBv.toLocaleString()}</b></td></tr></tfoot></table></div>`;
+    `<td class="num"><b>${a.totalTons.toLocaleString()}</b></td><td colspan="4"></td><td class="num"><b>${a.totalBv.toLocaleString()}</b></td></tr></tfoot></table></div>`;
 }
 function analyticsOpen(): boolean {
   return document.getElementById("analytics-toggle")?.getAttribute("aria-expanded") === "true";
@@ -2225,6 +2252,10 @@ renderForce();
 void loadBvIndex().then(renderForce);
 void Promise.all([loadQuirkIndex(), loadWeaponQuirkIndex()]).then(() => {
   if (editingForceIdx != null) renderForceEdit();
+});
+// Role data for the analytics breakdown; refresh the panel if it's open.
+void loadRoleIndex().then(() => {
+  if (analyticsOpen()) renderAnalytics();
 });
 // Import a shared force from the URL hash, if present.
 void importFromHash();
