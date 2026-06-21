@@ -4,9 +4,17 @@ import { dirname, join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { quirkEffect, WEAPON_QUIRK_LABEL } from "../src/web/quirk-effects.js";
+import { convertUnit, parseMtf, ticHeat } from "../src/core/index.js";
+import {
+  applyUnitQuirkToCard,
+  applyWeaponQuirkToTic,
+  quirkEffect,
+  WEAPON_QUIRK_LABEL,
+} from "../src/web/quirk-effects.js";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
+const FIXTURES = join(ROOT, "tests", "fixtures");
+const atlas = () => convertUnit(parseMtf(readFileSync(join(FIXTURES, "Atlas AS7-D (crits).mtf"), "utf8"), "Atlas.mtf"));
 
 describe("quirk effects", () => {
   it("maps every weaponquirk code to a canonical name with a defined effect", () => {
@@ -44,5 +52,43 @@ describe("quirk effects", () => {
     }
     const missing = [...names].filter((n) => !quirkEffect(n));
     expect(missing, `unmapped quirks: ${missing.join(", ")}`).toEqual([]);
+  });
+});
+
+describe("applying quirk effects to 'Mech card values", () => {
+  it("cooling-jacket weapon quirks set a heat override", () => {
+    const tic = atlas().tics.reduce((a, b) => (ticHeat(b) > ticHeat(a) ? b : a));
+    const base = ticHeat(tic);
+    applyWeaponQuirkToTic(tic, "Improved Cooling Jacket");
+    expect(tic.heatOverride).toBe(Math.max(1, base - 1));
+    applyWeaponQuirkToTic(tic, "No Cooling Jacket"); // stacks on the override
+    expect(tic.heatOverride).toBe(Math.max(1, base - 1) + 2);
+  });
+
+  it("accurate/inaccurate shift the weapon's range brackets", () => {
+    const tic = atlas().tics.find((t) => t.range)!;
+    const before = { ...tic.range! };
+    applyWeaponQuirkToTic(tic, "Accurate Weapon");
+    for (const b of ["pb", "s", "m", "l", "x"] as const) {
+      if (before[b] !== null) expect(tic.range![b]).toBe((before[b] as number) - 1);
+    }
+  });
+
+  it("Cowl and Weak Head Armor adjust head armor by the right amount", () => {
+    const a = atlas();
+    const h = a.armor.head;
+    applyUnitQuirkToCard(a, "Cowl");
+    expect(a.armor.head).toBe(h + 1);
+    applyUnitQuirkToCard(a, "Weak Head Armor (2)");
+    expect(a.armor.head).toBe(h + 1 - 2);
+  });
+
+  it("Improved Targeting (Long) only lowers the L/X brackets", () => {
+    const a = atlas();
+    const tic = a.tics.find((t) => t.range && t.range.l !== null)!;
+    const before = { ...tic.range! };
+    applyUnitQuirkToCard(a, "Improved Targeting (Long)");
+    expect(tic.range!.l).toBe((before.l as number) - 1);
+    if (before.s !== null) expect(tic.range!.s).toBe(before.s); // short unchanged
   });
 });

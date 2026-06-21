@@ -8,6 +8,9 @@
  * sign: "pos" (helps you), "neg" (hurts you), "none" (campaign/narrative only —
  * no on-table rule in Override). Effects are condensed for the card line.
  */
+import { ticHeat } from "../core/index.js";
+import type { OverrideCard, RangeBrackets, Tic } from "../core/index.js";
+
 export interface QuirkEffect {
   sign: "pos" | "neg" | "none";
   effect: string;
@@ -142,4 +145,46 @@ export const WEAPON_QUIRK_LABEL: Record<string, string> = {
 export function quirkEffect(name: string): QuirkEffect | undefined {
   const n = norm(name);
   return QUIRK_EFFECTS[n] ?? QUIRK_EFFECTS[n.replace(/\s*\([^)]*\)\s*$/, "").trim()];
+}
+
+// ---- Applying quirk effects to 'Mech card values (display only) -----------
+export const RANGE_BANDS = {
+  all: ["pb", "s", "m", "l", "x"],
+  short: ["pb", "s"],
+  medium: ["m"],
+  long: ["l", "x"],
+} as const satisfies Record<string, readonly (keyof RangeBrackets)[]>;
+
+/** Add `delta` to the given range-bracket band(s) (lower = easier to hit). */
+export function adjustRange(range: RangeBrackets | null, delta: number, bands: readonly (keyof RangeBrackets)[]): void {
+  if (!range) return;
+  for (const b of bands) if (range[b] !== null) range[b] = (range[b] as number) + delta;
+}
+
+/** Apply a weapon quirk's Override effect to a matched 'Mech TIC (heat / to-hit). */
+export function applyWeaponQuirkToTic(tic: Tic, label: string): void {
+  const cur = (): number => tic.heatOverride ?? ticHeat(tic);
+  switch (label) {
+    case "Improved Cooling Jacket": tic.heatOverride = Math.max(1, cur() - 1); break;
+    case "Poor Cooling Jacket": tic.heatOverride = cur() + 1; break;
+    case "No Cooling Jacket": tic.heatOverride = cur() + 2; break;
+    case "Accurate Weapon": adjustRange(tic.range, -1, RANGE_BANDS.all); break;
+    case "Inaccurate Weapon": adjustRange(tic.range, 1, RANGE_BANDS.all); break;
+  }
+}
+
+/** Apply a unit quirk's Override effect to the whole 'Mech card (to-hit / head armor). */
+export function applyUnitQuirkToCard(card: OverrideCard, name: string): void {
+  const tgt = (delta: number, band: keyof typeof RANGE_BANDS): void => {
+    for (const t of card.tics) adjustRange(t.range, delta, RANGE_BANDS[band]);
+  };
+  if (/^improved targeting \(short\)/i.test(name)) tgt(-1, "short");
+  else if (/^improved targeting \(medium\)/i.test(name)) tgt(-1, "medium");
+  else if (/^improved targeting \(long\)/i.test(name)) tgt(-1, "long");
+  else if (/^poor targeting \(short\)/i.test(name)) tgt(1, "short");
+  else if (/^poor targeting \(medium\)/i.test(name)) tgt(1, "medium");
+  else if (/^poor targeting \(long\)/i.test(name)) tgt(1, "long");
+  else if (/^sensor ghosts/i.test(name)) tgt(1, "all");
+  else if (/^cowl/i.test(name)) card.armor.head += 1;
+  else if (/^weak head armor/i.test(name)) card.armor.head = Math.max(0, card.armor.head - (Number(name.match(/\((\d)\)/)?.[1]) || 1));
 }

@@ -1446,6 +1446,8 @@ body.show-quirks .card-quirks { display: block; }
 .cq-row.cq-none .cq-n { color: #8a8a82; }
 .cq-w { font-weight: 700; color: #5a5a52; }
 .cq-e { color: #3a3d45; }
+/* A card value adjusted by a quirk (e.g. cooling-jacket heat). */
+.q-mod { color: #8a4b00; font-weight: 800; }
 .card-role {
   display: inline-block; margin: 0 0 0.3rem; padding: 0.05rem 0.5rem;
   font-size: 0.66rem; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase;

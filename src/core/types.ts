@@ -267,6 +267,9 @@ export interface Tic {
   /** Range brackets (shared by the identical members), or null if unknown. */
   range: RangeBrackets | null;
   rangeText: string | null;
+  /** Display-only heat override (web quirk application, e.g. cooling jackets);
+   * when set, the card shows this instead of the computed ticHeat. */
+  heatOverride?: number;
 }
 
 /**

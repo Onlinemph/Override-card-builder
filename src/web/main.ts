@@ -15,6 +15,7 @@ import {
   normalizeWeaponName,
   ParseError,
   protoWeaponRows,
+  ticHeat,
   vehicleWeaponRows,
 } from "../core/index.js";
 import { renderBACard } from "./ba-card.js";
@@ -25,7 +26,7 @@ import { renderMechCard } from "./mech-card.js";
 import { renderProtoCard } from "./proto-card.js";
 import { renderVehicleCard } from "./vehicle-card.js";
 import { applyMove, groupingFromTics, renderTicEditorHtml, ticsFromGrouping } from "./tic-editor.js";
-import { quirkEffect, WEAPON_QUIRK_LABEL } from "./quirk-effects.js";
+import { applyUnitQuirkToCard, applyWeaponQuirkToTic, quirkEffect, WEAPON_QUIRK_LABEL } from "./quirk-effects.js";
 import type { EditorFacets, Grouping } from "./tic-editor.js";
 
 // ---------------------------------------------------------------------------
@@ -219,7 +220,7 @@ async function initBrowser(): Promise<void> {
 
   render();
 }
-import type { AnyCard, CardEquipment, CardWeapon, RangeBrackets, Tic } from "../core/index.js";
+import type { AnyCard, CardEquipment, CardWeapon, OverrideCard, RangeBrackets, Tic } from "../core/index.js";
 
 // Injected by Vite (see vite.config.ts).
 declare const __BUILD_TIME__: string;
@@ -822,19 +823,46 @@ function convertOne(text: string, file: string): ConvertResult {
 
 /** Raw card HTML, dispatched on unit kind (no BV/skills injected). */
 function rawCardHtml(result: AnyCard): string {
-  return result.kind === "battlearmor"
-    ? renderBACard(result.card)
-    : result.kind === "vehicle"
-      ? renderVehicleCard(result.card)
-      : result.kind === "fighter"
-        ? renderFighterCard(result.card)
-        : result.kind === "infantry"
-          ? renderInfantryCard(result.card)
-          : result.kind === "protomech"
-            ? renderProtoCard(result.card)
-            : result.kind === "dropship"
-              ? renderDropshipCard(result.card)
-              : renderMechCard(result.card);
+  const r = applyQuirkEffects(result); // quirk-adjusted clone when "Show quirks" is on
+  return r.kind === "battlearmor"
+    ? renderBACard(r.card)
+    : r.kind === "vehicle"
+      ? renderVehicleCard(r.card)
+      : r.kind === "fighter"
+        ? renderFighterCard(r.card)
+        : r.kind === "infantry"
+          ? renderInfantryCard(r.card)
+          : r.kind === "protomech"
+            ? renderProtoCard(r.card)
+            : r.kind === "dropship"
+              ? renderDropshipCard(r.card)
+              : renderMechCard(r.card);
+}
+
+/** True when the "Show quirks" option is on (quirks then modify card values). */
+const quirksOn = (): boolean => document.body.classList.contains("show-quirks");
+
+/** Return a clone of the result with quirk effects baked into the card values
+ * ('Mech only — heat, to-hit brackets, head armor). Non-destructive: the original
+ * card is untouched. Returns the result unchanged when the toggle is off or there
+ * is nothing to apply. */
+function applyQuirkEffects(result: AnyCard): AnyCard {
+  if (result.kind !== "mech" || !quirksOn()) return result;
+  const file = (result.card as { sourceFile?: string }).sourceFile;
+  const unitQ = lookupQuirks(result.card.name, file)?.u ?? [];
+  const wq = file ? weaponQuirkIndex[bvKey(fileStem(file))] : undefined;
+  if (unitQ.length === 0 && !wq?.length) return result;
+  const clone = structuredClone(result);
+  for (const [code, raw] of wq ?? []) {
+    const label = WEAPON_QUIRK_LABEL[code];
+    if (!label) continue;
+    const wnorm = normalizeWeaponName(raw);
+    for (const tic of clone.card.tics) {
+      if (tic.weapons.some((w) => normalizeWeaponName(w.name) === wnorm)) applyWeaponQuirkToTic(tic, label);
+    }
+  }
+  for (const q of unitQ) applyUnitQuirkToCard(clone.card, q);
+  return clone;
 }
 
 /** Card HTML with the BV badge + (hidden) quirks line (used for previews/print). */
@@ -890,24 +918,28 @@ function makeSession(r: AnyCard): EditSession | null {
     const grouping = groupingFromTics(tics, weapons);
     return { weapons, facets, grouping, autoGrouping: grouping, apply, renderCard };
   };
+  // renderCard goes through rawCardHtml so quirk effects apply in the preview /
+  // play view, not just the static card paths.
   switch (r.kind) {
     case "mech":
-      return start(r.card.weapons, r.card.tics, mechFacets, (t) => (r.card.tics = t), () => renderMechCard(r.card));
+      return start(r.card.weapons, r.card.tics, mechFacets, (t) => (r.card.tics = t), () => rawCardHtml(r));
     case "vehicle":
-      return start(r.card.weaponMounts, r.card.tics, facingFacets, (t) => (r.card.weapons = vehicleWeaponRows(t, r.card.techBase)), () => renderVehicleCard(r.card));
+      return start(r.card.weaponMounts, r.card.tics, facingFacets, (t) => (r.card.weapons = vehicleWeaponRows(t, r.card.techBase)), () => rawCardHtml(r));
     case "fighter":
-      return start(r.card.weaponMounts, r.card.tics, facingFacets, (t) => (r.card.weapons = fighterWeaponRows(t, r.card.techBase)), () => renderFighterCard(r.card));
+      return start(r.card.weaponMounts, r.card.tics, facingFacets, (t) => (r.card.weapons = fighterWeaponRows(t, r.card.techBase)), () => rawCardHtml(r));
     case "protomech":
-      return start(r.card.weaponMounts, r.card.tics, facingFacets, (t) => (r.card.weapons = protoWeaponRows(t, r.card.techBase)), () => renderProtoCard(r.card));
+      return start(r.card.weaponMounts, r.card.tics, facingFacets, (t) => (r.card.weapons = protoWeaponRows(t, r.card.techBase)), () => rawCardHtml(r));
     case "dropship":
-      return start(r.card.weaponMounts, r.card.tics, bayFacets, (t) => (r.card.weapons = dropshipWeaponRows(t, r.card.techBase)), () => renderDropshipCard(r.card));
+      return start(r.card.weaponMounts, r.card.tics, bayFacets, (t) => (r.card.weapons = dropshipWeaponRows(t, r.card.techBase)), () => rawCardHtml(r));
     default:
       return null; // BA / infantry: no TICs
   }
 }
 
 /** Render the converted cards, attaching the TIC editor for a single editable unit. */
+let lastResults: ConvertResult[] | null = null; // for re-rendering the preview on the quirks toggle
 function showResults(results: ConvertResult[]): void {
+  lastResults = results;
   edit = null;
   editingForceIdx = null; // a normal preview exits force-edit mode
   output.classList.remove("force-play");
@@ -2258,6 +2290,12 @@ const applyQuirksPref = (on: boolean): void => {
   if (quirksToggle) quirksToggle.checked = on;
 };
 applyQuirksPref(localStorage.getItem(QUIRKS_KEY) === "1");
+/** Re-render whatever's on screen (quirks now change card values, not just CSS). */
+function rerenderCurrent(): void {
+  if (editingForceIdx != null) renderForceEdit();
+  else if (edit) renderEdit();
+  else if (lastResults) showResults(lastResults);
+}
 quirksToggle?.addEventListener("change", () => {
   const on = quirksToggle.checked;
   applyQuirksPref(on);
@@ -2266,6 +2304,7 @@ quirksToggle?.addEventListener("change", () => {
   } catch {
     /* ignore */
   }
+  rerenderCurrent(); // re-render so quirk-adjusted values appear/disappear
 });
 
 renderForce();
