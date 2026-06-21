@@ -12,7 +12,7 @@
  */
 // The version below is stamped per build (scripts/inline.mjs) so every deploy
 // uses a fresh cache name — old caches (incl. stale MUL data) clear on activate.
-const CACHE = "override-20260621154706";
+const CACHE = "override-20260621155756";
 const SHELL = ["./", "./index.html", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png"];
 
 self.addEventListener("install", (event) => {
