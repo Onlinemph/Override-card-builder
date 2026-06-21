@@ -155,6 +155,24 @@
       </footer>
     </main>
 
+    <!-- Print preview toolbar (shown only while previewing). -->
+    <div id="pp-bar" class="pp-bar">
+      <span class="pp-title">Print preview</span>
+      <label class="pp-ctl">Fill <input id="pp-fill" type="range" min="100" max="135" value="116" /><span id="pp-fill-val" class="pp-num">116%</span></label>
+      <label class="pp-ctl">Layout
+        <select id="pp-layout">
+          <option value="fit">2 × 2 — portrait</option>
+          <option value="fitL">2 × 2 — landscape</option>
+          <option value="p2">2 per row</option>
+          <option value="p1">1 per row</option>
+        </select>
+      </label>
+      <span class="pp-ctl">Zoom <button id="pp-zoom-out" type="button">−</button><span id="pp-zoom-val" class="pp-num">75%</span><button id="pp-zoom-in" type="button">+</button></span>
+      <span class="pp-spacer"></span>
+      <button id="pp-print" type="button" class="primary">🖨 Print</button>
+      <button id="pp-close" type="button">Close</button>
+    </div>
+
     <!-- Print-only container: filled by the Force "Print sheet" button. Lives
          outside #app so the print stylesheet can swap it in for the whole page. -->
     <div id="print-area" aria-hidden="true"></div>

@@ -1810,9 +1810,10 @@ function fitCardsToCells(area: HTMLElement): void {
     el.style.width = `${best!.wmm}mm`;
     const { w, h } = best!;
     // Scale up to fill the cell on BOTH axes (not just the constraining one),
-    // letting the card stretch up to STRETCH on the under-filled axis to eat the
-    // leftover gap. Beyond that it stays uniform so the distortion is never harsh.
-    const STRETCH = 1.16;
+    // letting the card stretch up to `sheetFill` on the under-filled axis to eat
+    // the leftover gap. Beyond that it stays uniform so distortion never gets
+    // harsh. `sheetFill` is driven live by the print-preview "Fill" slider.
+    const STRETCH = sheetFill;
     const sx = cw / w;
     const sy = ch / h;
     const base = Math.min(sx, sy);
@@ -1845,8 +1846,12 @@ function sheetHeader(pageNum?: number, pageCount?: number): string {
 }
 
 /** Build all force cards, swap the page to the print container, and print. */
-function printForceSheet(): void {
-  if (force.length === 0) return;
+let sheetFill = 1.16; // print fill/stretch cap (1.0 = no stretch); driven by the preview slider
+let previewZoom = 0.75; // on-screen preview zoom
+
+/** Build the print pages into #print-area for the current layout + fill, and fit
+ * the cards. Pure layout — no printing. */
+function buildSheet(): void {
   const area = document.getElementById("print-area");
   if (!area) return;
   const mode = forceMode();
@@ -1873,7 +1878,54 @@ function printForceSheet(): void {
     // Flowing layout: one header at the top (page numbers need explicit pages).
     area.innerHTML = `${sheetHeader()}<div class="sheet cols-${mode === "p1" ? "1" : "2"}">${force.map(forceCardHtml).join("")}</div>`;
   }
+}
+
+/** Apply the preview zoom (cleared by fitCardsToCells' cssText reset, so re-set it). */
+function applyPreviewZoom(): void {
+  const area = document.getElementById("print-area");
+  if (area) (area.style as CSSStyleDeclaration & { zoom?: string }).zoom = String(previewZoom);
+  const z = document.getElementById("pp-zoom-val");
+  if (z) z.textContent = `${Math.round(previewZoom * 100)}%`;
+}
+
+/** Open the on-screen print preview (WYSIWYG; the Fill slider tunes the fit). */
+function openPreview(): void {
+  if (force.length === 0) return;
+  buildSheet();
+  document.body.classList.add("previewing");
+  // Auto-fit the zoom so a page fits the viewport width.
+  const page = document.querySelector<HTMLElement>("#print-area .print-page, #print-area .sheet");
+  if (page) previewZoom = Math.min(1, Math.max(0.35, (window.innerWidth - 90) / (page.scrollWidth || 900)));
+  applyPreviewZoom();
+  const fill = document.getElementById("pp-fill") as HTMLInputElement | null;
+  if (fill) fill.value = String(Math.round(sheetFill * 100));
+  const fv = document.getElementById("pp-fill-val");
+  if (fv) fv.textContent = `${Math.round(sheetFill * 100)}%`;
+  const lay = document.getElementById("pp-layout") as HTMLSelectElement | null;
+  const cols = document.getElementById("force-cols") as HTMLSelectElement | null;
+  if (lay && cols) lay.value = cols.value;
+}
+function closePreview(): void {
+  document.body.classList.remove("previewing");
+  pageStyle.textContent = "";
+}
+/** Re-fit + re-zoom the live preview without rebuilding cards (Fill changes). */
+function refitPreview(): void {
+  const area = document.getElementById("print-area");
+  const mode = forceMode();
+  if (area && (mode === "fit" || mode === "fitL")) fitCardsToCells(area);
+  applyPreviewZoom();
+}
+/** Rebuild + re-fit the live preview (layout changes). */
+function refreshPreview(): void {
+  buildSheet();
+  applyPreviewZoom();
+}
+function printFromPreview(): void {
+  document.body.classList.remove("previewing");
   document.body.classList.add("print-mode");
+  const area = document.getElementById("print-area");
+  if (area) (area.style as CSSStyleDeclaration & { zoom?: string }).zoom = ""; // print at real size
   const cleanup = (): void => {
     document.body.classList.remove("print-mode");
     pageStyle.textContent = "";
@@ -1885,7 +1937,26 @@ function printForceSheet(): void {
 
 // Force-panel controls.
 $("add-force").addEventListener("click", addCurrentToForce);
-$("force-print").addEventListener("click", printForceSheet);
+$("force-print").addEventListener("click", openPreview);
+document.getElementById("pp-close")?.addEventListener("click", closePreview);
+document.getElementById("pp-print")?.addEventListener("click", printFromPreview);
+document.getElementById("pp-fill")?.addEventListener("input", (e) => {
+  sheetFill = Number((e.target as HTMLInputElement).value) / 100;
+  const fv = document.getElementById("pp-fill-val");
+  if (fv) fv.textContent = `${(e.target as HTMLInputElement).value}%`;
+  refitPreview();
+});
+document.getElementById("pp-layout")?.addEventListener("change", (e) => {
+  const cols = document.getElementById("force-cols") as HTMLSelectElement | null;
+  if (cols) cols.value = (e.target as HTMLSelectElement).value;
+  refreshPreview();
+});
+const ppZoom = (delta: number): void => {
+  previewZoom = Math.min(1.5, Math.max(0.3, previewZoom + delta));
+  applyPreviewZoom();
+};
+document.getElementById("pp-zoom-in")?.addEventListener("click", () => ppZoom(0.1));
+document.getElementById("pp-zoom-out")?.addEventListener("click", () => ppZoom(-0.1));
 function exitForceEditor(): void {
   if (editingForceIdx == null) return;
   editingForceIdx = null;

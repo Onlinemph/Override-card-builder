@@ -1528,6 +1528,39 @@ body.show-quirks .card-quirks { display: block; }
 
 .sheet .ba-note { display: none; } /* non-essential caveat — drop it on paper */
 
+/* ---- On-screen print preview (WYSIWYG) ---- */
+.pp-bar { display: none; }
+body.previewing { overflow: hidden; }
+body.previewing .pp-bar {
+  display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
+  position: fixed; top: 0; left: 0; right: 0; z-index: 1001;
+  background: #15171c; color: #f4f4f1; padding: 0.5rem 1rem;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
+}
+.pp-bar .pp-title { font-weight: 800; letter-spacing: 0.02em; }
+.pp-bar .pp-ctl { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; }
+.pp-bar .pp-num { font-variant-numeric: tabular-nums; min-width: 2.6rem; text-align: center; }
+.pp-bar .pp-spacer { flex: 1 1 auto; }
+.pp-bar input[type="range"] { width: 9rem; }
+.pp-bar select, .pp-bar button {
+  font: inherit; background: #2a2d34; color: #f4f4f1; border: 1px solid #4c4f57;
+  border-radius: 6px; padding: 0.25rem 0.6rem; cursor: pointer;
+}
+.pp-bar button.primary { background: #b45309; border-color: #b45309; font-weight: 700; }
+body.previewing #print-area {
+  display: block; position: fixed; inset: 0; z-index: 1000;
+  padding: 4.5rem 1rem 2rem; background: #6b6e74; overflow: auto; text-align: center;
+}
+body.previewing .print-page {
+  background: #fff; box-shadow: 0 6px 22px rgba(0, 0, 0, 0.5);
+  width: fit-content; margin: 0 auto 1.4rem; padding: 8mm;
+}
+body.previewing #print-area > .sheet {
+  background: #fff; box-shadow: 0 6px 22px rgba(0, 0, 0, 0.5);
+  padding: 8mm; margin: 0 auto; max-width: 210mm; text-align: left;
+}
+body.previewing #print-area > .sheet-head { max-width: 210mm; margin: 0 auto; color: #000; }
+
 /* Print: keep an arc's header with at least its first rows, avoid mid-arc breaks. */
 @media print {
   .dropship-weapons .arc-head { break-after: avoid; }
