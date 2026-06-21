@@ -1533,7 +1533,143 @@ function renderForce(): void {
           (withBvCount < force.length ? ` <span class="muted">(${force.length - withBvCount} without BV)</span>` : "")
         : "";
   }
+  if (analyticsOpen()) renderAnalytics(); // keep the analytics panel live
 }
+
+// ---- Force analytics ------------------------------------------------------
+interface RosterRow { name: string; type: string; tons: number; cls: string; move: string; skills: string; bv?: number }
+interface ForceStats {
+  count: number; totalBv: number; withBv: number; totalTons: number;
+  fp: { short: number; med: number; long: number };
+  byType: Map<string, number>; byClass: Map<string, number>; roster: RosterRow[];
+}
+const TYPE_LABEL: Record<string, string> = {
+  mech: "’Mech", vehicle: "Vehicle", fighter: "Fighter", protomech: "ProtoMech",
+  battlearmor: "Battle Armor", infantry: "Infantry", dropship: "DropShip",
+};
+const CLASS_ORDER = ["Light", "Medium", "Heavy", "Assault"];
+/** 'Mech-style weight class by tonnage (null for protos / BA / infantry). */
+function weightClass(tons: number): string | null {
+  if (!tons || tons < 20) return null;
+  if (tons <= 35) return "Light";
+  if (tons <= 55) return "Medium";
+  if (tons <= 75) return "Heavy";
+  return "Assault";
+}
+interface FpWeapon { profile: { kind: string; byRange: number[]; max: number }; range: { s: number | null; m: number | null; l: number | null } | null }
+/** Damage-bearing entries (TICs for 'Mechs, weapon rows otherwise) for the firepower curve. */
+function unitWeapons(result: AnyCard): FpWeapon[] {
+  const c = result.card as { tics?: FpWeapon[]; weapons?: FpWeapon[] };
+  if (result.kind === "mech") return c.tics ?? [];
+  if (result.kind === "vehicle" || result.kind === "fighter" || result.kind === "protomech" || result.kind === "dropship")
+    return c.weapons ?? [];
+  return []; // BA / infantry firepower is modeled per-trooper — excluded from the curve
+}
+function damageAt(p: FpWeapon["profile"], band: 0 | 1 | 2): number {
+  if (p.kind === "variable" && p.byRange.length) return p.byRange[Math.min(band, p.byRange.length - 1)] ?? 0;
+  return p.max ?? 0;
+}
+function analyzeForce(units: ForceUnit[]): ForceStats {
+  const roster: RosterRow[] = [];
+  const byType = new Map<string, number>();
+  const byClass = new Map<string, number>();
+  let totalBv = 0, withBv = 0, totalTons = 0;
+  const fp = { short: 0, med: 0, long: 0 };
+  for (const u of units) {
+    const r = convertOne(u.text, u.file ?? u.name);
+    if (!r.ok) { roster.push({ name: u.name, type: "—", tons: 0, cls: "—", move: "—", skills: "—" }); continue; }
+    const card = r.result.card as { tonnage?: number; mass?: number; move?: string };
+    const tons = card.tonnage ?? card.mass ?? 0;
+    const cls = weightClass(tons);
+    const type = TYPE_LABEL[r.result.kind] ?? r.result.kind;
+    const bv = unitBv(u);
+    const sk = unitSkills(u);
+    if (bv) { totalBv += bv; withBv += 1; }
+    totalTons += tons;
+    byType.set(type, (byType.get(type) ?? 0) + 1);
+    if (cls) byClass.set(cls, (byClass.get(cls) ?? 0) + 1);
+    for (const w of unitWeapons(r.result)) {
+      if (!w.range) continue;
+      if (w.range.s !== null) fp.short += damageAt(w.profile, 0);
+      if (w.range.m !== null) fp.med += damageAt(w.profile, 1);
+      if (w.range.l !== null) fp.long += damageAt(w.profile, 2);
+    }
+    roster.push({ name: u.name, type, tons, cls: cls ?? "—", move: card.move ?? "—", skills: `${sk.gunnery}/${sk.piloting}`, bv });
+  }
+  return { count: units.length, totalBv, withBv, totalTons, fp, byType, byClass, roster };
+}
+
+const anStat = (label: string, value: string): string =>
+  `<div class="an-stat"><div class="an-stat-v">${value}</div><div class="an-stat-l">${label}</div></div>`;
+function summaryHtml(a: ForceStats): string {
+  const avg = a.withBv ? Math.round(a.totalBv / a.withBv) : 0;
+  const perTon = a.totalTons ? (a.totalBv / a.totalTons).toFixed(1) : "—";
+  return `<div class="an-stats">${anStat("Units", String(a.count))}${anStat("Total BV", a.totalBv.toLocaleString())}` +
+    `${anStat("Tonnage", a.totalTons.toLocaleString())}${anStat("Avg BV", avg.toLocaleString())}${anStat("BV / ton", String(perTon))}</div>`;
+}
+function firepowerHtml(a: ForceStats): string {
+  const { short, med, long } = a.fp;
+  const max = Math.max(short, med, long, 1);
+  const bar = (label: string, v: number): string =>
+    `<div class="an-fp-row"><span class="an-fp-lbl">${label}</span>` +
+    `<span class="an-fp-bar"><span style="width:${((v / max) * 100).toFixed(1)}%"></span></span><span class="an-fp-v">${v}</span></div>`;
+  return `<div class="an-sec"><h4>Firepower by range <span class="muted">(alpha damage)</span></h4>${bar("Short", short)}${bar("Medium", med)}${bar("Long", long)}</div>`;
+}
+function compositionHtml(a: ForceStats): string {
+  const types = [...a.byType].map(([t, n]) => `<span class="an-chip">${esc(t)} <b>${n}</b></span>`).join("");
+  const cls = CLASS_ORDER.filter((c) => a.byClass.get(c)).map((c) => `<span class="an-chip">${c} <b>${a.byClass.get(c)}</b></span>`).join("");
+  return `<div class="an-sec"><h4>Composition</h4><div class="an-chips">${types}</div>${cls ? `<div class="an-chips">${cls}</div>` : ""}</div>`;
+}
+function musterHtml(a: ForceStats): string {
+  const rows = a.roster
+    .map((r, i) => `<tr><td class="num">${i + 1}</td><td>${esc(r.name)}</td><td>${esc(r.type)}</td>` +
+      `<td class="num">${r.tons || "—"}</td><td>${esc(r.cls)}</td><td>${esc(r.move)}</td><td class="num">${esc(r.skills)}</td>` +
+      `<td class="num">${r.bv ? r.bv.toLocaleString() : "—"}</td></tr>`)
+    .join("");
+  return `<div class="an-sec"><h4>Muster sheet</h4><table class="an-muster"><thead><tr>` +
+    `<th class="num">#</th><th>Unit</th><th>Type</th><th class="num">Tons</th><th>Class</th><th>Move</th><th class="num">G/P</th><th class="num">BV</th>` +
+    `</tr></thead><tbody>${rows}</tbody><tfoot><tr><td></td><td><b>Total</b></td><td></td>` +
+    `<td class="num"><b>${a.totalTons.toLocaleString()}</b></td><td colspan="3"></td><td class="num"><b>${a.totalBv.toLocaleString()}</b></td></tr></tfoot></table></div>`;
+}
+function analyticsOpen(): boolean {
+  return document.getElementById("analytics-toggle")?.getAttribute("aria-expanded") === "true";
+}
+function renderAnalytics(): void {
+  const out = document.getElementById("analytics-out");
+  if (!out) return;
+  if (force.length === 0) {
+    out.innerHTML = `<p class="muted">No units in this force yet.</p>`;
+    return;
+  }
+  const a = analyzeForce(force);
+  out.innerHTML = summaryHtml(a) + firepowerHtml(a) + compositionHtml(a) + musterHtml(a);
+}
+function printMuster(): void {
+  if (force.length === 0) return;
+  const area = document.getElementById("print-area");
+  if (!area) return;
+  const a = analyzeForce(force);
+  pageStyle.textContent = `@page { size: portrait; margin: 12mm; }`;
+  area.innerHTML = `${sheetHeader()}<div class="muster-print">${summaryHtml(a)}${firepowerHtml(a)}${compositionHtml(a)}${musterHtml(a)}</div>`;
+  document.body.classList.add("print-mode");
+  const cleanup = (): void => {
+    document.body.classList.remove("print-mode");
+    pageStyle.textContent = "";
+    window.removeEventListener("afterprint", cleanup);
+  };
+  window.addEventListener("afterprint", cleanup);
+  window.print();
+}
+document.getElementById("analytics-toggle")?.addEventListener("click", () => {
+  const body = document.getElementById("analytics-body");
+  const tg = document.getElementById("analytics-toggle");
+  if (!body || !tg) return;
+  const show = body.hasAttribute("hidden");
+  body.toggleAttribute("hidden", !show);
+  tg.setAttribute("aria-expanded", String(show));
+  if (show) renderAnalytics();
+});
+document.getElementById("analytics-print")?.addEventListener("click", printMuster);
 
 // A dedicated <style> whose @page rule sets the print orientation (CSS @page
 // can't be toggled by a class, so we rewrite this rule per print).

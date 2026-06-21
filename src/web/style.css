@@ -1259,6 +1259,31 @@ svg.bdoll .bdoll-hit { font-size: 8.5px; font-weight: 600; fill: #6a6a62; text-a
 .pf-abil { flex: 2 1 12rem; }
 .pf-num { width: 2.8rem; background: var(--panel-2); color: var(--ink); border: 1px solid var(--line); border-radius: 6px; padding: 0.3rem 0.35rem; font: inherit; }
 .pilot-abil { font-size: 0.75rem; color: var(--muted); font-style: italic; align-self: center; }
+
+/* Force analytics. */
+.analytics { margin-top: 0.6rem; border-top: 1px solid var(--line); padding-top: 0.6rem; }
+.analytics-actions { margin-bottom: 0.6rem; }
+.an-stats { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.8rem; }
+.an-stat { flex: 1 1 5rem; background: var(--panel-2); border: 1px solid var(--line); border-radius: 7px; padding: 0.4rem 0.5rem; text-align: center; }
+.an-stat-v { font-size: 1.15rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.an-stat-l { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted); }
+.an-sec { margin-bottom: 0.9rem; }
+.an-sec h4 { margin: 0 0 0.4rem; font-size: 0.82rem; text-transform: uppercase; letter-spacing: 0.03em; }
+.an-fp-row { display: flex; align-items: center; gap: 0.5rem; margin: 0.25rem 0; }
+.an-fp-lbl { flex: 0 0 4rem; font-size: 0.8rem; }
+.an-fp-bar { flex: 1 1 auto; height: 0.85rem; background: var(--panel-2); border-radius: 4px; overflow: hidden; }
+.an-fp-bar > span { display: block; height: 100%; background: var(--accent); -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.an-fp-v { flex: 0 0 2.5rem; text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; font-size: 0.85rem; }
+.an-chips { display: flex; flex-wrap: wrap; gap: 0.35rem; margin: 0.25rem 0; }
+.an-chip { background: var(--panel-2); border: 1px solid var(--line); border-radius: 999px; padding: 0.15rem 0.55rem; font-size: 0.78rem; }
+.an-chip b { color: var(--accent); }
+.an-muster { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+.an-muster th, .an-muster td { padding: 0.2rem 0.4rem; border-bottom: 1px solid var(--line); text-align: left; }
+.an-muster th { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.02em; color: var(--muted); }
+.an-muster .num { text-align: right; font-variant-numeric: tabular-nums; }
+.an-muster tfoot td { border-top: 2px solid var(--line); border-bottom: none; }
+.muster-print { color: #15171c; }
+.muster-print .an-stat, .muster-print .an-chip { border-color: #bbb; }
 .force-actions {
   margin-left: auto;
   display: flex;
