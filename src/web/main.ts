@@ -1200,11 +1200,11 @@ const HEAT_EFFECT = [
   "Automatic Shutdown",
 ];
 
-/** A Targeting Computer only aids DIRECT-FIRE weapons — not missiles, pulse
- * lasers, or physical attacks. Heuristic on the printed (abbreviated) label. */
+/** A Targeting Computer aids DIRECT-FIRE weapons — energy (incl. pulse) and
+ * ballistic — but not missiles or physical attacks. Heuristic on the printed
+ * (abbreviated) label. */
 function isDirectFireLabel(label: string): boolean {
   const s = label.toLowerCase();
-  if (/plas\b/.test(s) || s.includes("pulse")) return false; // pulse / X-pulse lasers (…PLas)
   if (/rm[-\s]?\d|streak|rocket|\brl[-\s/]?\d|narc|\batm\b|\bmml\b|arrow|thunderbolt|tbolt|inferno/.test(s)) return false; // missiles
   if (/hatchet|sword|\bmace\b|blade|claw|talon|lance|flail|punch|kick|physical/.test(s)) return false; // physical
   return true;
