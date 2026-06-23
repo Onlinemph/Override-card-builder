@@ -1051,6 +1051,7 @@ function renderForceEdit(): void {
   const card = withRole(withQuirks(withSkills(withBv(raw, unitBv(u)), sk.gunnery, sk.piloting), lookupQuirks(u.name, u.file), u.file), lookupRole(u.name, u.file));
   editWeapons = weaponsForToHit(r.result); // for the to-hit table (reflects current TIC grouping)
   editSinks = unitSinks(r.result);
+  editHasTC = /targeting\s*computer/i.test(u.text); // Targeting Computer → −1 to-hit
   output.classList.add("force-play"); // enables pip cursors / damage tracking
   output.innerHTML =
     forceEditBar(u) + skillsEditorHtml(u) + card + tabletopPanel(u, r.result) + ammoTrackerHtml(u, r.result) + ticEditorHtml;
@@ -1188,6 +1189,7 @@ const LOC_TO_AREA: Readonly<Record<string, string>> = {
 type WeaponRangeRow = { label: string; range: RangeBrackets | null };
 let editWeapons: WeaponRangeRow[] = []; // weapons of the edited unit (for to-hit)
 let editSinks = 0; // its heat dissipation (for the Cool button)
+let editHasTC = false; // unit mounts a Targeting Computer (−1 to-hit)
 
 const HEAT_EFFECT = [
   "No effects",
@@ -1232,6 +1234,7 @@ function tabletopPanel(u: ForceUnit, result: AnyCard): string {
         <label>Move <select id="th-move"><option value="0">Still</option><option value="1">Walk</option><option value="2">Run</option><option value="3">Jump</option></select></label>
         <label>Tgt TMM <input id="th-tmm" type="number" value="0" class="th-num"></label>
         <label>Other <input id="th-other" type="number" value="0" class="th-num"></label>
+        ${editHasTC ? '<span class="th-tc" title="Targeting Computer: −1 to-hit (applied below)">TC −1</span>' : ""}
         <div id="tohit-out" class="tohit-out"></div></div>`
     : "";
   return `<div class="ttop">${heatBlock}${toHit}</div>`;
@@ -1286,7 +1289,8 @@ function updateTabletop(): void {
   const move = Number((output.querySelector("#th-move") as HTMLSelectElement | null)?.value) || 0;
   const tmm = Number((output.querySelector("#th-tmm") as HTMLInputElement | null)?.value) || 0;
   const other = Number((output.querySelector("#th-other") as HTMLInputElement | null)?.value) || 0;
-  const base = unitSkills(u).gunnery + move + tmm + other + (heat >= 2 ? 1 : 0);
+  const tc = editHasTC ? -1 : 0; // Targeting Computer
+  const base = unitSkills(u).gunnery + move + tmm + other + (heat >= 2 ? 1 : 0) + tc;
   out.innerHTML = `<table class="tohit-tbl"><tbody>${editWeapons
     .map((w) => {
       const m = w.range ? w.range[bracket] : null;
