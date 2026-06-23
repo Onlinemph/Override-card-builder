@@ -97,6 +97,26 @@ describe("convertFighter", () => {
   });
 });
 
+describe("rear-firing wing mounts ((R) marker)", () => {
+  // A left wing carrying one forward and one rear-firing ("(R)") medium laser.
+  const blk = `<UnitType>\nAero\n</UnitType>\n<Name>\nTail\n</Name>\n<SafeThrust>\n5\n</SafeThrust>\n<tonnage>\n50.0\n</tonnage>\n<armor>\n40\n24\n24\n16\n</armor>\n<Left Wing Equipment>\nMedium Laser\n(R) Medium Laser\n</Left Wing Equipment>\n`;
+  const u = parseBlkFighter(blk, "tail.blk");
+  const c = convertFighter(u);
+
+  it("parses a leading (R) as a rear mount and strips it from the weapon name", () => {
+    expect(u.mounts).toEqual([
+      { name: "Medium Laser", facing: "leftWing" },
+      { name: "Medium Laser", facing: "leftWing", rear: true },
+    ]);
+  });
+
+  it("marks the rear weapon's facing with (R), in its own TIC, still resolved", () => {
+    const lw = c.weapons.filter((w) => /MLas/i.test(w.label));
+    expect(lw.map((w) => w.facing).sort()).toEqual(["LW", "LW (R)"]);
+    expect(lw.every((w) => !w.unknown)).toBe(true); // (R) stripped → known weapon
+  });
+});
+
 describe("convertAny dispatch (fighter)", () => {
   it("routes a BLK Aero to the fighter path", () => {
     const r = convertAny(load("Test Fighter TF-1.blk"), "TF-1.blk");

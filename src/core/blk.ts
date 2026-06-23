@@ -373,15 +373,24 @@ function parseFighterArmor(blocks: Block[]): FighterArmorRaw {
   return { nose: at(0), rightWing: at(1), leftWing: at(2), aft: at(3) };
 }
 
-/** Collect weapon/equipment mounts from the per-facing equipment blocks. */
+/**
+ * Collect weapon/equipment mounts from the per-facing equipment blocks. Leading
+ * single-letter parenthetical markers are stripped (as for DropShips): "(R)"
+ * flags a rear-firing mount (e.g. a wing weapon aimed aft) and "(B)" opens a TW
+ * bay — neither belongs in the weapon name, so "(R) ISMediumLaser" parses to the
+ * known "Medium Laser" with `rear: true`.
+ */
 function parseFighterMounts(blocks: Block[]): FighterMount[] {
   const mounts: FighterMount[] = [];
   for (const block of blocks) {
     const facing = FIGHTER_FACING_BLOCKS[block.key];
     if (!facing) continue;
     for (const line of block.lines) {
-      const name = line.trim();
-      if (name) mounts.push({ name, facing });
+      const raw = line.trim();
+      if (!raw) continue;
+      const markers = raw.match(/^(?:\([A-Za-z]\)\s*)+/)?.[0] ?? "";
+      const name = raw.slice(markers.length).trim();
+      if (name) mounts.push(/\(R\)/i.test(markers) ? { name, facing, rear: true } : { name, facing });
     }
   }
   return mounts;

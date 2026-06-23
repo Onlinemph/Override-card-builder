@@ -50,7 +50,13 @@ export function fighterWeaponRows(tics: ReadonlyArray<Tic>, techBase: TechBase):
   const order = (t: Tic) => FACING_ORDER.indexOf(t.weapons[0]!.rawLocation as FighterFacing);
   return [...tics]
     .sort((a, b) => order(a) - order(b))
-    .map((t) => ticRow(t, techBase, FACING_CODE[t.weapons[0]!.rawLocation as FighterFacing]));
+    .map((t) => {
+      const w0 = t.weapons[0]!;
+      // Rear-firing wing/nose mounts (parsed from a "(R)" marker) get an "(R)" on
+      // their facing code so the card shows e.g. "LW (R)".
+      const code = FACING_CODE[w0.rawLocation as FighterFacing] + (w0.rearMounted ? " (R)" : "");
+      return ticRow(t, techBase, code);
+    });
 }
 
 /** All fighter weapons share one synthetic location; grouping is scoped per facing. */
@@ -139,7 +145,7 @@ export function convertFighter(unit: FighterUnit): FighterCard {
           name: mount.name,
           location: FIGHTER_LOCATION,
           rawLocation: facing,
-          rearMounted: false,
+          rearMounted: mount.rear ?? false,
         };
         cardWeapons.push(convertWeapon(w, unit.techBase, 0));
         if (unknown) unknownWeapons.add(mount.name);

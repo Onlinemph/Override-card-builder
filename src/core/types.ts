@@ -625,6 +625,8 @@ export interface FighterMount {
   name: string;
   /** Which facing block it came from. */
   facing: FighterFacing;
+  /** True if flagged rear-firing with a leading "(R)" marker (e.g. wing weapons aimed aft). */
+  rear?: boolean;
 }
 
 /** Armor points per facing, from the BLK `<armor>` block (nose, right, left, aft). */
