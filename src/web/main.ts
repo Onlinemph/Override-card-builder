@@ -1186,7 +1186,7 @@ const LOC_TO_AREA: Readonly<Record<string, string>> = {
 };
 
 // ---- Tabletop assistant: heat dial + to-hit helper ------------------------
-type WeaponRangeRow = { label: string; range: RangeBrackets | null };
+type WeaponRangeRow = { label: string; range: RangeBrackets | null; directFire: boolean };
 let editWeapons: WeaponRangeRow[] = []; // weapons of the edited unit (for to-hit)
 let editSinks = 0; // its heat dissipation (for the Cool button)
 let editHasTC = false; // unit mounts a Targeting Computer (−1 to-hit)
@@ -1200,12 +1200,23 @@ const HEAT_EFFECT = [
   "Automatic Shutdown",
 ];
 
+/** A Targeting Computer only aids DIRECT-FIRE weapons — not missiles, pulse
+ * lasers, or physical attacks. Heuristic on the printed (abbreviated) label. */
+function isDirectFireLabel(label: string): boolean {
+  const s = label.toLowerCase();
+  if (/plas\b/.test(s) || s.includes("pulse")) return false; // pulse / X-pulse lasers (…PLas)
+  if (/rm[-\s]?\d|streak|rocket|\brl[-\s/]?\d|narc|\batm\b|\bmml\b|arrow|thunderbolt|tbolt|inferno/.test(s)) return false; // missiles
+  if (/hatchet|sword|\bmace\b|blade|claw|talon|lance|flail|punch|kick|physical/.test(s)) return false; // physical
+  return true;
+}
+
 /** The unit's weapons with range brackets, for the to-hit table. */
 function weaponsForToHit(result: AnyCard): WeaponRangeRow[] {
+  const row = (label: string, range: RangeBrackets | null): WeaponRangeRow => ({ label, range, directFire: isDirectFireLabel(label) });
   if (result.kind === "mech")
-    return result.card.tics.map((t) => ({ label: abbreviatedTicLabel(t, result.card.techBase), range: t.range }));
+    return result.card.tics.map((t) => row(abbreviatedTicLabel(t, result.card.techBase), t.range));
   if (result.kind === "vehicle" || result.kind === "fighter" || result.kind === "protomech" || result.kind === "dropship")
-    return result.card.weapons.map((w) => ({ label: w.label, range: w.range }));
+    return result.card.weapons.map((w) => row(w.label, w.range));
   return [];
 }
 
@@ -1234,7 +1245,7 @@ function tabletopPanel(u: ForceUnit, result: AnyCard): string {
         <label>Move <select id="th-move"><option value="0">Still</option><option value="1">Walk</option><option value="2">Run</option><option value="3">Jump</option></select></label>
         <label>Tgt TMM <input id="th-tmm" type="number" value="0" class="th-num"></label>
         <label>Other <input id="th-other" type="number" value="0" class="th-num"></label>
-        ${editHasTC ? '<span class="th-tc" title="Targeting Computer: −1 to-hit (applied below)">TC −1</span>' : ""}
+        ${editHasTC ? '<span class="th-tc" title="Targeting Computer: −1 to-hit on direct-fire weapons (marked TC below)">TC −1 · direct-fire</span>' : ""}
         <div id="tohit-out" class="tohit-out"></div></div>`
     : "";
   return `<div class="ttop">${heatBlock}${toHit}</div>`;
@@ -1289,12 +1300,12 @@ function updateTabletop(): void {
   const move = Number((output.querySelector("#th-move") as HTMLSelectElement | null)?.value) || 0;
   const tmm = Number((output.querySelector("#th-tmm") as HTMLInputElement | null)?.value) || 0;
   const other = Number((output.querySelector("#th-other") as HTMLInputElement | null)?.value) || 0;
-  const tc = editHasTC ? -1 : 0; // Targeting Computer
-  const base = unitSkills(u).gunnery + move + tmm + other + (heat >= 2 ? 1 : 0) + tc;
+  const base = unitSkills(u).gunnery + move + tmm + other + (heat >= 2 ? 1 : 0);
   out.innerHTML = `<table class="tohit-tbl"><tbody>${editWeapons
     .map((w) => {
       const m = w.range ? w.range[bracket] : null;
-      return `<tr><td>${esc(w.label)}</td><td class="num">${m == null ? "—" : `${base + m}+`}</td></tr>`;
+      const tc = editHasTC && w.directFire ? -1 : 0; // Targeting Computer: direct-fire only
+      return `<tr><td>${esc(w.label)}${tc ? ' <span class="th-tc-row">TC</span>' : ""}</td><td class="num">${m == null ? "—" : `${base + m + tc}+`}</td></tr>`;
     })
     .join("")}</tbody></table>`;
 }

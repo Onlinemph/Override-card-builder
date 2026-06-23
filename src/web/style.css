@@ -939,6 +939,7 @@ svg.bdoll .bdoll-hit { font-size: 8.5px; font-weight: 600; fill: #6a6a62; text-a
 }
 .th-num { width: 3rem; }
 .th-tc { font-size: 0.72rem; font-weight: 800; color: #16a34a; background: rgba(74,222,128,0.16); border: 1px solid #4ade80; border-radius: 5px; padding: 0.05rem 0.35rem; }
+.th-tc-row { font-size: 0.62rem; font-weight: 800; color: #16a34a; background: rgba(74,222,128,0.16); border-radius: 4px; padding: 0 0.25rem; vertical-align: middle; }
 .tohit-out { flex: 1 1 100%; }
 .tohit-tbl { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
 .tohit-tbl td { padding: 0.15rem 0.4rem; border-bottom: 1px solid var(--line); }
