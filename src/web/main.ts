@@ -799,6 +799,18 @@ function withBv(html: string, bv: number | undefined): string {
   return html.replace(/(<div class="(?:ms-title|ba-title)\b[^>]*>[\s\S]*?<\/div>)/, `$1${badge}`);
 }
 
+/** True if the card mounts a Targeting Computer (−1 to-hit on direct-fire). */
+function cardHasTC(result: AnyCard): boolean {
+  const eq = (result.card as { equipment?: { label: string }[] }).equipment ?? [];
+  return eq.some((e) => /targeting computer/i.test(e.label));
+}
+/** Add a "TC −1" badge by the card title when the unit has a Targeting Computer. */
+function withTC(html: string, hasTC: boolean): string {
+  if (!hasTC) return html;
+  const badge = `<div class="card-tc" title="Targeting Computer: −1 to-hit on direct-fire weapons">TC −1</div>`;
+  return html.replace(/(<div class="(?:ms-title|ba-title)\b[^>]*>[\s\S]*?<\/div>)/, `$1${badge}`);
+}
+
 /** Fill the card's (blank) skill boxes — first = Gunnery, second = Piloting (or
  * the unit's second skill, e.g. Anti-'Mech). Pass undefined to leave a box blank. */
 function withSkills(html: string, gunnery?: number, piloting?: number): string {
@@ -873,7 +885,7 @@ function applyQuirkEffects(result: AnyCard): AnyCard {
 /** Card HTML with the BV badge + (hidden) quirks line (used for previews/print). */
 function cardHtml(result: AnyCard): string {
   const c = result.card as { bv?: number; sourceFile?: string };
-  return withRole(withQuirks(withBv(rawCardHtml(result), c.bv), lookupQuirks(result.card.name, c.sourceFile), c.sourceFile), lookupRole(result.card.name, c.sourceFile));
+  return withTC(withRole(withQuirks(withBv(rawCardHtml(result), c.bv), lookupQuirks(result.card.name, c.sourceFile), c.sourceFile), lookupRole(result.card.name, c.sourceFile)), cardHasTC(result));
 }
 
 // ---- Manual TIC editor wiring ---------------------------------------------
@@ -1048,7 +1060,7 @@ function renderForceEdit(): void {
     raw = rawCardHtml(r.result);
   }
   const sk = unitSkills(u);
-  const card = withRole(withQuirks(withSkills(withBv(raw, unitBv(u)), sk.gunnery, sk.piloting), lookupQuirks(u.name, u.file), u.file), lookupRole(u.name, u.file));
+  const card = withTC(withRole(withQuirks(withSkills(withBv(raw, unitBv(u)), sk.gunnery, sk.piloting), lookupQuirks(u.name, u.file), u.file), lookupRole(u.name, u.file)), cardHasTC(r.result));
   editWeapons = weaponsForToHit(r.result); // for the to-hit table (reflects current TIC grouping)
   editSinks = unitSinks(r.result);
   editHasTC = /targeting\s*computer/i.test(u.text); // Targeting Computer → −1 to-hit

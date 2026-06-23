@@ -1456,6 +1456,12 @@ body.show-quirks .card-quirks { display: block; }
   color: #15171c; background: #d8d8d2; border-radius: 999px;
   -webkit-print-color-adjust: exact; print-color-adjust: exact;
 }
+.card-tc {
+  display: inline-block; margin: 0 0 0.35rem; padding: 0.05rem 0.5rem;
+  font-size: 0.66rem; font-weight: 800; letter-spacing: 0.04em;
+  color: #14532d; background: #bbf7d0; border: 1px solid #4ade80; border-radius: 999px;
+  -webkit-print-color-adjust: exact; print-color-adjust: exact;
+}
 .card-quirks .q-sep { color: #9a9a92; margin: 0 0.15rem; }
 .toolbar-opt { font-size: 0.85rem; display: inline-flex; align-items: center; gap: 0.3rem; cursor: pointer; }
 
