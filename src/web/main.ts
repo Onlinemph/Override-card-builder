@@ -26,7 +26,7 @@ import { renderMechCard } from "./mech-card.js";
 import { renderProtoCard } from "./proto-card.js";
 import { renderVehicleCard } from "./vehicle-card.js";
 import { applyMove, groupingFromTics, renderTicEditorHtml, ticsFromGrouping } from "./tic-editor.js";
-import { applyUnitQuirkToCard, applyWeaponQuirkToTic, quirkEffect, WEAPON_QUIRK_LABEL } from "./quirk-effects.js";
+import { adjustRange, applyUnitQuirkToCard, applyWeaponQuirkToTic, quirkEffect, RANGE_BANDS, WEAPON_QUIRK_LABEL } from "./quirk-effects.js";
 import type { EditorFacets, Grouping } from "./tic-editor.js";
 import { RealtimeClient } from "@supabase/realtime-js";
 import type { RealtimeChannel } from "@supabase/realtime-js";
@@ -840,7 +840,7 @@ function convertOne(text: string, file: string): ConvertResult {
 
 /** Raw card HTML, dispatched on unit kind (no BV/skills injected). */
 function rawCardHtml(result: AnyCard): string {
-  const r = applyQuirkEffects(result); // quirk-adjusted clone when "Show quirks" is on
+  const r = applyTargetingComputer(applyQuirkEffects(result)); // bake quirk + TC effects into the displayed card
   return r.kind === "battlearmor"
     ? renderBACard(r.card)
     : r.kind === "vehicle"
@@ -879,6 +879,24 @@ function applyQuirkEffects(result: AnyCard): AnyCard {
     }
   }
   for (const q of unitQ) applyUnitQuirkToCard(clone.card, q);
+  return clone;
+}
+
+/** Bake the Targeting Computer −1 to-hit into each DIRECT-FIRE weapon's range
+ * brackets, so the printed profile reflects it. Always on (it's equipment, not
+ * a quirk). Non-destructive: clones, leaving the original untouched. */
+function applyTargetingComputer(result: AnyCard): AnyCard {
+  if (!cardHasTC(result)) return result;
+  const clone = structuredClone(result);
+  if (clone.kind === "mech") {
+    for (const tic of clone.card.tics) {
+      if (tic.weapons.some((w) => isDirectFireLabel(w.name))) adjustRange(tic.range, -1, RANGE_BANDS.all);
+    }
+  } else if (clone.kind === "vehicle" || clone.kind === "fighter" || clone.kind === "protomech" || clone.kind === "dropship") {
+    for (const w of clone.card.weapons) {
+      if (isDirectFireLabel(w.label)) adjustRange(w.range, -1, RANGE_BANDS.all);
+    }
+  }
   return clone;
 }
 
@@ -1061,7 +1079,7 @@ function renderForceEdit(): void {
   }
   const sk = unitSkills(u);
   const card = withTC(withRole(withQuirks(withSkills(withBv(raw, unitBv(u)), sk.gunnery, sk.piloting), lookupQuirks(u.name, u.file), u.file), lookupRole(u.name, u.file)), cardHasTC(r.result));
-  editWeapons = weaponsForToHit(r.result); // for the to-hit table (reflects current TIC grouping)
+  editWeapons = weaponsForToHit(applyTargetingComputer(r.result)); // ranges already include any TC −1
   editSinks = unitSinks(r.result);
   editHasTC = /targeting\s*computer/i.test(u.text); // Targeting Computer → −1 to-hit
   output.classList.add("force-play"); // enables pip cursors / damage tracking
@@ -1316,8 +1334,8 @@ function updateTabletop(): void {
   out.innerHTML = `<table class="tohit-tbl"><tbody>${editWeapons
     .map((w) => {
       const m = w.range ? w.range[bracket] : null;
-      const tc = editHasTC && w.directFire ? -1 : 0; // Targeting Computer: direct-fire only
-      return `<tr><td>${esc(w.label)}${tc ? ' <span class="th-tc-row">TC</span>' : ""}</td><td class="num">${m == null ? "—" : `${base + m + tc}+`}</td></tr>`;
+      const tcTag = editHasTC && w.directFire; // the −1 is already baked into the range bracket
+      return `<tr><td>${esc(w.label)}${tcTag ? ' <span class="th-tc-row">TC</span>' : ""}</td><td class="num">${m == null ? "—" : `${base + m}+`}</td></tr>`;
     })
     .join("")}</tbody></table>`;
 }
