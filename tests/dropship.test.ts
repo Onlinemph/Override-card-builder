@@ -97,6 +97,29 @@ describe("weapon bays (the '(B)' groups)", () => {
   });
 });
 
+describe("spheroid rear sub-arc ((R) split)", () => {
+  // A side arc with a forward and a rear-firing ("(R)") bay — the spheroid aft sub-arc.
+  const blk =
+    `<UnitType>\nDropship\n</UnitType>\n<Name>\nSplit\n</Name>\n<motion_type>\nSpheroid\n</motion_type>\n` +
+    `<SafeThrust>\n3\n</SafeThrust>\n<heatsinks>\n20\n</heatsinks>\n<sink_type>\n1\n</sink_type>\n` +
+    `<structural_integrity>\n10\n</structural_integrity>\n<armor>\n100\n80\n80\n60\n</armor>\n` +
+    `<Left Side Equipment>\n(B) Large Laser\n(R) (B) Large Laser\n</Left Side Equipment>\n` +
+    `<tonnage>\n2000.0\n</tonnage>\n`;
+
+  it("flags the (R) bay as rear and strips the marker from the name", () => {
+    const ls = parseBlkDropship(blk, "split.blk").mounts.filter((m) => m.facing === "leftSide");
+    expect(ls).toEqual([
+      { name: "Large Laser", facing: "leftSide", bay: 1 },
+      { name: "Large Laser", facing: "leftSide", rear: true, bay: 2 },
+    ]);
+  });
+
+  it("splits the side into LS and LS (R) arcs on the card", () => {
+    const c = convertDropship(parseBlkDropship(blk, "split.blk"));
+    expect(c.weapons.map((w) => w.facing).sort()).toEqual(["LS", "LS (R)"]);
+  });
+});
+
 describe("card layout", () => {
   it("groups the weapon table into per-arc sections (no Loc column)", () => {
     const html = renderDropshipCard(convertDropship(parseBlkDropship(load("Test Dropship DS-1.blk"), "DS-1.blk")));

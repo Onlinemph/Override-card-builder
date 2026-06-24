@@ -979,6 +979,9 @@ export interface DropshipMount {
   /** Weapon-bay id (MegaMek "(B)" groups). Same id = fires as one bay. Undefined
    * on markerless BLKs, which fall back to auto-grouping identical weapons. */
   bay?: number;
+  /** True if flagged rear-firing with a leading "(R)" — on a spheroid side arc
+   * this is the AFT sub-arc (so each side splits into a fore and an aft arc). */
+  rear?: boolean;
 }
 
 /**

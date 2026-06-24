@@ -49,7 +49,12 @@ export function dropshipWeaponRows(tics: ReadonlyArray<Tic>, techBase: TechBase)
   const order = (t: Tic) => ARC_ORDER.indexOf(t.weapons[0]!.rawLocation as DropshipFacing);
   return [...tics]
     .sort((a, b) => order(a) - order(b))
-    .map((t) => ticRow(t, techBase, ARC_CODE[t.weapons[0]!.rawLocation as DropshipFacing]));
+    .map((t) => {
+      const w0 = t.weapons[0]!;
+      // A rear-mounted side bay is a spheroid's aft sub-arc: show e.g. "LS (R)".
+      const code = ARC_CODE[w0.rawLocation as DropshipFacing] + (w0.rearMounted ? " (R)" : "");
+      return ticRow(t, techBase, code);
+    });
 }
 
 /** All dropship weapons share a synthetic 'Mech location; grouping is per arc. */
@@ -96,7 +101,7 @@ function buildDropshipEquipment(mounts: ReadonlyArray<DropshipMount>): VehicleEq
   const byKey = new Map<string, VehicleEquipment>();
   for (const m of mounts) {
     const lower = m.name.toLowerCase();
-    const facing = ARC_CODE[m.facing];
+    const facing = ARC_CODE[m.facing] + (m.rear ? " (R)" : "");
     let label: string;
     let category: "ammo" | "equipment";
     let countable: boolean;
@@ -151,7 +156,7 @@ export function convertDropship(unit: DropshipUnit): DropshipCard {
       otherMounts.push(mount);
       return;
     }
-    const w: Weapon = { name: mount.name, location: SYNTH_LOCATION, rawLocation: arc, rearMounted: false };
+    const w: Weapon = { name: mount.name, location: SYNTH_LOCATION, rawLocation: arc, rearMounted: mount.rear ?? false };
     into.push(convertWeapon(w, unit.techBase, 0, unit.shipClass === "WarShip"));
     if (unknown && !capital) unknownWeapons.add(mount.name); // capital is deferred, not "missing"
   };

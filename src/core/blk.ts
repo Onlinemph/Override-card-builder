@@ -661,10 +661,10 @@ function parseDropshipArmor(blocks: Block[]): DropshipArmorRaw {
 
 /**
  * Collect weapon/equipment mounts from the per-arc equipment blocks. Leading
- * single-letter parenthetical markers are stripped: "(B)" opens a TW bay (an
- * aero fire-grouping the Override card replaces with TICs) and "(R)" marks a
- * rear sub-arc — neither belongs in the weapon name, so "(R) (B) ISERLargeLaser"
- * becomes "ISERLargeLaser" -> the known "ER Large Laser".
+ * single-letter parenthetical markers are read then stripped: "(B)" opens a TW
+ * bay (an aero fire-grouping the Override card replaces with TICs) and "(R)"
+ * marks the rear sub-arc — on a spheroid that's the aft half of a side arc. So
+ * "(R) (B) ISERLargeLaser" becomes the known "ER Large Laser" with `rear: true`.
  */
 function parseDropshipMounts(blocks: Block[]): DropshipMount[] {
   const facingBlocks = blocks.filter((b) => DROPSHIP_FACING_BLOCKS[b.key]);
@@ -679,15 +679,18 @@ function parseDropshipMounts(blocks: Block[]): DropshipMount[] {
     const facing = DROPSHIP_FACING_BLOCKS[block.key]!;
     let currentBay = -1; // a bay never spans an arc, so reset each block
     for (const line of block.lines) {
-      const startsBay = /\(B\)/.test(line);
-      const name = line.replace(/^(?:\([A-Za-z]\)\s*)+/, "").trim();
+      const markers = line.match(/^(?:\([A-Za-z]\)\s*)+/)?.[0] ?? "";
+      const startsBay = /\(B\)/.test(markers);
+      const rear = /\(R\)/i.test(markers);
+      const name = line.slice(markers.length).trim();
       if (!name) continue;
+      const base: DropshipMount = rear ? { name, facing, rear: true } : { name, facing };
       if (!hasBays) {
-        mounts.push({ name, facing });
+        mounts.push(base);
         continue;
       }
       if (startsBay || currentBay === -1) currentBay = ++bayId;
-      mounts.push({ name, facing, bay: currentBay });
+      mounts.push({ ...base, bay: currentBay });
     }
   }
   return mounts;
