@@ -168,10 +168,10 @@ async function initBrowser(): Promise<void> {
       const resp = await fetch(url);
       if (!resp.ok) throw new Error(`HTTP ${resp.status} fetching ${url}`);
       const text = await resp.text();
-      textarea.value = text;
+      currentPreview = { text, file: path };
       // Pass the path (not the display name) so the BV lookup matches by filename.
       showResults([convertOne(text, path)]);
-      textarea.scrollIntoView({ behavior: "smooth", block: "start" });
+      output.scrollIntoView({ behavior: "smooth", block: "start" });
       statusEl!.textContent = "";
     } catch (err) {
       statusEl!.textContent = `Error: ${err instanceof Error ? err.message : String(err)}`;
@@ -228,317 +228,17 @@ import type { AnyCard, CardEquipment, CardWeapon, OverrideCard, RangeBrackets, T
 // Injected by Vite (see vite.config.ts).
 declare const __BUILD_TIME__: string;
 
-const EXAMPLE_LOCUST = `chassis:Locust
-model:LCT-1V
-
-Config:Biped
-TechBase:Inner Sphere
-Mass:20
-Engine:160 Fusion Engine
-
-Heat Sinks:10 Single
-Walk MP:8
-Jump MP:0
-
-Armor:Standard(Inner Sphere)
-LA Armor:4
-RA Armor:4
-LT Armor:8
-RT Armor:8
-CT Armor:10
-HD Armor:8
-LL Armor:8
-RL Armor:8
-RTL Armor:2
-RTR Armor:2
-RTC Armor:2
-
-Weapons:3
-Medium Laser, Center Torso
-Machine Gun, Left Arm
-Machine Gun, Right Arm
-`;
-
-// A BLK Battle Armor squad, to demo the .blk path in the browser.
-const EXAMPLE_ELEMENTAL = `<UnitType>
-BattleArmor
-</UnitType>
-
-<Name>
-Elemental
-</Name>
-
-<Model>
-[Laser]
-</Model>
-
-<type>
-Clan Level 2
-</type>
-
-<motion_type>
-Jump
-</motion_type>
-
-<cruiseMP>
-1
-</cruiseMP>
-
-<jumpingMP>
-3
-</jumpingMP>
-
-<Trooper Count>
-5
-</Trooper Count>
-
-<weightclass>
-3
-</weightclass>
-
-<chassis>
-biped
-</chassis>
-
-<armor>
-10
-</armor>
-
-<Squad Equipment>
-CLERSmallLaser:RA
-CLSRM2 (OS):LA
-CLSRM2 (OS) Ammo:Body
-Battle Claw:LA
-</Squad Equipment>
-`;
-
-// A BLK combat vehicle (Tank), to demo the vehicle path in the browser.
-const EXAMPLE_TANK = `<UnitType>
-Tank
-</UnitType>
-
-<Name>
-Manticore Heavy Tank
-</Name>
-
-<Model>
-
-</Model>
-
-<type>
-IS Level 1
-</type>
-
-<motion_type>
-Tracked
-</motion_type>
-
-<cruiseMP>
-4
-</cruiseMP>
-
-<armor>
-42
-33
-33
-26
-42
-</armor>
-
-<Body Equipment>
-IS Ammo LRM-10
-IS Ammo SRM-6
-</Body Equipment>
-
-<Front Equipment>
-Medium Laser
-</Front Equipment>
-
-<Turret Equipment>
-LRM 10
-SRM 6
-PPC
-</Turret Equipment>
-
-<tonnage>
-60.0
-</tonnage>
-`;
-
-// A BLK VTOL, to demo the rotor location + flying move on the vehicle card.
-const EXAMPLE_VTOL = `<UnitType>
-VTOL
-</UnitType>
-
-<Name>
-Cyrano Gunship
-</Name>
-
-<Model>
-
-</Model>
-
-<type>
-IS Level 2
-</type>
-
-<motion_type>
-VTOL
-</motion_type>
-
-<cruiseMP>
-12
-</cruiseMP>
-
-<armor>
-5
-4
-4
-2
-2
-</armor>
-
-<Front Equipment>
-Large Laser
-BeagleActiveProbe
-</Front Equipment>
-
-<Rotor Equipment>
-</Rotor Equipment>
-
-<tonnage>
-30.0
-</tonnage>
-`;
-
-// A BLK aerospace fighter, to demo the fighter card (nose/wings/aft + thrust).
-const EXAMPLE_FIGHTER = `<UnitType>
-Aero
-</UnitType>
-
-<Name>
-Shikra
-</Name>
-
-<Model>
-SKR-4N
-</Model>
-
-<type>
-IS Level 3
-</type>
-
-<motion_type>
-Aerodyne
-</motion_type>
-
-<SafeThrust>
-6
-</SafeThrust>
-
-<heatsinks>
-16
-</heatsinks>
-
-<sink_type>
-1
-</sink_type>
-
-<armor>
-111
-83
-83
-70
-</armor>
-
-<Nose Equipment>
-ISGaussRifle
-</Nose Equipment>
-
-<Left Wing Equipment>
-Heavy PPC
-</Left Wing Equipment>
-
-<Right Wing Equipment>
-Heavy PPC
-</Right Wing Equipment>
-
-<Aft Equipment>
-ISMediumPulseLaser
-</Aft Equipment>
-
-<Fuselage Equipment>
-IS Gauss Ammo
-IS Gauss Ammo
-IS Gauss Ammo
-</Fuselage Equipment>
-
-<tonnage>
-90.0
-</tonnage>
-`;
-
-// A BLK conventional infantry platoon, to demo the infantry path in the browser.
-const EXAMPLE_INFANTRY = `<UnitType>
-Infantry
-</UnitType>
-
-<Name>
-Field Gun Infantry
-</Name>
-
-<Model>
-Motorized Batteries
-</Model>
-
-<squad_size>
-5
-</squad_size>
-
-<squadn>
-6
-</squadn>
-
-<Primary>
-Auto Rifle
-</Primary>
-
-<Secondary>
-Heavy PPC
-</Secondary>
-
-<secondn>
-1
-</secondn>
-
-<type>
-IS Level 2
-</type>
-
-<motion_type>
-Motorized
-</motion_type>
-
-<antimek>
-8
-</antimek>
-
-<Field Guns Equipment>
-ISLAC5
-ISLAC5
-ISLAC5
-</Field Guns Equipment>
-`;
-
 const $ = <T extends HTMLElement>(id: string): T => {
   const el = document.getElementById(id);
   if (!el) throw new Error(`missing element #${id}`);
   return el as T;
 };
 
-const textarea = $<HTMLTextAreaElement>("mtf");
 const output = $<HTMLElement>("output");
 const fileInput = $<HTMLInputElement>("file");
+/** The unit currently shown in the preview (browse-click or upload), so the
+ * "Add to Force" button knows what to add now that there's no paste box. */
+let currentPreview: { text: string; file: string } | null = null;
 
 /** Escape text for safe insertion into HTML. */
 function esc(s: string | number): string {
@@ -1608,15 +1308,15 @@ function addToForce(name: string, text: string, file?: string): void {
   renderForce();
 }
 
-/** Add whatever is currently in the textarea, naming it from the converted card. */
+/** Add the currently-previewed unit (from Browse or Upload) to the force. */
 function addCurrentToForce(): void {
-  const text = textarea.value.trim();
-  if (!text) {
-    output.innerHTML = `<p class="muted">Paste or upload an .mtf or .blk first, then add it.</p>`;
+  if (!currentPreview) {
+    output.innerHTML = `<p class="muted">Browse or upload a unit first, then add it.</p>`;
     return;
   }
-  const r = convertOne(text, "pasted");
-  addToForce(r.ok ? r.result.card.name : "Pasted unit", text); // pasted: no filename, BV matches by name
+  const { text, file } = currentPreview;
+  const r = convertOne(text, file);
+  addToForce(r.ok ? r.result.card.name : "Unit", text, file); // file enables filename-based BV match
 }
 
 /** Render the force list panel (with per-unit BV + total) and toggle Print. */
@@ -3109,47 +2809,8 @@ void loadRoleIndex().then(() => {
 // Import a shared force from the URL hash, if present.
 void importFromHash();
 
-$("convert").addEventListener("click", () => {
-  const text = textarea.value.trim();
-  if (!text) {
-    output.innerHTML = `<p class="muted">Paste or upload an .mtf or .blk first.</p>`;
-    return;
-  }
-  showResults([convertOne(text, "pasted")]);
-});
-
-$("example").addEventListener("click", () => {
-  textarea.value = EXAMPLE_LOCUST;
-  showResults([convertOne(EXAMPLE_LOCUST, "Locust LCT-1V.mtf")]);
-});
-
-$("example-ba").addEventListener("click", () => {
-  textarea.value = EXAMPLE_ELEMENTAL;
-  showResults([convertOne(EXAMPLE_ELEMENTAL, "Elemental [Laser].blk")]);
-});
-
-$("example-veh").addEventListener("click", () => {
-  textarea.value = EXAMPLE_TANK;
-  showResults([convertOne(EXAMPLE_TANK, "Manticore Heavy Tank.blk")]);
-});
-
-$("example-vtol").addEventListener("click", () => {
-  textarea.value = EXAMPLE_VTOL;
-  showResults([convertOne(EXAMPLE_VTOL, "Cyrano Gunship.blk")]);
-});
-
-$("example-fighter").addEventListener("click", () => {
-  textarea.value = EXAMPLE_FIGHTER;
-  showResults([convertOne(EXAMPLE_FIGHTER, "Shikra SKR-4N.blk")]);
-});
-
-$("example-inf").addEventListener("click", () => {
-  textarea.value = EXAMPLE_INFANTRY;
-  showResults([convertOne(EXAMPLE_INFANTRY, "Field Gun Infantry.blk")]);
-});
-
 $("clear").addEventListener("click", () => {
-  textarea.value = "";
+  currentPreview = null;
   fileInput.value = "";
   output.innerHTML = "";
 });
@@ -3165,7 +2826,7 @@ fileInput.addEventListener("change", async () => {
     if (files.length === 0) return;
     const texts = await Promise.all(files.map((f) => f.text()));
     const results = texts.map((text, i) => convertOne(text.trim(), files[i]!.name));
-    textarea.value = texts[0]!; // show the first file for reference
+    currentPreview = { text: texts[0]!, file: files[0]!.name }; // first file is the "Add to Force" target
     showResults(results);
   } catch (err) {
     // Never fail silently — surface read/parse problems to the user.
