@@ -21,6 +21,38 @@ const rr = (x: number, y: number, w: number, h: number, r = 5, fill = FILL): str
 const poly = (pts: number[][]): string =>
   `<polygon points="${pts.map((p) => p.join(",")).join(" ")}" fill="${FILL}" stroke="${STROKE}" stroke-width="1.6"/>`;
 
+// --- Armor-type pip shapes. Each armor type draws its armor pips as a distinct
+// shape so types read apart at a glance. "default" keeps each view's normal pip
+// (a circle on the doll); special armors use a polygon. Structure stays a square.
+export type ArmorShape = "default" | "diamond" | "triangle" | "octagon" | "pentagon";
+export function armorShape(armorType?: string): ArmorShape {
+  const s = (armorType ?? "").toLowerCase();
+  if (/ferro|lamellor/.test(s)) return "diamond"; // Ferro-Fibrous (Light/Heavy/Lamellor)
+  if (/stealth/.test(s)) return "triangle";
+  if (/hardened/.test(s)) return "octagon";
+  if (/reflective|reactive/.test(s)) return "pentagon";
+  return "default"; // Standard, Primitive, Industrial, Commercial, …
+}
+/** Clean the "(Inner Sphere)"/"(Clan)" suffix for display. */
+export function armorTypeLabel(armorType?: string): string {
+  return (armorType ?? "Standard").replace(/\s*\([^)]*\)/g, "").replace(/\s+/g, " ").trim() || "Standard";
+}
+/** Unit-box (0..1) polygons for each special shape. */
+const SHAPE_POLY: Partial<Record<ArmorShape, number[][]>> = {
+  diamond: [[0.5, 0], [1, 0.5], [0.5, 1], [0, 0.5]],
+  triangle: [[0.5, 0.04], [0.96, 0.96], [0.04, 0.96]],
+  octagon: [[0.3, 0], [0.7, 0], [1, 0.3], [1, 0.7], [0.7, 1], [0.3, 1], [0, 0.7], [0, 0.3]],
+  pentagon: [[0.5, 0], [1, 0.4], [0.81, 1], [0.19, 1], [0, 0.4]],
+};
+/** One armor pip as the shape's SVG element, centred at (cx,cy) with radius r. */
+function armorPip(shape: ArmorShape, cx: number, cy: number, r: number): string {
+  const p = SHAPE_POLY[shape];
+  if (!p) return `<circle class="bpip armor" cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${r.toFixed(1)}"/>`;
+  const pts = p.map(([px, py]) => `${(cx + (px! - 0.5) * 2 * r).toFixed(1)},${(cy + (py! - 0.5) * 2 * r).toFixed(1)}`).join(" ");
+  return `<polygon class="bpip armor" points="${pts}"/>`;
+}
+let dollArmorShape: ArmorShape = "default"; // set per-doll before rendering its pips
+
 /** Lay `n` pips in a grid filling [x,y,w,h]; circles for armor, squares for structure. */
 function pips(x: number, y: number, w: number, h: number, n: number, kind: "armor" | "struct"): string {
   if (n <= 0) return "";
@@ -44,7 +76,7 @@ function pips(x: number, y: number, w: number, h: number, n: number, kind: "armo
     const cy = y + step / 2 + row * step + Math.max(0, (h - usedRows * step) / 2);
     out +=
       kind === "armor"
-        ? `<circle class="bpip armor" cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${r.toFixed(1)}"/>`
+        ? armorPip(dollArmorShape, cx, cy, r)
         : `<rect class="bpip struct" x="${(cx - r * 0.85).toFixed(1)}" y="${(cy - r * 0.85).toFixed(1)}" width="${(r * 1.7).toFixed(1)}" height="${(r * 1.7).toFixed(1)}"/>`;
   }
   return out;
@@ -79,6 +111,7 @@ export function isBipedDoll(card: OverrideCard): boolean {
 
 /** Render the biped/tripod record-sheet paper doll as an SVG string. */
 export function bipedDoll(card: OverrideCard): string {
+  dollArmorShape = armorShape(card.armorType);
   const a = card.armor;
   const s = card.structure;
   const tripod = a.centerLeg !== undefined || s.centerLeg !== undefined;
@@ -157,6 +190,7 @@ export function isQuadDoll(card: OverrideCard): boolean {
  * labels change (front legs take arm hits 3-4 / 10-11, rear legs 5 / 9).
  */
 export function quadDoll(card: OverrideCard): string {
+  dollArmorShape = armorShape(card.armorType);
   const a = card.armor;
   const s = card.structure;
   // Symmetric about the viewBox centre (x = 170). Legs touch the body so they
@@ -206,6 +240,7 @@ export function quadDoll(card: OverrideCard): string {
  * (areas nose/lw/rw/aft carry armor; si carries the structure track).
  */
 export function fighterDoll(card: FighterCard): string {
+  dollArmorShape = "default"; // vehicle-style cards carry no armor type
   const a = card.armor;
   const si = card.structure;
   const seg =
@@ -251,6 +286,7 @@ export function fighterDoll(card: FighterCard): string {
  * vehicles drop the turret and shift the 5/9 rolls onto the sides.
  */
 export function vehicleDoll(card: VehicleCard): string {
+  dollArmorShape = "default"; // vehicle-style cards carry no armor type
   const a = card.armor;
   const s = card.structure;
   const vtol = card.hasRotor;
@@ -309,6 +345,7 @@ export function vehicleDoll(card: VehicleCard): string {
  * mirrors the 'Mech's except a roll of 3 or 11 is a MISS (struck through).
  */
 export function protoDoll(card: ProtoMechCard): string {
+  dollArmorShape = "default"; // vehicle-style cards carry no armor type
   const a = card.armor;
   const s = card.structure;
   const mg = card.hasMainGun;
@@ -360,6 +397,7 @@ export function protoDoll(card: ProtoMechCard): string {
  * 3-5, L-Side 9-11, Aft 2 & 12). Visual only — no per-point damage tracking.
  */
 export function dropshipDoll(card: DropshipCard): string {
+  dollArmorShape = "default"; // vehicle-style cards carry no armor type
   const a = card.armor;
   const aero = /aero/i.test(card.motionLabel);
   const arc = (x: number, y: number, label: string, hits: string, val: number): string =>

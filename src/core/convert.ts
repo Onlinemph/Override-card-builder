@@ -1328,6 +1328,7 @@ export function convertUnit(unit: Unit): OverrideCard {
       ...(a.CL !== undefined ? { centerLeg: convertArmLegArmor(a.CL) } : {}),
     },
     structure,
+    armorType: unit.armorType,
     heatDissipation,
     weapons,
     tics: groupIntoTics(weapons),

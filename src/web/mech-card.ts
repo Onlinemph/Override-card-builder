@@ -10,7 +10,8 @@
 
 import { abbreviatedTicLabel, ticHeat } from "../core/index.js";
 import type { OverrideCard, RangeBrackets, Tic } from "../core/index.js";
-import { bipedDoll, isBipedDoll, isQuadDoll, quadDoll } from "./biped-doll.js";
+import { armorShape, armorTypeLabel, bipedDoll, isBipedDoll, isQuadDoll, quadDoll } from "./biped-doll.js";
+import type { ArmorShape } from "./biped-doll.js";
 
 /** Escape text for safe insertion into HTML. */
 function esc(s: string | number): string {
@@ -42,10 +43,11 @@ function locCode(loc: Tic["location"], rear: boolean): string {
   return rear ? `${base}(R)` : base;
 }
 
-/** A row of hex pips of a given class (armor = purple, struct = red). */
-function hexPips(n: number, cls: string): string {
+/** A row of hex pips of a given class. Armor pips take the armor-type shape. */
+function hexPips(n: number, cls: string, shape: ArmorShape = "default"): string {
   if (n <= 0) return "";
-  return `<span class="hexrow">${`<i class="hex ${cls}"></i>`.repeat(n)}</span>`;
+  const c = cls === "armor" && shape !== "default" ? `${cls} as-${shape}` : cls;
+  return `<span class="hexrow">${`<i class="hex ${c}"></i>`.repeat(n)}</span>`;
 }
 
 /** One paper-doll location box: label + hit numbers, armor hexes over structure hexes. */
@@ -55,11 +57,12 @@ function dollLoc(
   hits: string,
   armor: number,
   structure: number,
+  shape: ArmorShape = "default",
 ): string {
   const hitTxt = hits ? ` <span class="loc-hits">(${esc(hits)})</span>` : "";
   return `<div class="mloc ${area}">
     <div class="mloc-name">${esc(label)}${hitTxt}</div>
-    <div class="mloc-pips">${hexPips(armor, "armor")}${hexPips(structure, "struct")}</div>
+    <div class="mloc-pips">${hexPips(armor, "armor", shape)}${hexPips(structure, "struct")}</div>
   </div>`;
 }
 
@@ -67,6 +70,7 @@ function dollLoc(
 function paperDoll(card: OverrideCard): string {
   const a = card.armor;
   const s = card.structure;
+  const sh = armorShape(card.armorType);
   const hasCenterLeg = a.centerLeg !== undefined || s.centerLeg !== undefined;
   // Tripods keep the standard 2d6 hit table; a leg result (5 or 9) is followed
   // by a d6 to pick the leg: 1-2 left, 3-4 center, 5-6 right. So the three leg
@@ -74,22 +78,22 @@ function paperDoll(card: OverrideCard): string {
   const llHits = hasCenterLeg ? "d6 1-2" : "9";
   const rlHits = hasCenterLeg ? "d6 5-6" : "5";
   const centerLeg = hasCenterLeg
-    ? dollLoc("cl", "Center Leg", "d6 3-4", a.centerLeg ?? 0, s.centerLeg ?? 0)
+    ? dollLoc("cl", "Center Leg", "d6 3-4", a.centerLeg ?? 0, s.centerLeg ?? 0, sh)
     : "";
   const tripodNote = hasCenterLeg
     ? `<p class="mdoll-legend">Legs: on a leg hit (2d6 = 5 or 9), roll 1d6 — 1-2 left, 3-4 center, 5-6 right.</p>`
     : "";
   return `<div class="mdoll${hasCenterLeg ? " has-cl" : ""}">
-    ${dollLoc("hd", "Head", "12", a.head, s.head)}
-    ${dollLoc("la", "Left Arm", "10,11", a.leftArm, s.leftArm)}
-    ${dollLoc("ct", "Torso", "6,7,8", a.torso, s.torso)}
-    ${dollLoc("ra", "Right Arm", "3,4", a.rightArm, s.rightArm)}
-    ${dollLoc("ll", "Left Leg", llHits, a.leftLeg, s.leftLeg)}
-    ${dollLoc("rl", "Right Leg", rlHits, a.rightLeg, s.rightLeg)}
+    ${dollLoc("hd", "Head", "12", a.head, s.head, sh)}
+    ${dollLoc("la", "Left Arm", "10,11", a.leftArm, s.leftArm, sh)}
+    ${dollLoc("ct", "Torso", "6,7,8", a.torso, s.torso, sh)}
+    ${dollLoc("ra", "Right Arm", "3,4", a.rightArm, s.rightArm, sh)}
+    ${dollLoc("ll", "Left Leg", llHits, a.leftLeg, s.leftLeg, sh)}
+    ${dollLoc("rl", "Right Leg", rlHits, a.rightLeg, s.rightLeg, sh)}
     ${centerLeg}
-    ${dollLoc("tr", "Torso Rear", "", a.rear, 0)}
+    ${dollLoc("tr", "Torso Rear", "", a.rear, 0, sh)}
   </div>
-  <p class="mdoll-legend"><i class="hex armor"></i> armor &nbsp; <i class="hex struct"></i> structure</p>
+  <p class="mdoll-legend"><i class="hex armor${sh !== "default" ? ` as-${sh}` : ""}"></i> ${esc(armorTypeLabel(card.armorType))} armor &nbsp; <i class="hex struct"></i> structure</p>
   ${tripodNote}`;
 }
 
@@ -192,6 +196,7 @@ export function renderMechCard(card: OverrideCard): string {
               <div><b>Mass:</b> ${esc(card.mass)} Tons</div>
               <div class="ms-ud-move"><b>Move:</b> ${esc(card.walkMove)} / ${esc(card.runMove)}${card.jump > 0 ? ` &nbsp;<b>Jump:</b> ${esc(card.jump)}` : ""} <b>Sinks:</b> ${esc(card.heatDissipation)}</div>
               <div><b>TMM:</b> ${esc(card.tmm)} / ${esc(card.tmmSprint)}${card.jump > 0 ? ` <span class="muted">(jump ${esc(card.tmmJump)})</span>` : ""}</div>
+              <div><b>Armor:</b> ${esc(armorTypeLabel(card.armorType))}</div>
             </div>
             ${heatScale()}
           </div>

@@ -895,6 +895,11 @@ footer {
   print-color-adjust: exact;
 }
 .hex.armor { background: #6c4f9e; }
+/* Armor-type pip shapes (default armor is the hexagon above). */
+.hex.armor.as-diamond { clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%); }
+.hex.armor.as-triangle { clip-path: polygon(50% 4%, 96% 96%, 4% 96%); }
+.hex.armor.as-octagon { clip-path: polygon(30% 0, 70% 0, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0 70%, 0 30%); }
+.hex.armor.as-pentagon { clip-path: polygon(50% 0, 100% 40%, 81% 100%, 19% 100%, 0 40%); }
 /* Structure pips are a HOLLOW SQUARE — a distinct SHAPE from the armor hexagon,
    so armor vs structure reads clearly in plain black ink (no color needed). */
 .hex.struct {

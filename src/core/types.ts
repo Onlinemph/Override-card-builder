@@ -846,6 +846,9 @@ export interface OverrideCard {
   armor: CardArmor;
   /** Per-section structure: IS / 3, round nearest, min 1 (torso from CT). */
   structure: CardStructure;
+  /** Armor type from the MTF `Armor:` line (e.g. "Ferro-Fibrous", "Stealth"),
+   * used to pick the armor-pip shape. */
+  armorType?: string;
   /** Total dissipated per round / 5, round nearest. */
   heatDissipation: number;
   /** Individual converted weapons (ungrouped), kept for reference/editing. */
