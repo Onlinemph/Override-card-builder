@@ -105,10 +105,14 @@ try {
       }
       if (!entry.endsWith(".txt")) continue;
       files++;
+      // Path: <source> / [Inner Sphere|Clan] / <faction> / [type] / [weight] / <table>.txt
+      // The faction is the directory right after the source (and the side dir,
+      // when present) — NOT the immediate parent dir (that's the type/weight).
       const parts = relative(ratRoot, full).split(/[\\/]/);
       const source = parts[0] ?? "Other";
-      const faction = parts.length >= 2 ? parts[parts.length - 2] : "General";
-      const side = parts[1] === "Inner Sphere" || parts[1] === "Clan" ? parts[1] : "";
+      const hasSide = parts[1] === "Inner Sphere" || parts[1] === "Clan";
+      const side = hasSide ? parts[1] : "";
+      const faction = parts[hasSide ? 2 : 1] ?? "General";
 
       const lines = readFileSync(full, "utf8").split("\n");
       let title = entry.replace(/\.txt$/i, "");
