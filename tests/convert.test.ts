@@ -492,6 +492,35 @@ describe("melee (Punch/Kick auto-generated + physical weapons)", () => {
     expect(hatchet.rangeText).toBe("+0 – – – –");
   });
 
+  it("surfaces a melee weapon found only in the crit slots (not the Weapons block)", () => {
+    // MegaMek lists a Hatchet only in the limb crit slots (often as several
+    // contiguous "(OMNIPOD)" slots), never in the Weapons block — like the Rime
+    // Otter C. The converter should still produce ONE Hatchet weapon.
+    const u = parseMtf(readFileSync(join(FIXTURES, "Atlas AS7-D.mtf"), "utf8"), "Atlas AS7-D.mtf");
+    const c = convertUnit({
+      ...u,
+      weapons: [],
+      critSlots: [
+        { name: "Hatchet (OMNIPOD)", location: "LA", rawLocation: "Left Arm" },
+        { name: "Hatchet (OMNIPOD)", location: "LA", rawLocation: "Left Arm" },
+        { name: "Hatchet (OMNIPOD)", location: "LA", rawLocation: "Left Arm" },
+      ],
+    });
+    const hatchets = c.weapons.filter((w) => /hatchet/i.test(w.name));
+    expect(hatchets).toHaveLength(1); // the 3 slots collapse to one weapon
+    expect(hatchets[0]!.damageText).toBe("7"); // 100t -> ceil(100/15)
+  });
+
+  it("does not double-count a melee weapon that IS declared in the Weapons block", () => {
+    const u = parseMtf(readFileSync(join(FIXTURES, "Atlas AS7-D.mtf"), "utf8"), "Atlas AS7-D.mtf");
+    const c = convertUnit({
+      ...u,
+      weapons: [{ name: "Hatchet", location: "RA", rawLocation: "Right Arm", rearMounted: false }],
+      critSlots: [{ name: "Hatchet", location: "RA", rawLocation: "Right Arm" }],
+    });
+    expect(c.weapons.filter((w) => /hatchet/i.test(w.name))).toHaveLength(1);
+  });
+
   it("handles the rest of the physical-weapon family (blade, vibro, industrial, taser)", () => {
     const w = (name: string, mass = 50) =>
       convertWeapon({ name, location: "RA", rearMounted: false }, "IS", mass);

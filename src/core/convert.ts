@@ -1193,6 +1193,28 @@ export function buildEquipment(critSlots: ReadonlyArray<CritSlot>): CardEquipmen
  * TODO(range brackets): apply page-43 range-bracket modifiers to weapon damage.
  * TODO(M/C dice): derive Movement/Combat dice.
  */
+/** Physical/melee weapons (Hatchet, Sword, …) are listed only in the crit slots,
+ * not the Weapons block, and occupy several contiguous slots. Surface one Weapon
+ * per (melee type + location), skipping any already declared in the Weapons block. */
+function meleeWeaponsFromCrits(crits: ReadonlyArray<CritSlot>, declared: ReadonlyArray<Weapon>): Weapon[] {
+  const seen = new Set<string>();
+  for (const w of declared) {
+    const k = normalizeWeaponName(w.name);
+    if (MELEE_WEAPONS[k]) seen.add(`${k}@${w.location}`);
+  }
+  const out: Weapon[] = [];
+  for (const s of crits) {
+    const k = normalizeWeaponName(s.name);
+    if (!MELEE_WEAPONS[k]) continue;
+    const id = `${k}@${s.location}`;
+    if (seen.has(id)) continue; // one per limb; collapses a hatchet's multiple slots
+    seen.add(id);
+    const name = s.name.replace(/\s*\([^)]*\)/g, "").replace(/:[A-Za-z0-9]+$/, "").trim();
+    out.push({ name, location: s.location, rawLocation: s.rawLocation, rearMounted: false });
+  }
+  return out;
+}
+
 export function convertUnit(unit: Unit): OverrideCard {
   const a = unit.armor;
   const warnings: string[] = [];
@@ -1232,7 +1254,8 @@ export function convertUnit(unit: Unit): OverrideCard {
   // of converting them into zero-damage "unknown" TICs.
   const weaponMounts: Weapon[] = [];
   const divertedEquipment: CritSlot[] = [];
-  for (const w of unit.weapons) {
+  const meleeMounts = meleeWeaponsFromCrits(unit.critSlots ?? [], unit.weapons);
+  for (const w of [...unit.weapons, ...meleeMounts]) {
     if (isNonWeaponMount(w.name)) {
       // Ammo bins reach the ammo line via buildEquipment; cargo/pods are dropped.
       if (/ammo/i.test(w.name)) {
