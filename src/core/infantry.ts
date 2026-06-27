@@ -20,7 +20,7 @@
  * Movement/TMM mirror the 'Mech rules as a best-effort starting point.
  */
 
-import { INFANTRY_WEAPON_DAMAGE, TMM_JUMP_BONUS, TMM_SPRINT_BONUS, WEAPON_DAMAGE_DIVISOR } from "./constants.js";
+import { INFANTRY_WEAPON_DAMAGE, TMM_JUMP_BONUS, WEAPON_DAMAGE_DIVISOR } from "./constants.js";
 import {
   abbreviatedTicLabel,
   convertWeapon,
@@ -234,9 +234,9 @@ export function convertInfantry(unit: InfantryUnit): InfantryCard {
   let tmmText = `${baseTmm}/${baseTmm + 1}`;
   let tmm = baseTmm;
   if (motion.jump !== undefined) {
-    // Jumping stacks the sprint step and the jump step over the base TMM, so a
-    // walk-1 (base 0) jump-3 platoon evades at TMM 2 (VERIFIED vs DFA card).
-    const jumpTmm = baseTmm + TMM_SPRINT_BONUS + TMM_JUMP_BONUS;
+    // Jumping adds the +2 jump step over the base TMM, so a walk-1 (base 0)
+    // jump-3 platoon evades at TMM 2 (VERIFIED vs DFA card).
+    const jumpTmm = baseTmm + TMM_JUMP_BONUS;
     move += ` · Jump ${motion.jump}`;
     tmmText += ` · Jump ${jumpTmm}`;
     tmm = jumpTmm; // headline TMM (CSV) = the best evasion the platoon can get

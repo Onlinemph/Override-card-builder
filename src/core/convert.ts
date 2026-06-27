@@ -1314,7 +1314,7 @@ export function convertUnit(unit: Unit): OverrideCard {
     tmm,
     tmmSprint: tmm + TMM_SPRINT_BONUS,
     // Jump is its own movement mode: TMM = the normal bracket for the jump
-    // distance, +1 (0 when the unit can't jump).
+    // distance, +2 (0 when the unit can't jump).
     tmmJump: unit.movement.jumpMP > 0 ? lookupTmm(unit.movement.jumpMP) + TMM_JUMP_BONUS : 0,
     armor: {
       torso,

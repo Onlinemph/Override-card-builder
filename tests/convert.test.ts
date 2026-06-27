@@ -542,11 +542,11 @@ describe("jump as its own movement mode (TMM = jump bracket + 1)", () => {
   const jump = (jumpMP: number) =>
     convertUnit({ ...base, movement: { walkMP: 4, runMP: 6, jumpMP, runDerived: true } }).tmmJump;
 
-  it("uses the normal movement bracket for the jump distance, +1", () => {
-    expect(jump(5)).toBe(2); // lookupTmm(5)=1 -> +1
-    expect(jump(6)).toBe(2); // lookupTmm(6)=1 -> +1
-    expect(jump(7)).toBe(3); // lookupTmm(7)=2 -> +1
-    expect(jump(3)).toBe(1); // lookupTmm(3)=0 -> +1
+  it("uses the normal movement bracket for the jump distance, +2", () => {
+    expect(jump(5)).toBe(3); // lookupTmm(5)=1 -> +2
+    expect(jump(6)).toBe(3); // lookupTmm(6)=1 -> +2
+    expect(jump(7)).toBe(4); // lookupTmm(7)=2 -> +2
+    expect(jump(3)).toBe(2); // lookupTmm(3)=0 -> +2
   });
 
   it("is 0 when the unit can't jump", () => {

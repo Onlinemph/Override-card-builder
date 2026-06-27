@@ -76,9 +76,9 @@ describe("convertBattleArmor", () => {
     expect(card.armorPerTrooper).toBe(10);
     expect(card.armor).toBe(3);
 
-    // TMM mirrors run-MP table on the fastest mode (jump 3 -> 0); +1 jump.
+    // TMM mirrors run-MP table on the fastest mode (jump 3 -> 0); +2 jump.
     expect(card.tmm).toBe(0);
-    expect(card.tmmJump).toBe(1);
+    expect(card.tmmJump).toBe(2);
 
     expect(card.antiMech).toBe(true); // Heavy class can anti-'Mech
   });

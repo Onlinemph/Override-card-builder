@@ -1574,7 +1574,7 @@ exports[`oracle lock-in: full-unit conversions > converts Elemental Laser.blk to
       },
     ],
     "tmm": 0,
-    "tmmJump": 1,
+    "tmmJump": 2,
     "troopers": 5,
     "walkMP": 1,
     "warnings": [],

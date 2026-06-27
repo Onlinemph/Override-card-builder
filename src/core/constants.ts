@@ -211,8 +211,8 @@ export const HEAD_ARMOR_LOOKUP: ReadonlyArray<HeadArmorBracket> = [
 // ---------------------------------------------------------------------------
 // TMM (Target Movement Modifier) by RUN MP — the SECOND movement number, not
 // walk and not a derived inch band. Look up the tmm of the first row where
-// runMP <= maxRun. Sprint and jump add +1 to base TMM (exposed separately by
-// convert.ts); the card prints base TMM.
+// runMP <= maxRun. Sprint adds +1 and jumping adds +2 to the bracket TMM
+// (exposed separately by convert.ts); the card prints base TMM.
 //
 // Verified vs DFA cards: run 3 -> 0, 6 -> 1, 8 -> 2, 9 -> 2, 11 -> 3.
 // (Atlas 3/5 -> runMP 5 -> TMM 1 also confirmed.)
@@ -236,9 +236,9 @@ export const TMM_BY_RUN: ReadonlyArray<TmmBracket> = [
   { maxRun: Infinity, tmm: 5 }, // INFERRED (Alpha Strike CE), UNVERIFIED
 ];
 
-/** Sprint and jump each add +1 to base TMM (rules). Card prints base TMM. */
+/** Sprint adds +1 to base TMM; jumping adds +2 (rules). Card prints base TMM. */
 export const TMM_SPRINT_BONUS = 1;
-export const TMM_JUMP_BONUS = 1;
+export const TMM_JUMP_BONUS = 2;
 
 // ---------------------------------------------------------------------------
 // TW weapon-damage tables. Separate, easily-extended exports keyed on a
