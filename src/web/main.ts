@@ -607,9 +607,14 @@ function applyTargetingComputer(result: AnyCard): AnyCard {
 }
 
 /** Card HTML with the BV badge + (hidden) quirks line (used for previews/print). */
-function cardHtml(result: AnyCard): string {
+/** Add the BV / quirks / role / TC badges around a rendered card body, so the
+ * preview and the force view look identical. `raw` may be a TIC-edited card. */
+function decorateCard(raw: string, result: AnyCard): string {
   const c = result.card as { bv?: number; sourceFile?: string };
-  return withTC(withRole(withQuirks(withBv(rawCardHtml(result), c.bv), lookupQuirks(result.card.name, c.sourceFile), c.sourceFile), lookupRole(result.card.name, c.sourceFile)), cardHasTC(result));
+  return withTC(withRole(withQuirks(withBv(raw, c.bv), lookupQuirks(result.card.name, c.sourceFile), c.sourceFile), lookupRole(result.card.name, c.sourceFile)), cardHasTC(result));
+}
+function cardHtml(result: AnyCard): string {
+  return decorateCard(rawCardHtml(result), result);
 }
 
 // ---- Manual TIC editor wiring ---------------------------------------------
@@ -703,7 +708,11 @@ function showResults(results: ConvertResult[]): void {
 function renderEdit(): void {
   if (!edit) return;
   edit.apply(ticsFromGrouping(edit.weapons, edit.grouping));
-  output.innerHTML = edit.renderCard() + renderTicEditorHtml(edit.weapons, edit.grouping, edit.facets);
+  // Decorate the (TIC-edited) preview card with the same BV/quirks/role/TC
+  // badges the force view shows, so the preview matches exactly.
+  const first = lastResults?.length === 1 ? lastResults[0]! : null;
+  const card = first?.ok ? decorateCard(edit.renderCard(), first.result) : edit.renderCard();
+  output.innerHTML = card + renderTicEditorHtml(edit.weapons, edit.grouping, edit.facets);
 }
 
 // ---- Editing a unit that's in the force (TICs + skills, persisted) --------
@@ -1308,8 +1317,8 @@ function deleteForce(): void {
   renderForce();
 }
 
-function addToForce(name: string, text: string, file?: string): void {
-  force.push({ name: name || "Unit", text, file });
+function addToForce(name: string, text: string, file?: string, grouping?: number[][]): void {
+  force.push({ name: name || "Unit", text, file, ...(grouping ? { grouping } : {}) });
   saveForce();
   renderForce();
 }
@@ -1322,7 +1331,9 @@ function addCurrentToForce(): void {
   }
   const { text, file } = currentPreview;
   const r = convertOne(text, file);
-  addToForce(r.ok ? r.result.card.name : "Unit", text, file); // file enables filename-based BV match
+  // Carry over any TIC regrouping done in the preview.
+  const grouping = edit ? edit.grouping.map((g) => [...g]) : undefined;
+  addToForce(r.ok ? r.result.card.name : "Unit", text, file, grouping); // file enables filename-based BV match
 }
 
 /** Render the force list panel (with per-unit BV + total) and toggle Print. */
