@@ -270,6 +270,9 @@ export interface Tic {
   /** Display-only heat override (web quirk application, e.g. cooling jackets);
    * when set, the card shows this instead of the computed ticHeat. */
   heatOverride?: number;
+  /** Display-only: set by the web layer when a Targeting Computer is aiding this
+   * (direct-fire) weapon, so the card can mark it "(TC)". */
+  tc?: boolean;
 }
 
 /**
@@ -546,6 +549,9 @@ export interface VehicleWeaponRow {
   range: RangeBrackets | null;
   rangeText: string | null;
   unknown: boolean;
+  /** Display-only: set by the web layer when a Targeting Computer aids this
+   * (direct-fire) weapon, so the card can mark it "(TC)". */
+  tc?: boolean;
 }
 
 /** Per-facing Override armor on the vehicle card. */

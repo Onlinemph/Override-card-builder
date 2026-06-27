@@ -118,7 +118,7 @@ function weaponsTable(card: OverrideCard): string {
       const heat = t.heatOverride ?? ticHeat(t); // quirk-adjusted heat (e.g. cooling jackets) when set
       const heatCls = t.heatOverride != null ? "num q-mod" : "num";
       return `<tr>
-        <td class="wname">${esc(abbreviatedTicLabel(t, card.techBase))}${flag}</td>
+        <td class="wname">${esc(abbreviatedTicLabel(t, card.techBase))}${t.tc ? ' <span class="tc-flag">(TC)</span>' : ""}${flag}</td>
         <td class="num wdmg">${esc(t.damageText)}</td>
         <td class="${heatCls}">${esc(heat)}</td>
         <td class="loc">${esc(locCode(t.location, t.rearMounted))}</td>

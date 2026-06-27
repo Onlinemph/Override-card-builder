@@ -590,11 +590,17 @@ function applyTargetingComputer(result: AnyCard): AnyCard {
   const clone = structuredClone(result);
   if (clone.kind === "mech") {
     for (const tic of clone.card.tics) {
-      if (tic.weapons.some((w) => isDirectFireLabel(w.name))) adjustRange(tic.range, -1, RANGE_BANDS.all);
+      if (tic.weapons.some((w) => isDirectFireLabel(w.name))) {
+        adjustRange(tic.range, -1, RANGE_BANDS.all);
+        tic.tc = true; // mark "(TC)" on the card
+      }
     }
   } else if (clone.kind === "vehicle" || clone.kind === "fighter" || clone.kind === "protomech" || clone.kind === "dropship") {
     for (const w of clone.card.weapons) {
-      if (isDirectFireLabel(w.label)) adjustRange(w.range, -1, RANGE_BANDS.all);
+      if (isDirectFireLabel(w.label)) {
+        adjustRange(w.range, -1, RANGE_BANDS.all);
+        w.tc = true; // mark "(TC)" on the card
+      }
     }
   }
   return clone;

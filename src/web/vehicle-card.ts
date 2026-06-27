@@ -37,7 +37,7 @@ function weaponsTable(card: VehicleCard): string {
     .map((w) => {
       const flag = w.unknown ? ' <span class="warn-flag">[?]</span>' : "";
       return `<tr>
-        <td class="wname">${esc(w.label)}${flag}</td>
+        <td class="wname">${esc(w.label)}${w.tc ? ' <span class="tc-flag">(TC)</span>' : ""}${flag}</td>
         <td class="num wdmg">${esc(w.damageText)}</td>
         <td class="num">${esc(w.heat)}</td>
         <td class="loc">${esc(w.facing)}</td>
