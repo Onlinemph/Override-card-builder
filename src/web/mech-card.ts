@@ -190,8 +190,8 @@ export function renderMechCard(card: OverrideCard): string {
             <div class="ms-ud-stats">
               <div><b>Type:</b> ${type}</div>
               <div><b>Mass:</b> ${esc(card.mass)} Tons</div>
-              <div class="ms-ud-move"><b>Move:</b> ${esc(card.move)} <b>Sinks:</b> ${esc(card.heatDissipation)}</div>
-              <div><b>TMM:</b> ${esc(card.tmm)} / ${esc(card.tmmSprint)}</div>
+              <div class="ms-ud-move"><b>Move:</b> ${esc(card.walkMove)} / ${esc(card.runMove)}${card.jump > 0 ? ` &nbsp;<b>Jump:</b> ${esc(card.jump)}` : ""} <b>Sinks:</b> ${esc(card.heatDissipation)}</div>
+              <div><b>TMM:</b> ${esc(card.tmm)} / ${esc(card.tmmSprint)}${card.jump > 0 ? ` <span class="muted">(jump ${esc(card.tmmJump)})</span>` : ""}</div>
             </div>
             ${heatScale()}
           </div>

@@ -537,6 +537,23 @@ describe("melee (Punch/Kick auto-generated + physical weapons)", () => {
   });
 });
 
+describe("jump as its own movement mode (TMM = jump bracket + 1)", () => {
+  const base = parseMtf(readFileSync(join(FIXTURES, "Atlas AS7-D.mtf"), "utf8"), "Atlas AS7-D.mtf");
+  const jump = (jumpMP: number) =>
+    convertUnit({ ...base, movement: { walkMP: 4, runMP: 6, jumpMP, runDerived: true } }).tmmJump;
+
+  it("uses the normal movement bracket for the jump distance, +1", () => {
+    expect(jump(5)).toBe(2); // lookupTmm(5)=1 -> +1
+    expect(jump(6)).toBe(2); // lookupTmm(6)=1 -> +1
+    expect(jump(7)).toBe(3); // lookupTmm(7)=2 -> +1
+    expect(jump(3)).toBe(1); // lookupTmm(3)=0 -> +1
+  });
+
+  it("is 0 when the unit can't jump", () => {
+    expect(jump(0)).toBe(0);
+  });
+});
+
 describe("MASC / Supercharger movement boost", () => {
   const base = parseMtf(readFileSync(join(FIXTURES, "Atlas AS7-D.mtf"), "utf8"), "Atlas AS7-D.mtf");
   const boosted = (walkMP: number, critNames: string[]) =>
@@ -926,7 +943,7 @@ describe("convertUnit: Atlas AS7-D", () => {
     expect(c.move).toBe("3/5");
     expect(c.tmm).toBe(1);
     expect(c.tmmSprint).toBe(2);
-    expect(c.tmmJump).toBe(2);
+    expect(c.tmmJump).toBe(0); // Atlas can't jump -> no jump TMM
   });
   it("armor / structure / heat", () => {
     expect(c.armor.torso).toBe(18); // (48+30+30)/6
