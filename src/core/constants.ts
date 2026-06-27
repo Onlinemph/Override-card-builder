@@ -1410,12 +1410,15 @@ export interface MeleeWeaponSpec {
   tnMod: number;
 }
 
+// Damage = mass / divisor (round up); tnMod is the point-blank to-hit modifier.
+// To-hit mods VERIFIED vs the DFA Override card generator (dfawargaming.com).
 export const MELEE_WEAPONS: Readonly<Record<string, MeleeWeaponSpec>> = {
-  hatchet: { divisor: 15, tnMod: 0 },
+  hatchet: { divisor: 15, tnMod: -1 },
   sword: { divisor: 30, tnMod: -2 },
   mace: { divisor: 12, tnMod: 1 },
   claws: { divisor: 20, tnMod: 1 },
-  "retractable blade": { divisor: 30, tnMod: 0 }, // mass/10 (+1), like a Sword but +0 to-hit
+  lance: { divisor: 15, tnMod: 1 }, // damage divisor estimated (mass/5); to-hit +1 per DFA
+  "retractable blade": { divisor: 30, tnMod: 0 }, // mass/10, like a Sword but +0 to-hit
 } as const;
 
 // ---------------------------------------------------------------------------

@@ -489,7 +489,7 @@ describe("melee (Punch/Kick auto-generated + physical weapons)", () => {
     });
     const hatchet = withHatchet.weapons[0]!;
     expect(hatchet.damageText).toBe("7");
-    expect(hatchet.rangeText).toBe("+0 – – – –");
+    expect(hatchet.rangeText).toBe("-1 – – – –"); // PB -1 (DFA)
   });
 
   it("surfaces a melee weapon found only in the crit slots (not the Weapons block)", () => {
@@ -519,6 +519,16 @@ describe("melee (Punch/Kick auto-generated + physical weapons)", () => {
       critSlots: [{ name: "Hatchet", location: "RA", rawLocation: "Right Arm" }],
     });
     expect(c.weapons.filter((w) => /hatchet/i.test(w.name))).toHaveLength(1);
+  });
+
+  it("uses the DFA point-blank to-hit modifier per melee weapon", () => {
+    const pb = (name: string) =>
+      convertWeapon({ name, location: "RA", rearMounted: false }, "IS", 50).rangeText!.split(" ")[0];
+    expect(pb("Hatchet")).toBe("-1");
+    expect(pb("Sword")).toBe("-2");
+    expect(pb("Mace")).toBe("+1");
+    expect(pb("Claws")).toBe("+1");
+    expect(pb("Lance")).toBe("+1");
   });
 
   it("handles the rest of the physical-weapon family (blade, vibro, industrial, taser)", () => {
