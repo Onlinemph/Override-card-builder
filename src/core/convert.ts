@@ -53,6 +53,7 @@ import {
   TORSO_STRUCTURE_BY_TONNAGE,
   WEAPON_ABBREV,
   WEAPON_DAMAGE,
+  RUN_MP_MULTIPLIER,
   WEAPON_DAMAGE_CLAN,
   WEAPON_DAMAGE_DIVISOR,
   WEAPON_HEAT,
@@ -1215,6 +1216,16 @@ function meleeWeaponsFromCrits(crits: ReadonlyArray<CritSlot>, declared: Readonl
   return out;
 }
 
+/** MASC and/or a Supercharger boost the run profile (Override house rule): one
+ * device multiplies movement by 1.25, both by 1.5. Detected from the crit slots
+ * ("CLMASC" / "Supercharger …"). Returns 1 when neither is present. */
+function moveBoostFactor(crits: ReadonlyArray<CritSlot>): number {
+  const names = crits.map((s) => s.name.toLowerCase());
+  const masc = names.some((n) => /masc/.test(n));
+  const supercharger = names.some((n) => /supercharger/.test(n));
+  return masc && supercharger ? 1.5 : masc || supercharger ? 1.25 : 1;
+}
+
 export function convertUnit(unit: Unit): OverrideCard {
   const a = unit.armor;
   const warnings: string[] = [];
@@ -1247,7 +1258,12 @@ export function convertUnit(unit: Unit): OverrideCard {
   const netDissipation = Math.max(0, heatDissipatedPerRound(unit) - heatGeneratingLoad(unit));
   const heatDissipation = roundNearest(netDissipation / HEAT_DISSIPATION_DIVISOR);
 
-  const tmm = lookupTmm(unit.movement.runMP);
+  // MASC / Supercharger boost: scale walk, then re-derive run so run stays
+  // walk × 1.5 (e.g. Walk 5 with both → 8 / 12).
+  const boost = moveBoostFactor(unit.critSlots ?? []);
+  const walkMP = boost > 1 ? roundUp(unit.movement.walkMP * boost) : unit.movement.walkMP;
+  const runMP = boost > 1 ? roundUp(walkMP * RUN_MP_MULTIPLIER) : unit.movement.runMP;
+  const tmm = lookupTmm(runMP);
 
   // Split the Weapons block: AMS / Laser AMS / TAG are equipment in Override, not
   // weapons, so divert them to the equipment line (via pseudo crit slots) instead
@@ -1291,9 +1307,9 @@ export function convertUnit(unit: Unit): OverrideCard {
     mass: unit.mass,
     techBase: unit.techBase,
     config: unit.config,
-    move: formatMove(unit.movement.walkMP, unit.movement.runMP, unit.movement.jumpMP),
-    walkMove: unit.movement.walkMP,
-    runMove: unit.movement.runMP,
+    move: formatMove(walkMP, runMP, unit.movement.jumpMP),
+    walkMove: walkMP,
+    runMove: runMP,
     jump: unit.movement.jumpMP,
     tmm,
     tmmSprint: tmm + TMM_SPRINT_BONUS,

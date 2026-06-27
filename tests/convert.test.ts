@@ -537,6 +537,35 @@ describe("melee (Punch/Kick auto-generated + physical weapons)", () => {
   });
 });
 
+describe("MASC / Supercharger movement boost", () => {
+  const base = parseMtf(readFileSync(join(FIXTURES, "Atlas AS7-D.mtf"), "utf8"), "Atlas AS7-D.mtf");
+  const boosted = (walkMP: number, critNames: string[]) =>
+    convertUnit({
+      ...base,
+      movement: { walkMP, runMP: Math.ceil(walkMP * 1.5), jumpMP: 0, runDerived: true },
+      critSlots: critNames.map((name) => ({ name, location: "CT", rawLocation: "Center Torso" })),
+    });
+
+  it("scales walk ×1.5 with BOTH MASC and Supercharger (Walk 5 -> 8/12, like the Rime Otter)", () => {
+    const c = boosted(5, ["CLMASC", "Supercharger (Clan) (OMNIPOD)"]);
+    expect(c.walkMove).toBe(8); // ceil(5 * 1.5)
+    expect(c.runMove).toBe(12); // ceil(8 * 1.5)
+    expect(c.move).toBe("8/12");
+    expect(c.tmm).toBe(3); // run 12 -> higher bracket
+  });
+
+  it("scales walk ×1.25 with a single device (Walk 5 -> 7/11)", () => {
+    expect(boosted(5, ["ISMASC"]).move).toBe("7/11"); // ceil(5*1.25)=7, ceil(7*1.5)=11
+    expect(boosted(5, ["Supercharger"]).move).toBe("7/11");
+  });
+
+  it("leaves movement unchanged without either device", () => {
+    const c = boosted(5, ["Double Heat Sink"]);
+    expect(c.walkMove).toBe(5);
+    expect(c.runMove).toBe(8);
+  });
+});
+
 describe("variable (range-dependent) damage (VERIFIED vs DFA card)", () => {
   it("classifies and formats short|med|long damage", () => {
     expect(classifyDamage("snub-nose ppc")).toBe("variable");
