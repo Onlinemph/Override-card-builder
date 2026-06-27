@@ -94,6 +94,24 @@ describe("convertAny dispatch (VTOL)", () => {
   });
 });
 
+describe("convertVehicle MASC / Supercharger boost", () => {
+  const base = parseBlkVehicle(load("Test Tank TT-1.blk"), "TT-1.blk"); // cruise 4
+  const withEquip = (...names: string[]) =>
+    convertVehicle({ ...base, mounts: [...base.mounts, ...names.map((name) => ({ name, facing: "body" as const }))] });
+
+  it("scales cruise ×1.25 with a Supercharger (4 -> 5/8)", () => {
+    expect(withEquip("ISSuperCharger").move).toBe("5 / 8t"); // ceil(4*1.25)=5, ceil(5*1.5)=8
+  });
+
+  it("scales cruise ×1.5 with both MASC and a Supercharger (4 -> 6/9)", () => {
+    expect(withEquip("Supercharger", "MASC").move).toBe("6 / 9t"); // ceil(4*1.5)=6, ceil(6*1.5)=9
+  });
+
+  it("leaves movement unchanged without either device", () => {
+    expect(convertVehicle(base).move).toBe("4 / 6t");
+  });
+});
+
 describe("convertVehicle", () => {
   const c = convertVehicle(parseBlkVehicle(load("Test Tank TT-1.blk"), "TT-1.blk"));
 

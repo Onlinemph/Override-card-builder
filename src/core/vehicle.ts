@@ -17,6 +17,7 @@
 import {
   IMPORTANT_EQUIPMENT,
   MOTION_TYPE_LETTER,
+  RUN_MP_MULTIPLIER,
   VEHICLE_ARMOR_DIVISOR,
   vehicleStructure,
 } from "./constants.js";
@@ -29,8 +30,10 @@ import {
   lookupTmm,
   lookupWeaponDamage,
   looksLikeWeapon,
+  moveBoostFactor,
   normalizeWeaponName,
   roundNearest,
+  roundUp,
   ticRow,
 } from "./convert.js";
 import type {
@@ -173,8 +176,13 @@ export function convertVehicle(unit: VehicleUnit): VehicleCard {
   // Internal structure per facing (uniform), by tonnage bracket (verified vs DFA).
   const structure = vehicleStructure(unit.tonnage);
 
+  // MASC / Supercharger boost (Override house rule): scale cruise, then
+  // re-derive flank as cruise × 1.5. Detected from the equipment mounts.
+  const boost = moveBoostFactor(unit.mounts.map((m) => m.name));
+  const cruiseMP = boost > 1 ? roundUp(unit.cruiseMP * boost) : unit.cruiseMP;
+  const flankMP = boost > 1 ? roundUp(cruiseMP * RUN_MP_MULTIPLIER) : unit.flankMP;
   // TMM mirrors the 'Mech run table on flank MP; card prints `tmm / tmm+1`.
-  const tmm = lookupTmm(unit.flankMP);
+  const tmm = lookupTmm(flankMP);
   const letter = MOTION_TYPE_LETTER[unit.motionType.toLowerCase()] ?? "";
 
   return {
@@ -185,9 +193,9 @@ export function convertVehicle(unit: VehicleUnit): VehicleCard {
     techBase: unit.techBase,
     tonnage: unit.tonnage,
     motionType: unit.motionType,
-    move: `${unit.cruiseMP} / ${unit.flankMP}${letter}`,
-    cruiseMP: unit.cruiseMP,
-    flankMP: unit.flankMP,
+    move: `${cruiseMP} / ${flankMP}${letter}`,
+    cruiseMP,
+    flankMP,
     tmm,
     armor,
     structure,

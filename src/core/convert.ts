@@ -1217,12 +1217,12 @@ function meleeWeaponsFromCrits(crits: ReadonlyArray<CritSlot>, declared: Readonl
 }
 
 /** MASC and/or a Supercharger boost the run profile (Override house rule): one
- * device multiplies movement by 1.25, both by 1.5. Detected from the crit slots
- * ("CLMASC" / "Supercharger …"). Returns 1 when neither is present. */
-function moveBoostFactor(crits: ReadonlyArray<CritSlot>): number {
-  const names = crits.map((s) => s.name.toLowerCase());
-  const masc = names.some((n) => /masc/.test(n));
-  const supercharger = names.some((n) => /supercharger/.test(n));
+ * device multiplies movement by 1.25, both by 1.5. `names` are the crit-slot /
+ * equipment-mount names to scan. Returns 1 when neither is present. */
+export function moveBoostFactor(names: ReadonlyArray<string>): number {
+  const lower = names.map((n) => n.toLowerCase());
+  const masc = lower.some((n) => /masc/.test(n));
+  const supercharger = lower.some((n) => /supercharger/.test(n));
   return masc && supercharger ? 1.5 : masc || supercharger ? 1.25 : 1;
 }
 
@@ -1260,7 +1260,7 @@ export function convertUnit(unit: Unit): OverrideCard {
 
   // MASC / Supercharger boost: scale walk, then re-derive run so run stays
   // walk × 1.5 (e.g. Walk 5 with both → 8 / 12).
-  const boost = moveBoostFactor(unit.critSlots ?? []);
+  const boost = moveBoostFactor((unit.critSlots ?? []).map((s) => s.name));
   const walkMP = boost > 1 ? roundUp(unit.movement.walkMP * boost) : unit.movement.walkMP;
   const runMP = boost > 1 ? roundUp(walkMP * RUN_MP_MULTIPLIER) : unit.movement.runMP;
   const tmm = lookupTmm(runMP);
