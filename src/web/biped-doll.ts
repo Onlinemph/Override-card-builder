@@ -29,8 +29,8 @@ export function armorShape(armorType?: string): ArmorShape {
   const s = (armorType ?? "").toLowerCase();
   if (/ferro|lamellor/.test(s)) return "diamond"; // Ferro-Fibrous (Light/Heavy/Lamellor)
   if (/stealth/.test(s)) return "triangle";
-  if (/hardened/.test(s)) return "octagon";
-  if (/reflective|reactive/.test(s)) return "pentagon";
+  if (/hardened/.test(s)) return "pentagon"; // shield — clearly distinct from the round default
+  if (/reflective|reactive/.test(s)) return "octagon";
   return "default"; // Standard, Primitive, Industrial, Commercial, …
 }
 /** Clean the "(Inner Sphere)"/"(Clan)" suffix for display. */
@@ -150,7 +150,7 @@ export function bipedDoll(card: OverrideCard): string {
     loc("tr", [144, 384, 52, 20], [0, 0, 0, 0], a.rear, 0);
 
   const legend =
-    `<circle class="bpip armor" cx="6" cy="456" r="4.5"/><text class="bdoll-lbl" x="15" y="459" text-anchor="start">armor</text>` +
+    `${armorPip(dollArmorShape, 6, 456, 4.5)}<text class="bdoll-lbl" x="15" y="459" text-anchor="start">armor</text>` +
     `<rect class="bpip struct" x="62" y="451" width="9" height="9"/><text class="bdoll-lbl" x="76" y="459" text-anchor="start">structure</text>`;
 
   // Per-location damage dropdowns positioned over the doll (fill armor then structure).
