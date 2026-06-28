@@ -2817,7 +2817,7 @@ if (inBattle()) {
 // Load the BV + quirk indexes, then refresh so badges/quirks appear once in.
 void loadBvIndex().then(renderForce);
 void Promise.all([loadQuirkIndex(), loadWeaponQuirkIndex()]).then(() => {
-  if (editingForceIdx != null) renderForceEdit();
+  rerenderCurrent(); // refresh whatever's on screen (preview OR force) now that quirks loaded
 });
 // Role data for the analytics breakdown; refresh the panel if it's open.
 void loadRoleIndex().then(() => {
