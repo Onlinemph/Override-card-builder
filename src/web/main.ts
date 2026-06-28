@@ -1220,6 +1220,9 @@ interface ForceUnit {
   name: string;
   text: string;
   file?: string;
+  /** Formation this unit belongs to (lance / star / Level II / …). Free-form;
+   * undefined = unassigned. Carried into battle (forces are deep-cloned). */
+  lance?: string;
   /** Pilot skills (default 4 / 5 when unset). Overridden by an assigned pilot. */
   gunnery?: number;
   piloting?: number;
@@ -1346,6 +1349,13 @@ function renderForcePicker(): void {
     .join("");
 }
 
+/** Distinct lance/star names in the active force, in first-appearance order. */
+function forceLances(): string[] {
+  const seen: string[] = [];
+  for (const u of force) if (u.lance && !seen.includes(u.lance)) seen.push(u.lance);
+  return seen;
+}
+
 function renderForce(): void {
   renderForcePicker();
   const listEl = document.getElementById("force-list");
@@ -1356,22 +1366,38 @@ function renderForce(): void {
   let total = 0;
   let withBvCount = 0;
   if (countEl) countEl.textContent = force.length ? `(${force.length})` : "";
-  listEl.innerHTML = force.length
-    ? force
-        .map((u, i) => {
-          const bv = unitBv(u); // skill-adjusted
-          if (bv) {
-            total += bv;
-            withBvCount += 1;
-          }
-          const bvTag = bv ? `<span class="force-item-bv">${bv.toLocaleString()}</span>` : "";
-          return (
-            `<div class="force-item"><button class="force-item-name" type="button" data-i="${i}" title="Edit TICs / skills for ${esc(u.name)}">${esc(u.name)}</button>${bvTag}` +
-            `<button class="force-remove" type="button" data-i="${i}" title="Remove" aria-label="Remove ${esc(u.name)}">✕</button></div>`
-          );
-        })
-        .join("")
-    : `<p class="muted force-empty">No units yet. Add units from the browser (＋) or the input area below.</p>`;
+  const lances = forceLances(); // distinct lance names, in first-appearance order
+  const lanceOpts = (cur?: string): string =>
+    [`<option value=""${!cur ? " selected" : ""}>— Unassigned —</option>`]
+      .concat(lances.map((l) => `<option value="${esc(l)}"${cur === l ? " selected" : ""}>${esc(l)}</option>`))
+      .concat('<option value="__new__">＋ New lance…</option>')
+      .join("");
+  const unitRow = (u: ForceUnit, i: number): string => {
+    const bv = unitBv(u); // skill-adjusted
+    if (bv) { total += bv; withBvCount += 1; }
+    const bvTag = bv ? `<span class="force-item-bv">${bv.toLocaleString()}</span>` : "";
+    return (
+      `<div class="force-item"><button class="force-item-name" type="button" data-i="${i}" title="Edit TICs / skills for ${esc(u.name)}">${esc(u.name)}</button>${bvTag}` +
+      `<select class="lance-pick" data-i="${i}" title="Assign to a lance / star">${lanceOpts(u.lance)}</select>` +
+      `<button class="force-remove" type="button" data-i="${i}" title="Remove" aria-label="Remove ${esc(u.name)}">✕</button></div>`
+    );
+  };
+  if (force.length === 0) {
+    listEl.innerHTML = `<p class="muted force-empty">No units yet. Add units from the browser (＋).</p>`;
+  } else if (lances.length === 0) {
+    listEl.innerHTML = force.map((u, i) => unitRow(u, i)).join(""); // flat list until you make lances
+  } else {
+    // Grouped by lance (assigned lances first in their order, Unassigned last).
+    listEl.innerHTML = [...lances, ""]
+      .map((lance) => {
+        const members = force.map((u, i) => ({ u, i })).filter(({ u }) => (u.lance ?? "") === lance);
+        if (members.length === 0) return "";
+        const gbv = members.reduce((s, { u }) => s + (unitBv(u) ?? 0), 0);
+        const head = `<div class="lance-head"><span class="lance-name">${lance ? esc(lance) : "Unassigned"}</span><span class="muted lance-meta">${members.length}${gbv ? ` · ${gbv.toLocaleString()} BV` : ""}</span></div>`;
+        return `<div class="lance-group">${head}${members.map(({ u, i }) => unitRow(u, i)).join("")}</div>`;
+      })
+      .join("");
+  }
   // Total BV line (notes if some units had no BV match).
   const totalEl = document.getElementById("force-total");
   if (totalEl) {
@@ -1748,6 +1774,21 @@ $("force-clear").addEventListener("click", () => {
   if (!confirm(`Remove all units from "${forces[activeForce]!.name}"?`)) return;
   force.length = 0; // clear in place — keep the reference into forces[activeForce]
   exitForceEditor();
+  saveForce();
+  renderForce();
+});
+$("force-list").addEventListener("change", (e) => {
+  const sel = (e.target as HTMLElement).closest<HTMLSelectElement>(".lance-pick");
+  if (!sel) return;
+  const u = force[Number(sel.dataset.i)];
+  if (!u) return;
+  let val = sel.value;
+  if (val === "__new__") {
+    const name = prompt("New lance / star name:", `Lance ${forceLances().length + 1}`)?.trim();
+    if (!name) { renderForce(); return; } // cancelled — reset the dropdown
+    val = name;
+  }
+  u.lance = val || undefined;
   saveForce();
   renderForce();
 });
@@ -2296,26 +2337,36 @@ function renderBattle(): void {
   const side = (f: SavedForce, fIdx: number, label: string): string => {
     const sStr = f.battle as "you" | "foe";
     let live = 0;
-    const chips = f.units
-      .map((u, i) => {
-        const bv = unitBv(u);
-        if (bv && !u.damage?.out) live += bv;
-        const cls = u.damage?.out ? "ko" : isDamaged(u) ? "hit" : "ok";
-        const active = activeForce === fIdx && editingForceIdx === i;
-        const acted = actedSet.has(unitKey(sStr, i));
-        return `<div class="bt-unit${u.damage?.out ? " bt-out" : ""}${active ? " bt-active" : ""}${acted ? " bt-acted" : ""}">
+    const chip = (u: ForceUnit, i: number): string => {
+      const bv = unitBv(u);
+      if (bv && !u.damage?.out) live += bv;
+      const cls = u.damage?.out ? "ko" : isDamaged(u) ? "hit" : "ok";
+      const active = activeForce === fIdx && editingForceIdx === i;
+      const acted = actedSet.has(unitKey(sStr, i));
+      return `<div class="bt-unit${u.damage?.out ? " bt-out" : ""}${active ? " bt-active" : ""}${acted ? " bt-acted" : ""}">
           <span class="bt-dot bt-${cls}"></span>
           <button class="bt-track" type="button" data-f="${fIdx}" data-i="${i}">${esc(u.name)}</button>
           ${acted ? '<span class="bt-acted-tag" title="Activated this round">✓</span>' : ""}
           ${bv ? `<span class="bt-bv">${bv.toLocaleString()}</span>` : ""}
           <button class="bt-kill" type="button" data-f="${fIdx}" data-ko="${i}" title="Mark out of action / revive" aria-label="Toggle out of action">💀</button>
         </div>`;
-      })
-      .join("");
+    };
+    const fLances: string[] = [];
+    for (const u of f.units) if (u.lance && !fLances.includes(u.lance)) fLances.push(u.lance);
+    const body =
+      fLances.length === 0
+        ? f.units.map((u, i) => chip(u, i)).join("")
+        : [...fLances, ""]
+            .map((lance) => {
+              const members = f.units.map((u, i) => ({ u, i })).filter(({ u }) => (u.lance ?? "") === lance);
+              if (members.length === 0) return "";
+              return `<div class="bt-lance-h">${lance ? esc(lance) : "Unassigned"}</div>` + members.map(({ u, i }) => chip(u, i)).join("");
+            })
+            .join("");
     const empty = mpInfo ? '<p class="muted">Waiting for opponent to join…</p>' : '<p class="muted">No units.</p>';
     return `<div class="bt-side">
       <div class="bt-side-h"><b>${esc(f.name)}</b><span class="muted">${label} · ${live.toLocaleString()} BV live</span></div>
-      <div class="bt-units">${chips || empty}</div>
+      <div class="bt-units">${body || empty}</div>
     </div>`;
   };
   const conn = mpInfo
