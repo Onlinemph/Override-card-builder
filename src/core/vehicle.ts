@@ -198,6 +198,7 @@ export function convertVehicle(unit: VehicleUnit): VehicleCard {
     flankMP,
     tmm,
     armor,
+    armorType: unit.armorType,
     structure,
     hasTurret: unit.hasTurret,
     hasRotor: unit.hasRotor,

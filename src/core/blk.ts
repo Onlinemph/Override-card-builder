@@ -119,6 +119,27 @@ function scalarAny(blocks: Block[], keys: string[]): string | undefined {
   return undefined;
 }
 
+/**
+ * MegaMek BLK `<armor_type>` numeric code → armor name (only the ones we draw a
+ * pip shape for; any other code maps to undefined = treated as Standard). Codes
+ * validated against named variants in the corpus (2 Reactive, 3 Reflective,
+ * 4 Hardened, 6 Heavy Ferro, 8/22 Stealth).
+ */
+const BLK_ARMOR_TYPE: Readonly<Record<string, string>> = {
+  "1": "Ferro-Fibrous",
+  "2": "Reactive",
+  "3": "Reflective",
+  "4": "Hardened",
+  "5": "Light Ferro-Fibrous",
+  "6": "Heavy Ferro-Fibrous",
+  "8": "Stealth",
+  "22": "Stealth",
+};
+function blkArmorType(blocks: Block[]): string | undefined {
+  const code = scalar(blocks, "armor_type")?.trim();
+  return code ? BLK_ARMOR_TYPE[code] : undefined;
+}
+
 function intOr(value: string | undefined, fallback: number): number {
   if (value === undefined) return fallback;
   const m = value.match(/-?\d+/);
@@ -332,6 +353,7 @@ export function parseBlkVehicle(text: string, file = "<unknown>"): VehicleUnit {
     armor,
     hasTurret,
     hasRotor: isVtol,
+    armorType: blkArmorType(blocks),
     ...(support ? { support: true } : {}),
     mounts: parseVehicleMounts(blocks),
   };
@@ -444,6 +466,7 @@ export function parseBlkFighter(text: string, file = "<unknown>"): FighterUnit {
     heatSinkType,
     fuel,
     armor: parseFighterArmor(blocks),
+    armorType: blkArmorType(blocks),
     mounts: parseFighterMounts(blocks),
   };
 }
@@ -594,6 +617,7 @@ export function parseBlkProto(text: string, file = "<unknown>"): ProtoMechUnit {
     hasArms,
     hasMainGun,
     armor,
+    armorType: blkArmorType(blocks),
     mounts,
   };
 }
@@ -750,6 +774,7 @@ export function parseBlkDropship(text: string, file = "<unknown>"): DropshipUnit
     heatSinkType,
     structuralIntegrity,
     armor: parseDropshipArmor(blocks),
+    armorType: blkArmorType(blocks),
     mounts: parseDropshipMounts(blocks),
     bays: parseDropshipBays(blocks),
   };

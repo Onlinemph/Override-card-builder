@@ -9,7 +9,7 @@
  */
 
 import type { RangeBrackets, VehicleCard } from "../core/index.js";
-import { vehicleDoll } from "./biped-doll.js";
+import { armorTypeLabel, vehicleDoll } from "./biped-doll.js";
 
 function esc(s: string | number): string {
   return String(s).replace(
@@ -83,6 +83,7 @@ export function renderVehicleCard(card: VehicleCard): string {
             <div><b>Mass:</b> ${esc(card.tonnage)} Tons</div>
             <div class="ms-ud-move"><b>Move:</b> ${esc(card.move)}</div>
             <div><b>TMM:</b> ${esc(card.tmm)} / ${esc(card.tmm + 1)}</div>
+            ${card.armorType ? `<div><b>Armor:</b> ${esc(armorTypeLabel(card.armorType))}</div>` : ""}
           </div>
         </div>
         ${weaponsTable(card)}

@@ -11,7 +11,7 @@
  */
 
 import type { DropshipCard, RangeBrackets } from "../core/index.js";
-import { dropshipDoll } from "./biped-doll.js";
+import { armorTypeLabel, dropshipDoll } from "./biped-doll.js";
 
 function esc(s: string | number): string {
   return String(s).replace(
@@ -190,6 +190,7 @@ export function renderDropshipCard(card: DropshipCard): string {
               <div><b>Mass:</b> ${esc(card.tonnage.toLocaleString())} Tons</div>
               <div class="ms-ud-move"><b>Thrust:</b> ${esc(card.move)} <b>Sinks:</b> ${esc(card.sinks)}</div>
               <div><b>TMM:</b> ${esc(card.tmm)} <b>DThr:</b> ${esc(card.dthr)}</div>
+              ${card.armorType ? `<div><b>Armor:</b> ${esc(armorTypeLabel(card.armorType))}</div>` : ""}
             </div>
             ${heatScale()}
           </div>

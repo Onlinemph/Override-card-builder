@@ -239,6 +239,7 @@ export function convertDropship(unit: DropshipUnit): DropshipCard {
     sinks,
     dthr,
     armor,
+    armorType: unit.armorType,
     structure,
     weapons: collapsed,
     weaponMounts: allWeapons,

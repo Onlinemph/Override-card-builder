@@ -527,6 +527,8 @@ export interface VehicleUnit {
   /** Flank MP (≈ run): explicit if present, else ceil(cruise * 1.5). */
   flankMP: number;
   armor: VehicleArmorRaw;
+  /** Armor type (for the pip shape); undefined = Standard/default. */
+  armorType?: string;
   hasTurret: boolean;
   /** True for VTOLs — adds the rotor location. */
   hasRotor: boolean;
@@ -591,6 +593,8 @@ export interface VehicleCard {
   tmm: number;
   /** Per-facing Override armor (best-effort: TW / 5). */
   armor: VehicleCardArmor;
+  /** Armor type (for the pip shape); undefined = Standard/default. */
+  armorType?: string;
   /** Internal structure per facing (uniform, best-effort from tonnage). */
   structure: number;
   hasTurret: boolean;
@@ -666,6 +670,8 @@ export interface FighterUnit {
   /** Fuel points from `<fuel>` (0 if absent). */
   fuel: number;
   armor: FighterArmorRaw;
+  /** Armor type (for the pip shape); undefined = Standard/default. */
+  armorType?: string;
   mounts: FighterMount[];
   sourceFile?: string;
 }
@@ -705,6 +711,8 @@ export interface FighterCard {
   dthr: number;
   /** Per-facing Override armor (TW / 4). */
   armor: FighterCardArmor;
+  /** Armor type (for the pip shape); undefined = Standard/default. */
+  armorType?: string;
   /** Single airframe-wide Structural Integrity (best-effort from tonnage). */
   structure: number;
   /** Fuel points (from BLK <fuel>). Fuel tonnage = fuel / (conventional ? 160 : 80). */
@@ -909,6 +917,8 @@ export interface ProtoMechUnit {
   /** True when the design carries a torso-mounted Main Gun (6th armor value). */
   hasMainGun: boolean;
   armor: ProtoArmorRaw;
+  /** Armor type (for the pip shape); undefined = Standard/default. */
+  armorType?: string;
   mounts: ProtoMount[];
   sourceFile?: string;
 }
@@ -943,6 +953,8 @@ export interface ProtoMechCard {
   hasMainGun: boolean;
   /** Per-location armor (TW / 3, round nearest, min 1; 0 if absent). */
   armor: ProtoCardArmor;
+  /** Armor type (for the pip shape); undefined = Standard/default. */
+  armorType?: string;
   /** Per-location internal structure (IS / 3, round nearest, min 1). */
   structure: ProtoCardArmor;
   /** Weapon rows (TICs grouped per location; `facing` holds the Loc code). */
@@ -1044,6 +1056,8 @@ export interface DropshipUnit {
   /** TW Structural Integrity from `<structural_integrity>`. */
   structuralIntegrity: number;
   armor: DropshipArmorRaw;
+  /** Armor type (for the pip shape); undefined = Standard/default. */
+  armorType?: string;
   mounts: DropshipMount[];
   bays: DropshipBay[];
   sourceFile?: string;
@@ -1073,6 +1087,8 @@ export interface DropshipCard {
   dthr: number;
   /** Per-arc Override armor (TW / 4, round nearest, min 1). */
   armor: DropshipArmorRaw;
+  /** Armor type (for the pip shape); undefined = Standard/default. */
+  armorType?: string;
   /** Single Structural Integrity: TW SI / 3, round nearest, min 1 (best-effort). */
   structure: number;
   /** Weapon rows (TICs grouped per arc; `facing` holds the arc code). */

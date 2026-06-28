@@ -10,7 +10,7 @@
  */
 
 import type { FighterCard, RangeBrackets } from "../core/index.js";
-import { fighterDoll } from "./biped-doll.js";
+import { armorTypeLabel, fighterDoll } from "./biped-doll.js";
 
 function esc(s: string | number): string {
   return String(s).replace(
@@ -121,6 +121,7 @@ export function renderFighterCard(card: FighterCard): string {
               <div><b>Mass:</b> ${esc(card.tonnage)} Tons</div>
               <div class="ms-ud-move"><b>Thrust:</b> ${esc(card.move)}${sinks}</div>
               <div><b>TMM:</b> ${esc(card.tmm)} <b>DThr:</b> ${esc(card.dthr)}</div>
+              ${card.armorType ? `<div><b>Armor:</b> ${esc(armorTypeLabel(card.armorType))}</div>` : ""}
               ${fuel}
             </div>
             ${card.conventional ? "" : heatScale()}

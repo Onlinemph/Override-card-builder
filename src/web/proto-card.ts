@@ -10,7 +10,7 @@
  */
 
 import type { ProtoMechCard, RangeBrackets } from "../core/index.js";
-import { protoDoll } from "./biped-doll.js";
+import { armorTypeLabel, protoDoll } from "./biped-doll.js";
 
 function esc(s: string | number): string {
   return String(s).replace(
@@ -93,6 +93,7 @@ export function renderProtoCard(card: ProtoMechCard): string {
             <div><b>Mass:</b> ${esc(card.tonnage)} Tons</div>
             <div class="ms-ud-move"><b>Move:</b> ${esc(card.move)}</div>
             <div><b>TMM:</b> ${esc(card.tmmText)}</div>
+            ${card.armorType ? `<div><b>Armor:</b> ${esc(armorTypeLabel(card.armorType))}</div>` : ""}
           </div>
         </div>
         ${weaponsTable(card)}

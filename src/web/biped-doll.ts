@@ -173,8 +173,8 @@ export function bipedDoll(card: OverrideCard): string {
 }
 
 /** Armor/structure key swatch (shared by the biped and quad dolls). */
-const DOLL_LEGEND =
-  `<circle class="bpip armor" cx="6" cy="456" r="4.5"/><text class="bdoll-lbl" x="15" y="459" text-anchor="start">armor</text>` +
+const dollLegend = (): string =>
+  `${armorPip(dollArmorShape, 6, 456, 4.5)}<text class="bdoll-lbl" x="15" y="459" text-anchor="start">armor</text>` +
   `<rect class="bpip struct" x="62" y="451" width="9" height="9"/><text class="bdoll-lbl" x="76" y="459" text-anchor="start">structure</text>`;
 
 /** True for Quad and QuadVee 'Mechs (top-down four-leg doll). */
@@ -227,7 +227,7 @@ export function quadDoll(card: OverrideCard): string {
     ctl("rl", "R REAR", "5", a.rightLeg + s.rightLeg, 76, 76) +
     ctl("tr", "REAR", "2,12", a.rear + s.torso, 50, 86); // rear armor bleeds into torso structure
 
-  return `<div class="bdoll-wrap"><svg class="bdoll" viewBox="-18 0 376 470" xmlns="http://www.w3.org/2000/svg">${seg}${dolls}${DOLL_LEGEND}</svg>${controls}</div>
+  return `<div class="bdoll-wrap"><svg class="bdoll" viewBox="-18 0 376 470" xmlns="http://www.w3.org/2000/svg">${seg}${dolls}${dollLegend()}</svg>${controls}</div>
   <p class="mdoll-legend">Armor (circles) over Structure (squares) · set damage per part — lower the number to heal</p>
   <p class="mdoll-legend">Quad: front legs take arm hits (3-4 / 10-11), rear legs take leg hits (5 / 9).</p>`;
 }
@@ -240,7 +240,7 @@ export function quadDoll(card: OverrideCard): string {
  * (areas nose/lw/rw/aft carry armor; si carries the structure track).
  */
 export function fighterDoll(card: FighterCard): string {
-  dollArmorShape = "default"; // vehicle-style cards carry no armor type
+  dollArmorShape = armorShape(card.armorType);
   const a = card.armor;
   const si = card.structure;
   const seg =
@@ -273,7 +273,7 @@ export function fighterDoll(card: FighterCard): string {
     ctl("si", "SI", "", si, 50, 47) +
     ctl("aft", "AFT", "2,12", a.aft, 50, 90);
 
-  return `<div class="bdoll-wrap"><svg class="bdoll" viewBox="-18 0 376 470" xmlns="http://www.w3.org/2000/svg">${seg}${dolls}${DOLL_LEGEND}</svg>${controls}</div>
+  return `<div class="bdoll-wrap"><svg class="bdoll" viewBox="-18 0 376 470" xmlns="http://www.w3.org/2000/svg">${seg}${dolls}${dollLegend()}</svg>${controls}</div>
   <p class="mdoll-legend">Armor (circles) per facing over a single SI track (squares, airframe-wide).</p>`;
 }
 
@@ -286,7 +286,7 @@ export function fighterDoll(card: FighterCard): string {
  * vehicles drop the turret and shift the 5/9 rolls onto the sides.
  */
 export function vehicleDoll(card: VehicleCard): string {
-  dollArmorShape = "default"; // vehicle-style cards carry no armor type
+  dollArmorShape = armorShape(card.armorType);
   const a = card.armor;
   const s = card.structure;
   const vtol = card.hasRotor;
@@ -334,7 +334,7 @@ export function vehicleDoll(card: VehicleCard): string {
     ctl("is", "IS", "", s, 50, 66) +
     ctl("rear", "REAR", "", a.rear, 50, 91);
 
-  return `<div class="bdoll-wrap"><svg class="bdoll" viewBox="-18 0 376 470" xmlns="http://www.w3.org/2000/svg">${seg}${dolls}${DOLL_LEGEND}</svg>${controls}</div>
+  return `<div class="bdoll-wrap"><svg class="bdoll" viewBox="-18 0 376 470" xmlns="http://www.w3.org/2000/svg">${seg}${dolls}${dollLegend()}</svg>${controls}</div>
   <p class="mdoll-legend">Armor (circles) per facing over a single structure track (squares) · TAC (crit) on 2 &amp; 12.</p>`;
 }
 
@@ -345,7 +345,7 @@ export function vehicleDoll(card: VehicleCard): string {
  * mirrors the 'Mech's except a roll of 3 or 11 is a MISS (struck through).
  */
 export function protoDoll(card: ProtoMechCard): string {
-  dollArmorShape = "default"; // vehicle-style cards carry no armor type
+  dollArmorShape = armorShape(card.armorType);
   const a = card.armor;
   const s = card.structure;
   const mg = card.hasMainGun;
@@ -386,7 +386,7 @@ export function protoDoll(card: ProtoMechCard): string {
     ctl("lg", "LEGS", "5,9", a.legs + s.legs, 50, 72) +
     (mg ? ctl("mg", "M GUN", "2", (a.mainGun ?? 0) + (s.mainGun ?? 0), 7, 33) : "");
 
-  return `<div class="bdoll-wrap"><svg class="bdoll" viewBox="-18 0 376 470" xmlns="http://www.w3.org/2000/svg">${seg}${dolls}${DOLL_LEGEND}</svg>${controls}</div>
+  return `<div class="bdoll-wrap"><svg class="bdoll" viewBox="-18 0 376 470" xmlns="http://www.w3.org/2000/svg">${seg}${dolls}${dollLegend()}</svg>${controls}</div>
   <p class="mdoll-legend">Armor (circles) over Structure (squares) · single Legs location · <s class="loc-miss">3</s>/<s class="loc-miss">11</s> = miss.</p>`;
 }
 
@@ -397,7 +397,7 @@ export function protoDoll(card: ProtoMechCard): string {
  * 3-5, L-Side 9-11, Aft 2 & 12). Visual only — no per-point damage tracking.
  */
 export function dropshipDoll(card: DropshipCard): string {
-  dollArmorShape = "default"; // vehicle-style cards carry no armor type
+  dollArmorShape = armorShape(card.armorType);
   const a = card.armor;
   const aero = /aero/i.test(card.motionLabel);
   const arc = (x: number, y: number, label: string, hits: string, val: number): string =>

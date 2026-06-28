@@ -208,6 +208,7 @@ export function convertProto(unit: ProtoMechUnit): ProtoMechCard {
     hasArms: unit.hasArms,
     hasMainGun: unit.hasMainGun,
     armor,
+    armorType: unit.armorType,
     structure,
     weapons,
     weaponMounts: allWeapons,

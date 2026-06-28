@@ -2499,6 +2499,7 @@ exports[`oracle lock-in: full-unit conversions > converts Test Copter TV-1.blk t
       "right": 2,
       "rotor": 1,
     },
+    "armorType": undefined,
     "chassis": "Test Copter",
     "cruiseMP": 8,
     "equipment": [],
@@ -2816,6 +2817,7 @@ exports[`oracle lock-in: full-unit conversions > converts Test Dropship DS-1.blk
       "nose": 75,
       "rightSide": 63,
     },
+    "armorType": undefined,
     "bays": [
       {
         "label": "'Mech",
@@ -3204,6 +3206,7 @@ exports[`oracle lock-in: full-unit conversions > converts Test Fighter TF-1.blk 
       "nose": 10,
       "rightWing": 6,
     },
+    "armorType": undefined,
     "chassis": "Test Fighter",
     "conventional": false,
     "dthr": 1,
@@ -3728,6 +3731,7 @@ exports[`oracle lock-in: full-unit conversions > converts Test Proto PR-1.blk to
       "rightArm": 1,
       "torso": 4,
     },
+    "armorType": undefined,
     "chassis": "Test Proto",
     "equipment": [
       {
@@ -4153,6 +4157,7 @@ exports[`oracle lock-in: full-unit conversions > converts Test Tank TT-1.blk to 
       "right": 8,
       "turret": 9,
     },
+    "armorType": undefined,
     "chassis": "Test Tank",
     "cruiseMP": 4,
     "equipment": [
