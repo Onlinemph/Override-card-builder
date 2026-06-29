@@ -2125,12 +2125,13 @@ function unitBracket(u: ForceUnit): number {
   }
   return Math.max(0, t);
 }
-/** A move string ("w/r" or "w/r/Jj") cut by 2 per leg-actuator hit (jump unaffected). */
+/** A move string ("w/r" or "w/r/Jj") with walk cut by 2 per leg-actuator hit;
+ * run re-derives (walk × 1.5, round up). Jump is unaffected. */
 function reducedMove(move: string, legHits: number): string {
   const m = legHits > 0 ? move.match(/^(\d+)\/(\d+)(?:\/(\d+)j)?$/) : null;
   if (!m) return move;
-  const cut = 2 * legHits;
-  return `${Math.max(0, Number(m[1]) - cut)}/${Math.max(0, Number(m[2]) - cut)}${m[3] ? `/${m[3]}j` : ""}`;
+  const walk = Math.max(0, Number(m[1]) - 2 * legHits);
+  return `${walk}/${Math.ceil(walk * 1.5)}${m[3] ? `/${m[3]}j` : ""}`;
 }
 function saveInit(): void { try { localStorage.setItem(INIT_KEY, JSON.stringify(battleInit)); } catch { /* ignore */ } }
 function loadInit(): void {

@@ -191,8 +191,9 @@ export function renderMechCard(card: OverrideCard): string {
   // Leg-actuator penalty (web-set during play): −2 walk/run and −1 TMM each.
   const lh = card.legHits ?? 0;
   const wrap = (base: string, val: number) => (lh > 0 ? `<span class="leg-mod">${val}</span>` : base);
-  const walk = wrap(esc(card.walkMove), Math.max(0, card.walkMove - 2 * lh));
-  const run = wrap(esc(card.runMove), Math.max(0, card.runMove - 2 * lh));
+  const walkVal = Math.max(0, card.walkMove - 2 * lh); // −2 walk per hit; run re-derives
+  const walk = wrap(esc(card.walkMove), walkVal);
+  const run = wrap(esc(card.runMove), Math.ceil(walkVal * 1.5));
   const baseTmm = wrap(esc(card.tmm), Math.max(0, card.tmm - lh));
   const sprintTmm = wrap(esc(card.tmmSprint), Math.max(0, card.tmmSprint - lh));
   const legTag = lh > 0 ? ` <span class="leg-mod" title="leg actuator penalty">(leg −${lh})</span>` : "";
