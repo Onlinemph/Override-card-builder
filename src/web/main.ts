@@ -22,7 +22,7 @@ import { renderBACard } from "./ba-card.js";
 import { renderDropshipCard } from "./dropship-card.js";
 import { renderFighterCard } from "./fighter-card.js";
 import { renderInfantryCard } from "./infantry-card.js";
-import { movementLines, renderMechCard } from "./mech-card.js";
+import { movementLines, renderMechCard, weaponsTable } from "./mech-card.js";
 import { renderProtoCard } from "./proto-card.js";
 import { renderVehicleCard } from "./vehicle-card.js";
 import { applyMove, groupingFromTics, renderTicEditorHtml, ticsFromGrouping } from "./tic-editor.js";
@@ -779,7 +779,10 @@ function renderForceEdit(): void {
   if (r.result.kind === "mech") {
     r.result.card.legHits = u.damage?.legHits; // play-mode leg penalty
     r.result.card.heat = u.damage?.heat; // play-mode heat: −2 Move / −1 TMM at 1+, +1 to-hit at 2+
-    editMechCard = r.result.card; // kept so updateTabletop can refresh Move/TMM in place
+    // The displayed card has TC + quirk effects baked in; keep that same adjusted
+    // copy so updateTabletop can refresh Move/TMM + weapon to-hit mods in place.
+    const adj = applyTargetingComputer(applyQuirkEffects(r.result));
+    editMechCard = adj.kind === "mech" ? adj.card : null;
   }
   editTorsoCockpit =
     r.result.kind === "mech" && r.result.card.equipment.some((e) => /torso-mounted cockpit/i.test(e.label));
@@ -1052,22 +1055,21 @@ function updateTabletop(): void {
   output.querySelectorAll<HTMLElement>(".heatscale .hs-row").forEach((row) => {
     row.classList.toggle("hs-active", Number(row.querySelector(".hs-n")?.textContent) === lvl);
   });
-  // Refresh the Move/TMM lines in place so heat (and leg) penalties show on the
-  // card itself without re-rendering (keeps the to-hit controls' state).
+  // Refresh the Move/TMM lines and the weapons to-hit table in place so heat (and
+  // leg) penalties change the card itself without re-rendering — which keeps the
+  // to-hit controls' state and avoids flicker on remote updates.
   if (editMechCard) {
     editMechCard.heat = heat;
     editMechCard.legHits = u.damage?.legHits;
-    const moveEl = output.querySelector(".ms-ud-move");
-    const tmmEl = output.querySelector(".ms-ud-tmm");
-    if (moveEl && tmmEl) {
+    const replace = (sel: string, html: string, n = 1): void => {
       const tmpl = document.createElement("template");
-      tmpl.innerHTML = movementLines(editMechCard);
-      const [newMove, newTmm] = Array.from(tmpl.content.children);
-      if (newMove && newTmm) {
-        moveEl.replaceWith(newMove);
-        tmmEl.replaceWith(newTmm);
-      }
-    }
+      tmpl.innerHTML = html;
+      const nodes = Array.from(tmpl.content.children).slice(0, n);
+      const targets = Array.from(output.querySelectorAll(sel)).slice(0, n);
+      if (nodes.length === n && targets.length === n) targets.forEach((t, i) => t.replaceWith(nodes[i]!));
+    };
+    replace(".ms-ud-move, .ms-ud-tmm", movementLines(editMechCard), 2);
+    replace(".mweapons", weaponsTable(editMechCard));
   }
   const out = output.querySelector("#tohit-out");
   if (!out) return;
@@ -2169,6 +2171,7 @@ function unitBracket(u: ForceUnit): number {
   if (battleInit.modReactions) {
     const d = u.damage ?? {};
     t -= (d.condition ?? 0) + (d.engine ?? 0) + (d.gyro ?? 0) + (d.avionics ?? 0);
+    t -= (d.heat ?? 0) >= 1 ? 1 : 0; // heat 1+: −1 TMM, slows reactions
   }
   return Math.max(0, t);
 }

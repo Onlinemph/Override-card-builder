@@ -27,10 +27,18 @@ function bracket(v: number | null | undefined): string {
   return v >= 0 ? `+${v}` : `${v}`;
 }
 
-/** The five range cells PB/S/M/L/X for a weapon row. */
-function rangeCells(r: RangeBrackets | null): string {
+/** The five range cells PB/S/M/L/X for a weapon row. A heat modifier (Override
+ * scale: +1 ranged attack mod at heat 2+) is folded into each value and the
+ * affected cells are flagged so they read as worsened. */
+function rangeCells(r: RangeBrackets | null, heatMod = 0): string {
   const vals = r ? [r.pb, r.s, r.m, r.l, r.x] : [null, null, null, null, null];
-  return vals.map((v) => `<td class="num rng">${esc(bracket(v))}</td>`).join("");
+  return vals
+    .map((v) => {
+      const adj = v == null ? null : v + heatMod;
+      const cls = heatMod && v != null ? "num rng heat-rng" : "num rng";
+      return `<td class="${cls}">${esc(bracket(adj))}</td>`;
+    })
+    .join("");
 }
 
 /** Short location code for the weapons table (torsos collapse to "T"). */
@@ -115,8 +123,12 @@ function heatScale(heat = 0): string {
   return `<div class="heatscale"><div class="hs-label">Heat Scale</div><div class="hs-rows">${rows}</div></div>`;
 }
 
-/** The weapons table: one row per TIC, plus the auto Punch/Kick row. */
-function weaponsTable(card: OverrideCard): string {
+/** The weapons table: one row per TIC, plus the auto Punch/Kick row. Exported so
+ * the play view can re-render it in place when heat changes the to-hit mods. */
+export function weaponsTable(card: OverrideCard): string {
+  // Heat 2+ on the Override scale worsens every ranged attack by +1; bake it
+  // straight into the printed range modifiers (physical Punch/Kick is unaffected).
+  const heatMod = (card.heat ?? 0) >= 2 ? 1 : 0;
   const rows = card.tics
     .map((t) => {
       const flag = t.weapons.some((w) => w.unknown) ? ' <span class="warn-flag">[?]</span>' : "";
@@ -127,10 +139,13 @@ function weaponsTable(card: OverrideCard): string {
         <td class="num wdmg">${esc(t.damageText)}</td>
         <td class="${heatCls}">${esc(heat)}</td>
         <td class="loc">${esc(locCode(t.location, t.rearMounted))}</td>
-        ${rangeCells(t.range)}
+        ${rangeCells(t.range, heatMod)}
       </tr>`;
     })
     .join("");
+  const heatCap = heatMod
+    ? `<caption class="wcap-heat">Range to-hit modifiers include +${heatMod} from heat</caption>`
+    : "";
   // Punch / Kick: point-blank only (PB shows the melee mod, here +0).
   const melee = `<tr class="melee">
     <td class="wname">Punch / Kick</td>
@@ -139,7 +154,7 @@ function weaponsTable(card: OverrideCard): string {
     <td class="num rng">+0</td><td class="num rng">–</td><td class="num rng">–</td>
     <td class="num rng">–</td><td class="num rng">–</td>
   </tr>`;
-  return `<table class="mweapons">
+  return `<table class="mweapons">${heatCap}
     <thead><tr>
       <th class="wname">Weapons</th><th class="num">Dmg</th><th class="num">Ht</th>
       <th class="loc">Loc</th><th class="num">PB</th><th class="num">S</th>
@@ -204,9 +219,8 @@ export function movementLines(card: OverrideCard): string {
   const sprintTmm = wrap(esc(card.tmmSprint), Math.max(0, card.tmmSprint - tmmPen), tmmPen > 0);
   const mods: string[] = [];
   if (lh > 0) mods.push(`leg −${lh}`);
-  if (heat >= 1) mods.push("heat −2/−1");
-  if (heat >= 2) mods.push("heat +1 to-hit");
-  const tag = mods.length ? ` <span class="leg-mod" title="active movement/attack penalties">(${mods.join(", ")})</span>` : "";
+  if (heat >= 1) mods.push("heat −2/−1"); // +1 ranged at heat 2+ shows in the weapons table
+  const tag = mods.length ? ` <span class="leg-mod" title="active movement penalties">(${mods.join(", ")})</span>` : "";
   return `<div class="ms-ud-move"><b>Move:</b> ${walk} / ${run}${card.jump > 0 ? ` &nbsp;<b>Jump:</b> ${esc(card.jump)}` : ""}${tag} <b>Sinks:</b> ${esc(card.heatDissipation)}</div>
               <div class="ms-ud-tmm"><b>TMM:</b> ${baseTmm} / ${sprintTmm}${card.jump > 0 ? ` <span class="muted">(jump ${esc(card.tmmJump)})</span>` : ""}</div>`;
 }
