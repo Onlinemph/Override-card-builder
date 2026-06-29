@@ -1979,7 +1979,7 @@ type MpMsg = {
   acted?: string[];
   key?: string;
   on?: boolean;
-  phase?: "move" | "combat";
+  phase?: Phase;
   mode?: MoveMode;
   moves?: Record<string, MoveMode>;
 };
@@ -2099,14 +2099,19 @@ function mpBroadcast(side: "you" | "foe", idx: number, u: ForceUnit): void {
 // (any of your un-acted units may activate). Optional "Modified Reactions"
 // lowers a unit's bracket by its condition-monitor + critical hits.
 type MoveMode = "still" | "walk" | "sprint" | "jump";
+type Phase = "move" | "combat" | "end";
+/** A unit's cumulative damage totals, snapshotted at round start to spot what it
+ * took this round (for end-phase falling checks). */
+interface DmgSnap { d: number; g: number; l: number }
 interface BattleInit {
   round: number;
-  phase: "move" | "combat"; // each round has a movement sub-round then a combat sub-round
+  phase: Phase; // each round runs movement → combat → end sub-rounds
   roll: { host: number | null; guest: number | null }; // raw 2d6 per side
   bonus: { host: number; guest: number }; // initiative bonus added to the roll
   acted: string[]; // unit keys activated THIS phase ("host:0", "guest:2", …)
   moves: Record<string, MoveMode>; // unit key → chosen movement (sets its TMM), reset each round
   modReactions: boolean; // optional rule toggle
+  snap?: Record<string, DmgSnap>; // per-unit damage at round start (end-phase delta baseline)
 }
 const INIT_KEY = "mtf2override.battleInit";
 const freshInit = (): BattleInit => ({
@@ -2200,11 +2205,82 @@ function initRoll(): void {
 }
 /** Advance the sub-round: Movement → Combat (same initiative), or Combat → next
  * round (re-roll, reset movement choices). */
+const PHASE_LABEL: Record<Phase, string> = { move: "Movement", combat: "Combat", end: "End" };
+/** Button label for advancing OUT of the given phase. */
+const nextPhaseLabel = (p: Phase): string => (p === "move" ? "Combat phase ▸" : p === "combat" ? "End phase ▸" : "Next round ▸");
+
+// --- End phase: falling checks. A 'Mech that took 10+ damage this round, or a
+// gyro hit, or a leg-actuator hit must make a Piloting check or fall.
+const kindCache = new Map<string, string>();
+function unitKind(u: ForceUnit): string {
+  let k = kindCache.get(u.text);
+  if (k === undefined) {
+    try { const r = convertOne(u.text, u.file ?? u.name); k = r.ok ? r.result.kind : "?"; }
+    catch { k = "?"; }
+    kindCache.set(u.text, k);
+  }
+  return k;
+}
+/** Total location damage a unit has taken (armor + structure pips), summing both
+ * the SVG dolls' per-location `loc` and the grid doll's per-group `groups`. */
+function unitDamageTotal(u: ForceUnit): number {
+  const d = u.damage;
+  if (!d) return 0;
+  const sum = (o?: Record<string, number>) => (o ? Object.values(o).reduce((a, b) => a + b, 0) : 0);
+  return sum(d.loc) + sum(d.groups);
+}
+const unitDmgSnap = (u: ForceUnit): DmgSnap => ({ d: unitDamageTotal(u), g: u.damage?.gyro ?? 0, l: u.damage?.legHits ?? 0 });
+/** Capture every unit's cumulative damage as the new round's baseline. */
+function snapshotRoundDamage(): void {
+  const snap: Record<string, DmgSnap> = {};
+  for (const s of ["you", "foe"] as const) {
+    const f = forces[battleIdx(s)];
+    f?.units.forEach((u, idx) => { snap[unitKey(s, idx)] = unitDmgSnap(u); });
+  }
+  battleInit.snap = snap;
+}
+/** 'Mechs that need a falling (Piloting) check, with the triggering reason(s). */
+function fallingChecks(): Array<{ side: "you" | "foe"; name: string; reasons: string[] }> {
+  const base = battleInit.snap ?? {};
+  const out: Array<{ side: "you" | "foe"; name: string; reasons: string[] }> = [];
+  for (const s of ["you", "foe"] as const) {
+    const f = forces[battleIdx(s)];
+    f?.units.forEach((u, idx) => {
+      if (u.damage?.out || unitKind(u) !== "mech") return;
+      const b = base[unitKey(s, idx)] ?? unitDmgSnap(u); // no baseline → no delta (no false alarm)
+      const dDelta = unitDamageTotal(u) - b.d;
+      const gDelta = (u.damage?.gyro ?? 0) - b.g;
+      const lDelta = (u.damage?.legHits ?? 0) - b.l;
+      const reasons: string[] = [];
+      if (dDelta >= 10) reasons.push(`${dDelta} damage this round`);
+      if (gDelta > 0) reasons.push(gDelta > 1 ? `${gDelta} gyro hits` : "gyro hit");
+      if (lDelta > 0) reasons.push(lDelta > 1 ? `${lDelta} actuator hits` : "leg actuator hit");
+      if (reasons.length) out.push({ side: s, name: u.name, reasons });
+    });
+  }
+  return out;
+}
+function endPhasePanel(): string {
+  const checks = fallingChecks();
+  const body = checks.length === 0
+    ? `<p class="muted">No falling checks required this round.</p>`
+    : checks
+        .map((c) => `<div class="bt-fall bt-act-${c.side}"><span class="bt-fall-name">⚠ ${esc(c.name)}</span><span class="bt-fall-why">make a falling check — ${esc(c.reasons.join(", "))}</span></div>`)
+        .join("");
+  return `<div class="bt-activation bt-endphase">
+      <div class="bt-act-head"><b>End phase</b> <span class="bt-phase bt-phase-end">End</span><span class="muted">Piloting checks to avoid falling</span></div>
+      ${body}
+    </div>`;
+}
+
 function initAdvance(): void {
   if (battleInit.phase === "move") {
     battleInit = { ...battleInit, phase: "combat", acted: [] }; // keep roll + moves into combat
+  } else if (battleInit.phase === "combat") {
+    battleInit = { ...battleInit, phase: "end", acted: [] }; // end phase: falling checks
   } else {
     battleInit = { ...battleInit, round: battleInit.round + 1, phase: "move", roll: { host: null, guest: null }, acted: [], moves: {} };
+    snapshotRoundDamage(); // new round → reset the falling-check damage baseline
   }
   saveInit();
   if (mpInfo) mpSend({ type: "init-advance", round: battleInit.round, phase: battleInit.phase });
@@ -2255,17 +2331,17 @@ function initSyncSend(): void {
 /** Handle an incoming initiative message. Returns true if it was one. */
 function initHandle(m: MpMsg): boolean {
   if (m.type === "init-roll" && (m.role === "host" || m.role === "guest") && typeof m.value === "number") {
-    if (typeof m.round === "number" && m.round > battleInit.round) battleInit = { ...freshInit(), round: m.round, bonus: battleInit.bonus, modReactions: battleInit.modReactions };
+    if (typeof m.round === "number" && m.round > battleInit.round) { battleInit = { ...freshInit(), round: m.round, bonus: battleInit.bonus, modReactions: battleInit.modReactions }; snapshotRoundDamage(); }
     battleInit.roll[m.role] = m.value;
     saveInit();
     renderBattle();
     return true;
   }
-  if (m.type === "init-advance" && typeof m.round === "number" && (m.phase === "move" || m.phase === "combat")) {
+  if (m.type === "init-advance" && typeof m.round === "number" && (m.phase === "move" || m.phase === "combat" || m.phase === "end")) {
     battleInit.round = m.round;
     battleInit.phase = m.phase;
     battleInit.acted = [];
-    if (m.phase === "move") { battleInit.roll = { host: null, guest: null }; battleInit.moves = {}; } // new round
+    if (m.phase === "move") { battleInit.roll = { host: null, guest: null }; battleInit.moves = {}; snapshotRoundDamage(); } // new round
     saveInit();
     renderBattle();
     return true;
@@ -2304,7 +2380,7 @@ function initHandle(m: MpMsg): boolean {
       if (m.bonus) battleInit.bonus = m.bonus;
       if (Array.isArray(m.acted)) battleInit.acted = m.acted;
       if (typeof m.on === "boolean") battleInit.modReactions = m.on;
-      if (m.phase === "move" || m.phase === "combat") battleInit.phase = m.phase;
+      if (m.phase === "move" || m.phase === "combat" || m.phase === "end") battleInit.phase = m.phase;
       if (m.moves) battleInit.moves = m.moves;
       saveInit();
       renderBattle();
@@ -2431,6 +2507,7 @@ function renderBattle(): void {
     document.body.classList.remove("battle-mode");
     return;
   }
+  if (!battleInit.snap) { snapshotRoundDamage(); saveInit(); } // baseline for round-1 falling checks
   const actedSet = new Set(battleInit.acted);
   const iControl = (s: "you" | "foe"): boolean => !mpInfo || s === "you";
   const side = (f: SavedForce, fIdx: number, label: string): string => {
@@ -2503,19 +2580,21 @@ function renderBattle(): void {
     verdict = `<span class="muted">waiting for ${battleInit.roll[youRole] == null ? "you" : "opponent"} to roll…</span>`;
   const modBtn = `<button id="bt-mod-react" type="button" class="bt-toggle${battleInit.modReactions ? " is-on" : ""}" title="Optional: lower a unit's activation bracket by its condition-monitor + critical hits">${battleInit.modReactions ? "☑" : "☐"} Modified reactions</button>`;
   const init = `<div class="bt-init">
-      <span class="bt-init-round">Round ${battleInit.round} <span class="bt-phase bt-phase-${battleInit.phase}">${battleInit.phase === "combat" ? "Combat" : "Movement"}</span></span>
+      <span class="bt-init-round">Round ${battleInit.round} <span class="bt-phase bt-phase-${battleInit.phase}">${PHASE_LABEL[battleInit.phase]}</span></span>
       <button id="bt-roll-init" type="button">🎲 Roll initiative</button>
       ${rollChip("you", youName, youRole, youTot, youWin)}
       ${rollChip("foe", foeName, foeRole, foeTot, foeWin)}
       ${verdict}
       <span class="bt-spacer"></span>
       ${modBtn}
-      <button id="bt-next-round" type="button">${battleInit.phase === "move" ? "Combat phase ▸" : "Next round ▸"}</button>
+      <button id="bt-next-round" type="button">${nextPhaseLabel(battleInit.phase)}</button>
     </div>`;
 
-  // --- Cinematic activation order: TMM brackets, loser-first within each.
+  // --- End phase: falling checks. Otherwise the cinematic activation order.
   let activation = "";
-  if (rolled && !tie) {
+  if (battleInit.phase === "end") {
+    activation = endPhasePanel();
+  } else if (rolled && !tie) {
     const loserSide: "you" | "foe" = youTot! < foeTot! ? "you" : "foe";
     const winnerSide: "you" | "foe" = loserSide === "you" ? "foe" : "you";
     type ActU = { s: "you" | "foe"; key: string; name: string; bracket: number; info: UnitCardInfo; legHits: number };
@@ -2559,8 +2638,8 @@ function renderBattle(): void {
         return `<div class="bt-brk"><span class="bt-brk-h">TMM ${b}</span><div class="bt-brk-units">${inB.map(actChip).join("")}</div></div>`;
       })
       .join("");
-    const phaseLabel = battleInit.phase === "combat" ? "Combat" : "Movement";
-    const nextLabel = battleInit.phase === "move" ? "Combat phase ▸" : "Next round ▸";
+    const phaseLabel = PHASE_LABEL[battleInit.phase];
+    const nextLabel = nextPhaseLabel(battleInit.phase);
     const status = allActed
       ? `<span class="bt-init-win">${phaseLabel.toLowerCase()} done — ${nextLabel}</span>`
       : nextUp

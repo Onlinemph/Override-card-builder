@@ -1677,6 +1677,15 @@ body.battle-mode #battle { display: block; }
 .bt-phase { font-size: 0.66rem; font-weight: 800; padding: 0 0.35rem; border-radius: 999px; }
 .bt-phase-move { background: rgba(37,99,235,0.18); color: #2563eb; }
 .bt-phase-combat { background: rgba(220,38,38,0.18); color: #dc2626; }
+.bt-phase-end { background: rgba(180,83,9,0.18); color: #b45309; }
+/* End phase: per-unit falling-check prompts. */
+.bt-fall {
+  display: flex; align-items: baseline; gap: 0.5rem; flex-wrap: wrap;
+  padding: 0.35rem 0.5rem; margin: 0.25rem 0; border-radius: 6px;
+  border-left: 4px solid #b45309; background: rgba(180,83,9,0.1);
+}
+.bt-fall-name { font-weight: 800; }
+.bt-fall-why { color: #b45309; font-weight: 700; font-size: 0.86rem; }
 .bt-acted-tag { color: #16a34a; font-weight: 800; }
 .bt-unit.bt-acted .bt-track { opacity: 0.6; }
 
