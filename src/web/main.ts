@@ -513,12 +513,15 @@ function withTC(html: string, hasTC: boolean): string {
 
 /** Fill the card's (blank) skill boxes — first = Gunnery, second = Piloting (or
  * the unit's second skill, e.g. Anti-'Mech). Pass undefined to leave a box blank. */
-function withSkills(html: string, gunnery?: number, piloting?: number): string {
+/** Render a skill value, marked red when a pilot-hit penalty is folded in. */
+const skillVal = (v: number, penalty: number): string =>
+  penalty > 0 ? `<span class="leg-mod" title="includes +${penalty} from pilot hits">${v}</span>` : String(v);
+function withSkills(html: string, gunnery?: number, piloting?: number, penalty = 0): string {
   const vals = [gunnery, piloting];
   let i = 0;
   return html.replace(/<div class="(ms-skill-box|ba-skill-box)">\s*<\/div>/g, (m, cls: string) => {
     const v = vals[i++];
-    return v === undefined || v === null ? m : `<div class="${cls}">${v}</div>`;
+    return v === undefined || v === null ? m : `<div class="${cls}">${skillVal(v, penalty)}</div>`;
   });
 }
 
@@ -802,7 +805,8 @@ function renderForceEdit(): void {
     raw = rawCardHtml(r.result);
   }
   const sk = unitSkills(u);
-  const card = withTC(withRole(withQuirks(withSkills(withBv(raw, unitBv(u)), sk.gunnery, sk.piloting), lookupQuirks(u.name, u.file), u.file), lookupRole(u.name, u.file)), cardHasTC(r.result));
+  const pHits = u.damage?.condition ?? 0; // each pilot hit: +1 gunnery & piloting
+  const card = withTC(withRole(withQuirks(withSkills(withBv(raw, unitBv(u)), sk.gunnery + pHits, sk.piloting + pHits, pHits), lookupQuirks(u.name, u.file), u.file), lookupRole(u.name, u.file)), cardHasTC(r.result));
   editWeapons = weaponsForToHit(applyTargetingComputer(r.result)); // ranges already include any TC −1
   editSinks = unitSinks(r.result);
   editHasTC = /targeting\s*computer/i.test(u.text); // Targeting Computer → −1 to-hit
@@ -1071,13 +1075,19 @@ function updateTabletop(): void {
     replace(".ms-ud-move, .ms-ud-tmm", movementLines(editMechCard), 2);
     replace(".mweapons", weaponsTable(editMechCard));
   }
+  // Pilot hits add +1 to gunnery & piloting — reflect that on the skill boxes.
+  const pHits = u.damage?.condition ?? 0;
+  const sk = unitSkills(u);
+  const skBoxes = Array.from(output.querySelectorAll<HTMLElement>(".ms-skill-box, .ba-skill-box"));
+  if (skBoxes[0]) skBoxes[0].innerHTML = skillVal(sk.gunnery + pHits, pHits);
+  if (skBoxes[1]) skBoxes[1].innerHTML = skillVal(sk.piloting + pHits, pHits);
   const out = output.querySelector("#tohit-out");
   if (!out) return;
   const bracket = ((output.querySelector("#th-range") as HTMLSelectElement | null)?.value ?? "m") as keyof RangeBrackets;
   const move = Number((output.querySelector("#th-move") as HTMLSelectElement | null)?.value) || 0;
   const tmm = Number((output.querySelector("#th-tmm") as HTMLInputElement | null)?.value) || 0;
   const other = Number((output.querySelector("#th-other") as HTMLInputElement | null)?.value) || 0;
-  const base = unitSkills(u).gunnery + move + tmm + other + (heat >= 2 ? 1 : 0);
+  const base = sk.gunnery + pHits + move + tmm + other + (heat >= 2 ? 1 : 0);
   out.innerHTML = `<table class="tohit-tbl"><tbody>${editWeapons
     .map((w) => {
       const m = w.range ? w.range[bracket] : null;
@@ -1133,6 +1143,7 @@ output.addEventListener("click", (e) => {
     u.damage.condition = nextLevel(u.damage.condition ?? 0, Number(cm.dataset.dc));
     saveForce();
     applyDamageMarks();
+    updateTabletop(); // pilot hits change gunnery/piloting + to-hit
     return;
   }
   const box = t.closest<HTMLElement>(".cm-box");
@@ -2102,7 +2113,7 @@ type MoveMode = "still" | "walk" | "sprint" | "jump";
 type Phase = "move" | "combat" | "end";
 /** A unit's cumulative damage totals, snapshotted at round start to spot what it
  * took this round (for end-phase falling checks). */
-interface DmgSnap { d: number; g: number; l: number }
+interface DmgSnap { d: number; g: number; l: number; c: number }
 interface BattleInit {
   round: number;
   phase: Phase; // each round runs movement → combat → end sub-rounds
@@ -2229,7 +2240,7 @@ function unitDamageTotal(u: ForceUnit): number {
   const sum = (o?: Record<string, number>) => (o ? Object.values(o).reduce((a, b) => a + b, 0) : 0);
   return sum(d.loc) + sum(d.groups);
 }
-const unitDmgSnap = (u: ForceUnit): DmgSnap => ({ d: unitDamageTotal(u), g: u.damage?.gyro ?? 0, l: u.damage?.legHits ?? 0 });
+const unitDmgSnap = (u: ForceUnit): DmgSnap => ({ d: unitDamageTotal(u), g: u.damage?.gyro ?? 0, l: u.damage?.legHits ?? 0, c: u.damage?.condition ?? 0 });
 /** Capture every unit's cumulative damage as the new round's baseline. */
 function snapshotRoundDamage(): void {
   const snap: Record<string, DmgSnap> = {};
@@ -2239,36 +2250,49 @@ function snapshotRoundDamage(): void {
   }
   battleInit.snap = snap;
 }
-/** 'Mechs that need a falling (Piloting) check, with the triggering reason(s). */
-function fallingChecks(): Array<{ side: "you" | "foe"; name: string; reasons: string[] }> {
+/** Consciousness-roll target numbers by pilot-hit count (1st hit … 5th hit). */
+const CONSCIOUSNESS_TN = ["3+", "5+", "7+", "9+", "11+"];
+/** End-phase checks per 'Mech: a falling (Piloting) check when it took 10+ damage
+ * / a gyro hit / a leg-actuator hit this round, and a consciousness check when
+ * its pilot took a hit this round. */
+function endPhaseChecks(): Array<{ side: "you" | "foe"; name: string; checks: string[] }> {
   const base = battleInit.snap ?? {};
-  const out: Array<{ side: "you" | "foe"; name: string; reasons: string[] }> = [];
+  const out: Array<{ side: "you" | "foe"; name: string; checks: string[] }> = [];
   for (const s of ["you", "foe"] as const) {
     const f = forces[battleIdx(s)];
     f?.units.forEach((u, idx) => {
       if (u.damage?.out || unitKind(u) !== "mech") return;
       const b = base[unitKey(s, idx)] ?? unitDmgSnap(u); // no baseline → no delta (no false alarm)
+      const checks: string[] = [];
+      // Falling (Piloting) check.
+      const fall: string[] = [];
       const dDelta = unitDamageTotal(u) - b.d;
       const gDelta = (u.damage?.gyro ?? 0) - b.g;
       const lDelta = (u.damage?.legHits ?? 0) - b.l;
-      const reasons: string[] = [];
-      if (dDelta >= 10) reasons.push(`${dDelta} damage this round`);
-      if (gDelta > 0) reasons.push(gDelta > 1 ? `${gDelta} gyro hits` : "gyro hit");
-      if (lDelta > 0) reasons.push(lDelta > 1 ? `${lDelta} actuator hits` : "leg actuator hit");
-      if (reasons.length) out.push({ side: s, name: u.name, reasons });
+      if (dDelta >= 10) fall.push(`${dDelta} damage`);
+      if (gDelta > 0) fall.push(gDelta > 1 ? `${gDelta} gyro hits` : "gyro hit");
+      if (lDelta > 0) fall.push(lDelta > 1 ? `${lDelta} actuator hits` : "leg actuator hit");
+      if (fall.length) checks.push(`Falling check (Piloting) — ${fall.join(", ")}`);
+      // Consciousness check — pilot took a hit this round (not yet KIA).
+      const c = u.damage?.condition ?? 0;
+      if (c > b.c && c >= 1 && c <= CONSCIOUSNESS_TN.length) {
+        const hits = c - b.c;
+        checks.push(`Consciousness check (${CONSCIOUSNESS_TN[c - 1]}) — ${hits > 1 ? `${hits} pilot hits` : "pilot hit"}`);
+      }
+      if (checks.length) out.push({ side: s, name: u.name, checks });
     });
   }
   return out;
 }
 function endPhasePanel(): string {
-  const checks = fallingChecks();
-  const body = checks.length === 0
-    ? `<p class="muted">No falling checks required this round.</p>`
-    : checks
-        .map((c) => `<div class="bt-fall bt-act-${c.side}"><span class="bt-fall-name">⚠ ${esc(c.name)}</span><span class="bt-fall-why">make a falling check — ${esc(c.reasons.join(", "))}</span></div>`)
+  const items = endPhaseChecks();
+  const body = items.length === 0
+    ? `<p class="muted">No checks required this round.</p>`
+    : items
+        .map((it) => `<div class="bt-fall bt-act-${it.side}"><span class="bt-fall-name">⚠ ${esc(it.name)}</span><span class="bt-fall-why">${it.checks.map((c) => esc(c)).join(" · ")}</span></div>`)
         .join("");
   return `<div class="bt-activation bt-endphase">
-      <div class="bt-act-head"><b>End phase</b> <span class="bt-phase bt-phase-end">End</span><span class="muted">Piloting checks to avoid falling</span></div>
+      <div class="bt-act-head"><b>End phase</b> <span class="bt-phase bt-phase-end">End</span><span class="muted">falling &amp; consciousness checks</span></div>
       ${body}
     </div>`;
 }
