@@ -886,6 +886,11 @@ function applyDamageMarks(): void {
       b.classList.toggle("pip-hit", i < hit);
     });
   });
+  // Leg actuator boxes (per-actuator bitmask per leg).
+  Array.from(output.querySelectorAll<HTMLElement>(".cm-leg")).forEach((b) => {
+    const mask = dmg.legs?.[b.dataset.leg ?? ""] ?? 0;
+    b.classList.toggle("pip-hit", ((mask >> Number(b.dataset.act)) & 1) === 1);
+  });
   // Ammo counters: remaining = total − expended.
   Array.from(output.querySelectorAll<HTMLElement>(".ammo-row")).forEach((row) => {
     const total = Number(row.dataset.total) || 0;
@@ -1102,6 +1107,18 @@ output.addEventListener("click", (e) => {
     applyDamageMarks();
     return;
   }
+  const legBox = t.closest<HTMLElement>(".cm-leg");
+  if (legBox?.dataset.leg) {
+    const leg = legBox.dataset.leg;
+    u.damage ??= {};
+    u.damage.legs ??= {};
+    const m = (u.damage.legs[leg] ?? 0) ^ (1 << Number(legBox.dataset.act)); // toggle this actuator
+    if (m === 0) delete u.damage.legs[leg];
+    else u.damage.legs[leg] = m;
+    saveForce();
+    applyDamageMarks();
+    return;
+  }
   const box = t.closest<HTMLElement>(".cm-box");
   if (box?.dataset.dsys === "engine" || box?.dataset.dsys === "gyro" || box?.dataset.dsys === "avionics") {
     const sys = box.dataset.dsys;
@@ -1240,6 +1257,8 @@ interface ForceUnit {
     engine?: number;
     gyro?: number;
     avionics?: number;
+    /** Leg actuator hits: leg code ("ll"/"rl"/"cl") → bitmask (1 hip, 2 upper, 4 lower, 8 foot). */
+    legs?: Record<string, number>;
     tics?: number[];
     /** Current heat level (tabletop assistant). */
     heat?: number;
@@ -2226,7 +2245,7 @@ const payloadFromUrl = (s: string): string => s.match(/[#?&]f=([^&\s]+)/)?.[1] ?
 function isDamaged(u: ForceUnit): boolean {
   const d = u.damage;
   if (!d) return false;
-  return (["groups", "loc", "condition", "engine", "gyro", "avionics", "tics", "heat", "ammo"] as const).some((k) => {
+  return (["groups", "loc", "condition", "engine", "gyro", "avionics", "legs", "tics", "heat", "ammo"] as const).some((k) => {
     const v = d[k];
     return v != null && (typeof v !== "object" || Object.keys(v).length > 0);
   });

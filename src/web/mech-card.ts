@@ -160,15 +160,28 @@ function equipmentLine(card: OverrideCard): string {
     .join(", ");
 }
 
-/** Static pilot/condition monitor row (engine / gyro / consciousness track). */
-function conditionMonitor(): string {
+/** Per-leg actuator boxes (Hip / Upper / Lower / Foot), toggled individually. */
+const LEG_ACTUATORS: ReadonlyArray<readonly [string, string]> = [["Hip", "H"], ["Upper", "U"], ["Lower", "L"], ["Foot", "F"]];
+function legGroup(code: string, label: string): string {
+  const boxes = LEG_ACTUATORS.map(([title, ab], i) => `<span class="cm-box cm-leg" data-leg="${code}" data-act="${i}" title="${title} actuator">${ab}</span>`).join("");
+  return `<span class="cm-grp cm-legs">${label} ${boxes}</span>`;
+}
+
+/** Static pilot/condition monitor row (engine / gyro / leg actuators / consciousness). */
+function conditionMonitor(card: OverrideCard): string {
   const box = '<span class="cm-box"></span>';
   const track = ["3+", "5+", "7+", "9+", "11+"]
     .map((t) => `<span class="cm-pip">${t}</span>`)
     .join("");
+  const a = card.armor;
+  const legs =
+    (a.leftLeg !== undefined ? legGroup("ll", "L Leg") : "") +
+    (a.centerLeg !== undefined ? legGroup("cl", "C Leg") : "") +
+    (a.rightLeg !== undefined ? legGroup("rl", "R Leg") : "");
   return `<div class="condmon">
     <span class="cm-grp">Engine ${box}${box}</span>
     <span class="cm-grp">Gyro ${box}${box}</span>
+    ${legs}
     <span class="cm-grp">Condition ${track}<span class="cm-pip kia">KIA</span></span>
   </div>`;
 }
@@ -203,7 +216,7 @@ export function renderMechCard(card: OverrideCard): string {
         </div>
         ${weaponsTable(card)}
         <p class="ms-equip"><b>Equipment:</b> ${equipmentLine(card)}</p>
-        ${conditionMonitor()}
+        ${conditionMonitor(card)}
         ${warnings}
       </div>
       <div class="ms-right">
