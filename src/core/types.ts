@@ -857,6 +857,8 @@ export interface OverrideCard {
   /** Armor type from the MTF `Armor:` line (e.g. "Ferro-Fibrous", "Stealth"),
    * used to pick the armor-pip shape. */
   armorType?: string;
+  /** Display-only (web, play mode): leg-actuator hits, each −2 walk/run, −1 TMM. */
+  legHits?: number;
   /** Total dissipated per round / 5, round nearest. */
   heatDissipation: number;
   /** Individual converted weapons (ungrouped), kept for reference/editing. */

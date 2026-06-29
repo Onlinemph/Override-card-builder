@@ -775,6 +775,7 @@ function renderForceEdit(): void {
     output.innerHTML = forceEditBar(u) + r.html;
     return;
   }
+  if (r.result.kind === "mech") (r.result.card as { legHits?: number }).legHits = u.damage?.legHits; // play-mode leg penalty
   editTorsoCockpit =
     r.result.kind === "mech" && r.result.card.equipment.some((e) => /torso-mounted cockpit/i.test(e.label));
   let raw: string;
@@ -917,14 +918,18 @@ function applyDamageMarks(): void {
     if (status) sheet.dataset.dead = status;
     else delete sheet.dataset.dead;
   }
-  if (inBattle()) {
-    renderBattle(); // keep the battle rosters (dots / live BV) current
-    // Broadcast the tracked unit's damage to the opponent (mpBroadcast skips the
-    // echo when we're applying a remote change).
-    const marker = forces[activeForce]?.battle;
-    const u = editingForceIdx != null ? force[editingForceIdx] : undefined;
-    if (marker && u && editingForceIdx != null) mpBroadcast(marker, editingForceIdx, u);
-  }
+  syncTrackedDamage();
+}
+
+/** Refresh the battle rosters and broadcast the tracked unit's damage (incl.
+ * heat) to the opponent. mpBroadcast skips the echo while applying a remote
+ * change. Called after ANY damage edit — pips, crits, heat, leg actuators. */
+function syncTrackedDamage(): void {
+  if (!inBattle()) return;
+  renderBattle();
+  const marker = forces[activeForce]?.battle;
+  const u = editingForceIdx != null ? force[editingForceIdx] : undefined;
+  if (marker && u && editingForceIdx != null) mpBroadcast(marker, editingForceIdx, u);
 }
 
 // Weapon-row location code (the .loc cell) -> paper-doll area class.
@@ -1078,6 +1083,7 @@ output.addEventListener("click", (e) => {
     u.damage.heat = hb.dataset.heat === "cool" ? Math.max(0, cur - editSinks) : Math.max(0, cur + Number(hb.dataset.heat));
     saveForce();
     updateTabletop();
+    syncTrackedDamage(); // heat now syncs to the opponent in battle
     return;
   }
   const ab = t.closest<HTMLElement>(".ammo-btn");
@@ -1110,7 +1116,8 @@ output.addEventListener("click", (e) => {
     u.damage ??= {};
     u.damage[sys] = nextLevel(u.damage[sys] ?? 0, Number(box.dataset.di));
     saveForce();
-    applyDamageMarks();
+    if (sys === "legHits") renderForceEdit(); // leg hits change the Move/TMM line
+    else applyDamageMarks();
     return;
   }
   const pip = t.closest<HTMLElement>(".hex, .pip, .ms-body");
@@ -2043,7 +2050,10 @@ function mpHandle(m: MpMsg): void {
       u.damage = m.damage as ForceUnit["damage"];
       saveForce();
       renderBattle();
-      if (editingForceIdx === m.idx && forces[activeForce]?.battle === side) applyDamageMarks();
+      if (editingForceIdx === m.idx && forces[activeForce]?.battle === side) {
+        applyDamageMarks();
+        updateTabletop(); // refresh the heat dial / scale + to-hit on the open card
+      }
       applyingRemote = false;
     }
   }

@@ -188,6 +188,14 @@ export function renderMechCard(card: OverrideCard): string {
     ? `<ul class="warnings">${card.warnings.map((w) => `<li>${esc(w)}</li>`).join("")}</ul>`
     : "";
   const type = /omni/i.test(card.config) ? "OmniMech" : "BattleMech";
+  // Leg-actuator penalty (web-set during play): −2 walk/run and −1 TMM each.
+  const lh = card.legHits ?? 0;
+  const wrap = (base: string, val: number) => (lh > 0 ? `<span class="leg-mod">${val}</span>` : base);
+  const walk = wrap(esc(card.walkMove), Math.max(0, card.walkMove - 2 * lh));
+  const run = wrap(esc(card.runMove), Math.max(0, card.runMove - 2 * lh));
+  const baseTmm = wrap(esc(card.tmm), Math.max(0, card.tmm - lh));
+  const sprintTmm = wrap(esc(card.tmmSprint), Math.max(0, card.tmmSprint - lh));
+  const legTag = lh > 0 ? ` <span class="leg-mod" title="leg actuator penalty">(leg −${lh})</span>` : "";
   return `<article class="card mech-sheet">
     <div class="ms-grid">
       <div class="ms-left">
@@ -198,8 +206,8 @@ export function renderMechCard(card: OverrideCard): string {
             <div class="ms-ud-stats">
               <div><b>Type:</b> ${type}</div>
               <div><b>Mass:</b> ${esc(card.mass)} Tons</div>
-              <div class="ms-ud-move"><b>Move:</b> ${esc(card.walkMove)} / ${esc(card.runMove)}${card.jump > 0 ? ` &nbsp;<b>Jump:</b> ${esc(card.jump)}` : ""} <b>Sinks:</b> ${esc(card.heatDissipation)}</div>
-              <div><b>TMM:</b> ${esc(card.tmm)} / ${esc(card.tmmSprint)}${card.jump > 0 ? ` <span class="muted">(jump ${esc(card.tmmJump)})</span>` : ""}</div>
+              <div class="ms-ud-move"><b>Move:</b> ${walk} / ${run}${card.jump > 0 ? ` &nbsp;<b>Jump:</b> ${esc(card.jump)}` : ""}${legTag} <b>Sinks:</b> ${esc(card.heatDissipation)}</div>
+              <div><b>TMM:</b> ${baseTmm} / ${sprintTmm}${card.jump > 0 ? ` <span class="muted">(jump ${esc(card.tmmJump)})</span>` : ""}</div>
               <div><b>Armor:</b> ${esc(armorTypeLabel(card.armorType))}</div>
             </div>
             ${heatScale()}
