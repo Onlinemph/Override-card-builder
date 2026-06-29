@@ -2317,6 +2317,16 @@ function initSetMove(key: string, mode: MoveMode): void {
   if (mpInfo) mpSend({ type: "init-move", key, mode });
   renderBattle();
 }
+/** Cancel a unit's orders: clear its chosen movement AND its activation, so it
+ * can be re-ordered this round (sent a new direction). */
+function initCancelOrder(key: string): void {
+  delete battleInit.moves[key];
+  const i = battleInit.acted.indexOf(key);
+  if (i >= 0) battleInit.acted.splice(i, 1);
+  saveInit();
+  if (mpInfo) mpSend({ type: "init-cancel", key });
+  renderBattle();
+}
 /** Adjust the initiative bonus for a side I control (±). */
 function initSetBonus(role: Role, delta: number): void {
   battleInit.bonus[role] = Math.max(-5, Math.min(5, battleInit.bonus[role] + delta));
@@ -2372,6 +2382,14 @@ function initHandle(m: MpMsg): boolean {
   }
   if (m.type === "init-move" && typeof m.key === "string" && m.mode) {
     battleInit.moves[m.key] = m.mode;
+    saveInit();
+    renderBattle();
+    return true;
+  }
+  if (m.type === "init-cancel" && typeof m.key === "string") {
+    delete battleInit.moves[m.key];
+    const i = battleInit.acted.indexOf(m.key);
+    if (i >= 0) battleInit.acted.splice(i, 1);
     saveInit();
     renderBattle();
     return true;
@@ -2641,19 +2659,27 @@ function renderBattle(): void {
       const acted = actedSet.has(a.key);
       const isNext = nextUp?.key === a.key;
       const mine = iControl(a.s);
-      const mode: MoveMode = battleInit.moves[a.key] ?? "walk";
+      const chosen = battleInit.moves[a.key]; // undefined = no movement order given yet
+      const mode: MoveMode = chosen ?? "walk"; // default preview for TMM / distance
       const tmm = modeTmm(a.info, a.legHits, mode);
+      const hasOrder = chosen != null || acted;
       const modeBtns = MODES.filter(([mm]) => mm !== "jump" || a.info.jump > 0)
         .map(([mm, full, ab]) => {
-          if (!mine) return mode === mm ? `<span class="bt-mode-ro">${full}</span>` : "";
-          return `<button class="bt-mode-btn${mode === mm ? " on" : ""}" type="button" data-mkey="${a.key}" data-mode="${mm}" title="${full}">${ab}</button>`;
+          if (!mine) return chosen === mm ? `<span class="bt-mode-ro">${full}</span>` : "";
+          return `<button class="bt-mode-btn${chosen === mm ? " on" : ""}" type="button" data-mkey="${a.key}" data-mode="${mm}" title="${full}">${ab}</button>`;
         })
         .join("");
-      const stat = `<span class="bt-act-stat">${esc(modeMoveText(a.info, a.legHits, mode))} · TMM ${tmm}${a.legHits ? ` <span class="bt-act-leg">leg −${a.legHits}</span>` : ""}</span>`;
-      return `<div class="bt-act bt-act-${a.s}${acted ? " is-acted" : ""}${isNext ? " is-next" : ""}">
+      // Cancel orders: clear the chosen movement AND the activation, so the unit
+      // can be re-ordered (sent a new direction). Only on units you control.
+      const cancel = mine && hasOrder
+        ? `<button class="bt-cancel-order" type="button" data-cancel-key="${a.key}" title="Cancel orders — clear this unit's movement and activation">↺</button>`
+        : "";
+      const noOrder = chosen == null && !acted ? ` <span class="muted">(no order)</span>` : "";
+      const stat = `<span class="bt-act-stat">${esc(modeMoveText(a.info, a.legHits, mode))} · TMM ${tmm}${a.legHits ? ` <span class="bt-act-leg">leg −${a.legHits}</span>` : ""}${noOrder}</span>`;
+      return `<div class="bt-act bt-act-${a.s}${acted ? " is-acted" : ""}${isNext ? " is-next" : ""}${hasOrder ? " has-order" : ""}">
         <button class="bt-act-mark" type="button" ${mine ? `data-act-key="${a.key}"` : "disabled"} title="${acted ? "Activated — click to undo" : mine ? "Mark activated" : "Opponent's unit"}"><span class="bt-act-name">${esc(a.name)}${acted ? " ✓" : ""}</span></button>
         ${stat}
-        <div class="bt-modes">${modeBtns}</div>
+        <div class="bt-modes">${modeBtns}${cancel}</div>
       </div>`;
     };
     const rows = brackets
@@ -2714,6 +2740,11 @@ document.getElementById("battle")?.addEventListener("click", (e) => {
   const bonus = t.closest<HTMLElement>(".bt-bonus-btn");
   if (bonus?.dataset.bonusRole) {
     initSetBonus(bonus.dataset.bonusRole as Role, Number(bonus.dataset.delta));
+    return;
+  }
+  const cancelBtn = t.closest<HTMLElement>(".bt-cancel-order");
+  if (cancelBtn?.dataset.cancelKey) {
+    initCancelOrder(cancelBtn.dataset.cancelKey);
     return;
   }
   const modeBtn = t.closest<HTMLElement>(".bt-mode-btn");

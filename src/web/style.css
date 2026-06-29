@@ -1674,6 +1674,12 @@ body.battle-mode #battle { display: block; }
 }
 .bt-mode-btn.on { background: #b45309; border-color: #b45309; color: #fff; }
 .bt-mode-ro { font-size: 0.6rem; font-weight: 700; color: var(--muted); }
+.bt-cancel-order {
+  font-size: 0.7rem; line-height: 1.2; margin-left: 0.25rem; padding: 0 0.3rem;
+  border: 1px solid var(--line); border-radius: 4px; background: var(--bg);
+  color: #c0392b; cursor: pointer; font-weight: 800;
+}
+.bt-cancel-order:hover { background: rgba(192,57,24,0.12); border-color: #c0392b; }
 .bt-phase { font-size: 0.66rem; font-weight: 800; padding: 0 0.35rem; border-radius: 999px; }
 .bt-phase-move { background: rgba(37,99,235,0.18); color: #2563eb; }
 .bt-phase-combat { background: rgba(220,38,38,0.18); color: #dc2626; }
