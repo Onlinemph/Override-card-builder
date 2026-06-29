@@ -1954,6 +1954,9 @@ type MpMsg = {
   acted?: string[];
   key?: string;
   on?: boolean;
+  phase?: "move" | "combat";
+  mode?: MoveMode;
+  moves?: Record<string, MoveMode>;
 };
 let myRole: Role = "host"; // your side; "host" for a solo battle
 let mpClient: RealtimeClient | null = null;
@@ -2070,23 +2073,43 @@ function mpBroadcast(side: "you" | "foe", idx: number, u: ForceUnit): void {
 // matching the Override "Cinematic Initiative" rules. "Act early" is allowed
 // (any of your un-acted units may activate). Optional "Modified Reactions"
 // lowers a unit's bracket by its condition-monitor + critical hits.
+type MoveMode = "still" | "walk" | "sprint" | "jump";
 interface BattleInit {
   round: number;
+  phase: "move" | "combat"; // each round has a movement sub-round then a combat sub-round
   roll: { host: number | null; guest: number | null }; // raw 2d6 per side
   bonus: { host: number; guest: number }; // initiative bonus added to the roll
-  acted: string[]; // unit keys activated this round ("host:0", "guest:2", …)
+  acted: string[]; // unit keys activated THIS phase ("host:0", "guest:2", …)
+  moves: Record<string, MoveMode>; // unit key → chosen movement (sets its TMM), reset each round
   modReactions: boolean; // optional rule toggle
 }
 const INIT_KEY = "mtf2override.battleInit";
 const freshInit = (): BattleInit => ({
   round: 1,
+  phase: "move",
   roll: { host: null, guest: null },
   bonus: { host: 0, guest: 0 },
   acted: [],
+  moves: {},
   modReactions: false,
 });
 let battleInit: BattleInit = freshInit();
-interface UnitCardInfo { tmm: number; move: string; jump: number; jumpTmm: number }
+interface UnitCardInfo { tmm: number; tmmSprint: number; jumpTmm: number; walk: number; jump: number; move: string }
+/** TMM for a chosen movement mode (leg actuators cut walk/sprint, not jump/still). */
+function modeTmm(info: UnitCardInfo, legHits: number, mode: MoveMode): number {
+  if (mode === "still") return 0;
+  if (mode === "jump") return info.jumpTmm;
+  if (mode === "sprint") return Math.max(0, info.tmmSprint - legHits);
+  return Math.max(0, info.tmm - legHits); // walk
+}
+/** Movement distance label for a chosen mode (walk cut by 2/hit; run = walk×1.5). */
+function modeMoveText(info: UnitCardInfo, legHits: number, mode: MoveMode): string {
+  const w = Math.max(0, info.walk - 2 * legHits);
+  if (mode === "still") return "still 0";
+  if (mode === "jump") return `jump ${info.jump}`;
+  if (mode === "sprint") return `sprint ${Math.ceil(w * 1.5)}`;
+  return `walk ${w}`;
+}
 const tmmCache = new Map<string, UnitCardInfo>();
 const roll2d6 = (): number => 2 + Math.floor(Math.random() * 6) + Math.floor(Math.random() * 6);
 /** Side total = raw 2d6 + bonus (null until that side has rolled). */
@@ -2099,17 +2122,18 @@ function unitCardInfo(u: ForceUnit): UnitCardInfo {
   const key = `${u.name}|${u.file ?? ""}`;
   const hit = tmmCache.get(key);
   if (hit) return hit;
-  let info: UnitCardInfo = { tmm: 0, move: "—", jump: 0, jumpTmm: 0 };
+  let info: UnitCardInfo = { tmm: 0, tmmSprint: 1, jumpTmm: 0, walk: 0, jump: 0, move: "—" };
   try {
     const r = convertOne(u.text, u.file ?? u.name);
     if (r.ok) {
-      const c = r.result.card as { tmm?: number; move?: string; jump?: number; tmmJump?: number; walkMove?: number; runMove?: number };
+      const c = r.result.card as { tmm?: number; tmmSprint?: number; move?: string; jump?: number; tmmJump?: number; walkMove?: number; runMove?: number; cruiseMP?: number };
+      const tmm = c.tmm ?? 0;
       // Mechs print walk/run/jump explicitly; other kinds use their move string.
       const move =
         r.result.kind === "mech" && c.walkMove != null
           ? `${c.walkMove}/${c.runMove}${(c.jump ?? 0) > 0 ? `/${c.jump}j` : ""}`
           : (c.move ?? "—");
-      info = { tmm: c.tmm ?? 0, move, jump: c.jump ?? 0, jumpTmm: c.tmmJump ?? 0 };
+      info = { tmm, tmmSprint: c.tmmSprint ?? tmm + 1, jumpTmm: c.tmmJump ?? 0, walk: c.walkMove ?? c.cruiseMP ?? 0, jump: c.jump ?? 0, move };
     }
   } catch { /* ignore */ }
   tmmCache.set(key, info);
@@ -2124,14 +2148,6 @@ function unitBracket(u: ForceUnit): number {
     t -= (d.condition ?? 0) + (d.engine ?? 0) + (d.gyro ?? 0) + (d.avionics ?? 0);
   }
   return Math.max(0, t);
-}
-/** A move string ("w/r" or "w/r/Jj") with walk cut by 2 per leg-actuator hit;
- * run re-derives (walk × 1.5, round up). Jump is unaffected. */
-function reducedMove(move: string, legHits: number): string {
-  const m = legHits > 0 ? move.match(/^(\d+)\/(\d+)(?:\/(\d+)j)?$/) : null;
-  if (!m) return move;
-  const walk = Math.max(0, Number(m[1]) - 2 * legHits);
-  return `${walk}/${Math.ceil(walk * 1.5)}${m[3] ? `/${m[3]}j` : ""}`;
 }
 function saveInit(): void { try { localStorage.setItem(INIT_KEY, JSON.stringify(battleInit)); } catch { /* ignore */ } }
 function loadInit(): void {
@@ -2156,10 +2172,23 @@ function initRoll(): void {
   }
   renderBattle();
 }
-function initNextRound(): void {
-  battleInit = { ...battleInit, round: battleInit.round + 1, roll: { host: null, guest: null }, acted: [] };
+/** Advance the sub-round: Movement → Combat (same initiative), or Combat → next
+ * round (re-roll, reset movement choices). */
+function initAdvance(): void {
+  if (battleInit.phase === "move") {
+    battleInit = { ...battleInit, phase: "combat", acted: [] }; // keep roll + moves into combat
+  } else {
+    battleInit = { ...battleInit, round: battleInit.round + 1, phase: "move", roll: { host: null, guest: null }, acted: [], moves: {} };
+  }
   saveInit();
-  if (mpInfo) mpSend({ type: "init-round", round: battleInit.round });
+  if (mpInfo) mpSend({ type: "init-advance", round: battleInit.round, phase: battleInit.phase });
+  renderBattle();
+}
+/** Set a unit's chosen movement for the round (sets its displayed TMM). */
+function initSetMove(key: string, mode: MoveMode): void {
+  battleInit.moves[key] = mode;
+  saveInit();
+  if (mpInfo) mpSend({ type: "init-move", key, mode });
   renderBattle();
 }
 /** Adjust the initiative bonus for a side I control (±). */
@@ -2189,9 +2218,11 @@ function initSyncSend(): void {
   if (mpInfo) mpSend({
     type: "init-sync",
     round: battleInit.round,
+    phase: battleInit.phase,
     roll: battleInit.roll,
     bonus: battleInit.bonus,
     acted: battleInit.acted,
+    moves: battleInit.moves,
     on: battleInit.modReactions,
   });
 }
@@ -2204,8 +2235,19 @@ function initHandle(m: MpMsg): boolean {
     renderBattle();
     return true;
   }
-  if (m.type === "init-round" && typeof m.round === "number") {
-    if (m.round !== battleInit.round) { battleInit = { ...freshInit(), round: m.round, bonus: battleInit.bonus, modReactions: battleInit.modReactions }; saveInit(); renderBattle(); }
+  if (m.type === "init-advance" && typeof m.round === "number" && (m.phase === "move" || m.phase === "combat")) {
+    battleInit.round = m.round;
+    battleInit.phase = m.phase;
+    battleInit.acted = [];
+    if (m.phase === "move") { battleInit.roll = { host: null, guest: null }; battleInit.moves = {}; } // new round
+    saveInit();
+    renderBattle();
+    return true;
+  }
+  if (m.type === "init-move" && typeof m.key === "string" && m.mode) {
+    battleInit.moves[m.key] = m.mode;
+    saveInit();
+    renderBattle();
     return true;
   }
   if (m.type === "init-bonus" && (m.role === "host" || m.role === "guest") && typeof m.value === "number") {
@@ -2236,6 +2278,8 @@ function initHandle(m: MpMsg): boolean {
       if (m.bonus) battleInit.bonus = m.bonus;
       if (Array.isArray(m.acted)) battleInit.acted = m.acted;
       if (typeof m.on === "boolean") battleInit.modReactions = m.on;
+      if (m.phase === "move" || m.phase === "combat") battleInit.phase = m.phase;
+      if (m.moves) battleInit.moves = m.moves;
       saveInit();
       renderBattle();
     }
@@ -2433,14 +2477,14 @@ function renderBattle(): void {
     verdict = `<span class="muted">waiting for ${battleInit.roll[youRole] == null ? "you" : "opponent"} to roll…</span>`;
   const modBtn = `<button id="bt-mod-react" type="button" class="bt-toggle${battleInit.modReactions ? " is-on" : ""}" title="Optional: lower a unit's activation bracket by its condition-monitor + critical hits">${battleInit.modReactions ? "☑" : "☐"} Modified reactions</button>`;
   const init = `<div class="bt-init">
-      <span class="bt-init-round">Round ${battleInit.round}</span>
+      <span class="bt-init-round">Round ${battleInit.round} <span class="bt-phase bt-phase-${battleInit.phase}">${battleInit.phase === "combat" ? "Combat" : "Movement"}</span></span>
       <button id="bt-roll-init" type="button">🎲 Roll initiative</button>
       ${rollChip("you", youName, youRole, youTot, youWin)}
       ${rollChip("foe", foeName, foeRole, foeTot, foeWin)}
       ${verdict}
       <span class="bt-spacer"></span>
       ${modBtn}
-      <button id="bt-next-round" type="button">Next round ▸</button>
+      <button id="bt-next-round" type="button">${battleInit.phase === "move" ? "Combat phase ▸" : "Next round ▸"}</button>
     </div>`;
 
   // --- Cinematic activation order: TMM brackets, loser-first within each.
@@ -2463,12 +2507,25 @@ function renderBattle(): void {
     }
     const nextUp = ordered.find((a) => !actedSet.has(a.key));
     const allActed = ordered.length > 0 && !nextUp;
+    const MODES: ReadonlyArray<readonly [MoveMode, string, string]> = [["still", "Still", "St"], ["walk", "Walk", "Wk"], ["sprint", "Sprint", "Sp"], ["jump", "Jump", "Jp"]];
     const actChip = (a: ActU): string => {
       const acted = actedSet.has(a.key);
       const isNext = nextUp?.key === a.key;
       const mine = iControl(a.s);
-      const stat = `<span class="bt-act-stat">${esc(reducedMove(a.info.move, a.legHits))} · TMM ${a.bracket}${a.legHits ? ` <span class="bt-act-leg">leg −${a.legHits}</span>` : ""}${a.info.jump > 0 ? ` <span class="bt-act-j">jump ${a.info.jumpTmm}</span>` : ""}</span>`;
-      return `<button class="bt-act bt-act-${a.s}${acted ? " is-acted" : ""}${isNext ? " is-next" : ""}" type="button" ${mine ? `data-act-key="${a.key}"` : "disabled"} title="${acted ? "Activated — click to undo" : mine ? "Mark activated" : "Opponent's unit"}"><span class="bt-act-name">${esc(a.name)}${acted ? " ✓" : ""}</span>${stat}</button>`;
+      const mode: MoveMode = battleInit.moves[a.key] ?? "walk";
+      const tmm = modeTmm(a.info, a.legHits, mode);
+      const modeBtns = MODES.filter(([mm]) => mm !== "jump" || a.info.jump > 0)
+        .map(([mm, full, ab]) => {
+          if (!mine) return mode === mm ? `<span class="bt-mode-ro">${full}</span>` : "";
+          return `<button class="bt-mode-btn${mode === mm ? " on" : ""}" type="button" data-mkey="${a.key}" data-mode="${mm}" title="${full}">${ab}</button>`;
+        })
+        .join("");
+      const stat = `<span class="bt-act-stat">${esc(modeMoveText(a.info, a.legHits, mode))} · TMM ${tmm}${a.legHits ? ` <span class="bt-act-leg">leg −${a.legHits}</span>` : ""}</span>`;
+      return `<div class="bt-act bt-act-${a.s}${acted ? " is-acted" : ""}${isNext ? " is-next" : ""}">
+        <button class="bt-act-mark" type="button" ${mine ? `data-act-key="${a.key}"` : "disabled"} title="${acted ? "Activated — click to undo" : mine ? "Mark activated" : "Opponent's unit"}"><span class="bt-act-name">${esc(a.name)}${acted ? " ✓" : ""}</span></button>
+        ${stat}
+        <div class="bt-modes">${modeBtns}</div>
+      </div>`;
     };
     const rows = brackets
       .map((b) => {
@@ -2476,13 +2533,15 @@ function renderBattle(): void {
         return `<div class="bt-brk"><span class="bt-brk-h">TMM ${b}</span><div class="bt-brk-units">${inB.map(actChip).join("")}</div></div>`;
       })
       .join("");
+    const phaseLabel = battleInit.phase === "combat" ? "Combat" : "Movement";
+    const nextLabel = battleInit.phase === "move" ? "Combat phase ▸" : "Next round ▸";
     const status = allActed
-      ? `<span class="bt-init-win">round complete — Next round ▸</span>`
+      ? `<span class="bt-init-win">${phaseLabel.toLowerCase()} done — ${nextLabel}</span>`
       : nextUp
         ? `<span class="muted">next: <b>${esc(nextUp.name)}</b> (${nextUp.s === loserSide ? "loser" : "winner"})</span>`
         : "";
     activation = `<div class="bt-activation">
-      <div class="bt-act-head"><b>Activation order</b><span class="muted">lowest TMM first · loser activates first${battleInit.modReactions ? " · modified reactions" : ""}</span>${status}</div>
+      <div class="bt-act-head"><b>Activation order</b> <span class="bt-phase bt-phase-${battleInit.phase}">${phaseLabel}</span><span class="muted">lowest TMM first · loser first${battleInit.modReactions ? " · mod reactions" : ""}</span>${status}</div>
       ${rows || '<p class="muted">No active units.</p>'}
     </div>`;
   }
@@ -2516,7 +2575,7 @@ document.getElementById("battle")?.addEventListener("click", (e) => {
     return;
   }
   if (t.closest("#bt-next-round")) {
-    initNextRound();
+    initAdvance();
     return;
   }
   if (t.closest("#bt-mod-react")) {
@@ -2528,7 +2587,12 @@ document.getElementById("battle")?.addEventListener("click", (e) => {
     initSetBonus(bonus.dataset.bonusRole as Role, Number(bonus.dataset.delta));
     return;
   }
-  const act = t.closest<HTMLElement>(".bt-act");
+  const modeBtn = t.closest<HTMLElement>(".bt-mode-btn");
+  if (modeBtn?.dataset.mkey && modeBtn.dataset.mode) {
+    initSetMove(modeBtn.dataset.mkey, modeBtn.dataset.mode as MoveMode);
+    return;
+  }
+  const act = t.closest<HTMLElement>(".bt-act-mark");
   if (act?.dataset.actKey) {
     initToggleActed(act.dataset.actKey);
     return;
