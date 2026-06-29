@@ -810,8 +810,6 @@ footer {
 .condmon { display: flex; flex-wrap: wrap; gap: 0.6rem 1rem; align-items: center; font-size: 0.72rem; margin-top: 0.5rem; padding-top: 0.45rem; border-top: 1.5px solid #15171c; }
 .cm-grp { display: inline-flex; align-items: center; gap: 0.3rem; font-weight: 700; }
 .cm-box { width: 18px; height: 14px; border: 1.5px solid #15171c; border-radius: 3px; }
-.cm-leg { display: inline-flex; align-items: center; justify-content: center; font-size: 0.55rem; font-weight: 800; color: #15171c; }
-.cm-box.pip-hit.cm-leg { color: #fff; }
 .cm-pip { border: 1.5px solid #15171c; border-radius: 3px; padding: 0 0.25rem; font-weight: 700; }
 .cm-pip.kia { background: #15171c; color: #fff; }
 
@@ -1652,6 +1650,7 @@ body.battle-mode #battle { display: block; }
 .bt-act-name { font-weight: 600; }
 .bt-act-stat { font-size: 0.64rem; opacity: 0.72; font-variant-numeric: tabular-nums; }
 .bt-act-j { color: #16a34a; }
+.bt-act-leg { color: #c0392b; }
 .bt-act:disabled { cursor: default; opacity: 0.8; }
 .bt-act-you { border-left-color: #2563eb; }
 .bt-act-foe { border-left-color: #dc2626; }

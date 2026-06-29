@@ -877,7 +877,9 @@ function applyDamageMarks(): void {
         ? "gyro"
         : label.startsWith("Avionics")
           ? "avionics"
-          : null;
+          : label.startsWith("Leg")
+            ? "legHits"
+            : null;
     if (!boxes.length || !sys) return;
     const hit = dmg[sys] ?? 0;
     boxes.forEach((b, i) => {
@@ -885,11 +887,6 @@ function applyDamageMarks(): void {
       b.dataset.di = String(i);
       b.classList.toggle("pip-hit", i < hit);
     });
-  });
-  // Leg actuator boxes (per-actuator bitmask per leg).
-  Array.from(output.querySelectorAll<HTMLElement>(".cm-leg")).forEach((b) => {
-    const mask = dmg.legs?.[b.dataset.leg ?? ""] ?? 0;
-    b.classList.toggle("pip-hit", ((mask >> Number(b.dataset.act)) & 1) === 1);
   });
   // Ammo counters: remaining = total − expended.
   Array.from(output.querySelectorAll<HTMLElement>(".ammo-row")).forEach((row) => {
@@ -1107,20 +1104,8 @@ output.addEventListener("click", (e) => {
     applyDamageMarks();
     return;
   }
-  const legBox = t.closest<HTMLElement>(".cm-leg");
-  if (legBox?.dataset.leg) {
-    const leg = legBox.dataset.leg;
-    u.damage ??= {};
-    u.damage.legs ??= {};
-    const m = (u.damage.legs[leg] ?? 0) ^ (1 << Number(legBox.dataset.act)); // toggle this actuator
-    if (m === 0) delete u.damage.legs[leg];
-    else u.damage.legs[leg] = m;
-    saveForce();
-    applyDamageMarks();
-    return;
-  }
   const box = t.closest<HTMLElement>(".cm-box");
-  if (box?.dataset.dsys === "engine" || box?.dataset.dsys === "gyro" || box?.dataset.dsys === "avionics") {
+  if (box?.dataset.dsys === "engine" || box?.dataset.dsys === "gyro" || box?.dataset.dsys === "avionics" || box?.dataset.dsys === "legHits") {
     const sys = box.dataset.dsys;
     u.damage ??= {};
     u.damage[sys] = nextLevel(u.damage[sys] ?? 0, Number(box.dataset.di));
@@ -1257,8 +1242,8 @@ interface ForceUnit {
     engine?: number;
     gyro?: number;
     avionics?: number;
-    /** Leg actuator hits: leg code ("ll"/"rl"/"cl") → bitmask (1 hip, 2 upper, 4 lower, 8 foot). */
-    legs?: Record<string, number>;
+    /** Leg actuator hits (count). Each lowers TMM by 1 and movement by 2. */
+    legHits?: number;
     tics?: number[];
     /** Current heat level (tabletop assistant). */
     heat?: number;
@@ -2123,12 +2108,19 @@ function unitCardInfo(u: ForceUnit): UnitCardInfo {
 const unitTmm = (u: ForceUnit): number => unitCardInfo(u).tmm;
 /** Activation bracket: base TMM, lowered by damage when Modified Reactions is on. */
 function unitBracket(u: ForceUnit): number {
-  let t = unitTmm(u);
+  let t = unitTmm(u) - (u.damage?.legHits ?? 0); // leg actuators: −1 TMM each
   if (battleInit.modReactions) {
     const d = u.damage ?? {};
     t -= (d.condition ?? 0) + (d.engine ?? 0) + (d.gyro ?? 0) + (d.avionics ?? 0);
   }
   return Math.max(0, t);
+}
+/** A move string ("w/r" or "w/r/Jj") cut by 2 per leg-actuator hit (jump unaffected). */
+function reducedMove(move: string, legHits: number): string {
+  const m = legHits > 0 ? move.match(/^(\d+)\/(\d+)(?:\/(\d+)j)?$/) : null;
+  if (!m) return move;
+  const cut = 2 * legHits;
+  return `${Math.max(0, Number(m[1]) - cut)}/${Math.max(0, Number(m[2]) - cut)}${m[3] ? `/${m[3]}j` : ""}`;
 }
 function saveInit(): void { try { localStorage.setItem(INIT_KEY, JSON.stringify(battleInit)); } catch { /* ignore */ } }
 function loadInit(): void {
@@ -2245,7 +2237,7 @@ const payloadFromUrl = (s: string): string => s.match(/[#?&]f=([^&\s]+)/)?.[1] ?
 function isDamaged(u: ForceUnit): boolean {
   const d = u.damage;
   if (!d) return false;
-  return (["groups", "loc", "condition", "engine", "gyro", "avionics", "legs", "tics", "heat", "ammo"] as const).some((k) => {
+  return (["groups", "loc", "condition", "engine", "gyro", "avionics", "legHits", "tics", "heat", "ammo"] as const).some((k) => {
     const v = d[k];
     return v != null && (typeof v !== "object" || Object.keys(v).length > 0);
   });
@@ -2445,12 +2437,12 @@ function renderBattle(): void {
   if (rolled && !tie) {
     const loserSide: "you" | "foe" = youTot! < foeTot! ? "you" : "foe";
     const winnerSide: "you" | "foe" = loserSide === "you" ? "foe" : "you";
-    type ActU = { s: "you" | "foe"; key: string; name: string; bracket: number; info: UnitCardInfo };
+    type ActU = { s: "you" | "foe"; key: string; name: string; bracket: number; info: UnitCardInfo; legHits: number };
     const collect = (f: SavedForce, s: "you" | "foe"): ActU[] =>
       f.units
-        .map((u, idx) => ({ s, key: unitKey(s, idx), name: u.name, bracket: unitBracket(u), info: unitCardInfo(u), out: u.damage?.out }))
+        .map((u, idx) => ({ s, key: unitKey(s, idx), name: u.name, bracket: unitBracket(u), info: unitCardInfo(u), legHits: u.damage?.legHits ?? 0, out: u.damage?.out }))
         .filter((a) => !a.out)
-        .map(({ s: ss, key, name, bracket, info }) => ({ s: ss, key, name, bracket, info }));
+        .map(({ s: ss, key, name, bracket, info, legHits }) => ({ s: ss, key, name, bracket, info, legHits }));
     const all = [...collect(you, "you"), ...collect(foe, "foe")];
     const brackets = [...new Set(all.map((a) => a.bracket))].sort((a, b) => a - b);
     const ordered: ActU[] = [];
@@ -2464,7 +2456,7 @@ function renderBattle(): void {
       const acted = actedSet.has(a.key);
       const isNext = nextUp?.key === a.key;
       const mine = iControl(a.s);
-      const stat = `<span class="bt-act-stat">${esc(a.info.move)} · TMM ${a.bracket}${a.info.jump > 0 ? ` <span class="bt-act-j">jump ${a.info.jumpTmm}</span>` : ""}</span>`;
+      const stat = `<span class="bt-act-stat">${esc(reducedMove(a.info.move, a.legHits))} · TMM ${a.bracket}${a.legHits ? ` <span class="bt-act-leg">leg −${a.legHits}</span>` : ""}${a.info.jump > 0 ? ` <span class="bt-act-j">jump ${a.info.jumpTmm}</span>` : ""}</span>`;
       return `<button class="bt-act bt-act-${a.s}${acted ? " is-acted" : ""}${isNext ? " is-next" : ""}" type="button" ${mine ? `data-act-key="${a.key}"` : "disabled"} title="${acted ? "Activated — click to undo" : mine ? "Mark activated" : "Opponent's unit"}"><span class="bt-act-name">${esc(a.name)}${acted ? " ✓" : ""}</span>${stat}</button>`;
     };
     const rows = brackets
