@@ -859,6 +859,9 @@ export interface OverrideCard {
   armorType?: string;
   /** Display-only (web, play mode): leg-actuator hits, each −2 walk/run, −1 TMM. */
   legHits?: number;
+  /** Display-only (web, play mode): current heat level. 1+ → −2 Move / −1 TMM,
+   * 2+ → +1 ranged attack modifier (Override heat scale). */
+  heat?: number;
   /** Total dissipated per round / 5, round nearest. */
   heatDissipation: number;
   /** Individual converted weapons (ungrouped), kept for reference/editing. */

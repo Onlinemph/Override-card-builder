@@ -107,9 +107,10 @@ const HEAT_SCALE = [
   { n: 0, cls: "h0", txt: "No Effects" },
 ];
 
-function heatScale(): string {
+function heatScale(heat = 0): string {
+  const lvl = Math.max(0, Math.min(5, heat));
   const rows = HEAT_SCALE.map(
-    (r) => `<div class="hs-row"><span class="hs-n ${r.cls}">${r.n}</span><span class="hs-t">${esc(r.txt)}</span></div>`,
+    (r) => `<div class="hs-row${r.n === lvl ? " hs-active" : ""}"><span class="hs-n ${r.cls}">${r.n}</span><span class="hs-t">${esc(r.txt)}</span></div>`,
   ).join("");
   return `<div class="heatscale"><div class="hs-label">Heat Scale</div><div class="hs-rows">${rows}</div></div>`;
 }
@@ -183,20 +184,38 @@ function conditionMonitor(card: OverrideCard): string {
  * displayed as rows) + Punch/Kick, equipment, the OVERRIDE wordmark with skill
  * boxes, a condition monitor, and the paper-doll armor/structure diagram.
  */
+/**
+ * The Move and TMM lines with play-mode penalties applied: leg-actuator hits
+ * (−2 walk/run, −1 TMM each) and heat (Override scale — level 1+ gives −2 Ground
+ * Move / −1 TMM, level 2+ adds +1 ranged attack mod). Reduced values render red
+ * with a summary tag. Exported so the play view can refresh just these two lines
+ * in place when heat or leg hits change, without re-rendering the whole card.
+ */
+export function movementLines(card: OverrideCard): string {
+  const lh = card.legHits ?? 0;
+  const heat = card.heat ?? 0;
+  const movePen = 2 * lh + (heat >= 1 ? 2 : 0); // total walk reduction
+  const tmmPen = lh + (heat >= 1 ? 1 : 0);
+  const wrap = (base: string, val: number, on: boolean) => (on ? `<span class="leg-mod">${val}</span>` : base);
+  const walkVal = Math.max(0, card.walkMove - movePen); // run re-derives from reduced walk
+  const walk = wrap(esc(card.walkMove), walkVal, movePen > 0);
+  const run = wrap(esc(card.runMove), Math.ceil(walkVal * 1.5), movePen > 0);
+  const baseTmm = wrap(esc(card.tmm), Math.max(0, card.tmm - tmmPen), tmmPen > 0);
+  const sprintTmm = wrap(esc(card.tmmSprint), Math.max(0, card.tmmSprint - tmmPen), tmmPen > 0);
+  const mods: string[] = [];
+  if (lh > 0) mods.push(`leg −${lh}`);
+  if (heat >= 1) mods.push("heat −2/−1");
+  if (heat >= 2) mods.push("heat +1 to-hit");
+  const tag = mods.length ? ` <span class="leg-mod" title="active movement/attack penalties">(${mods.join(", ")})</span>` : "";
+  return `<div class="ms-ud-move"><b>Move:</b> ${walk} / ${run}${card.jump > 0 ? ` &nbsp;<b>Jump:</b> ${esc(card.jump)}` : ""}${tag} <b>Sinks:</b> ${esc(card.heatDissipation)}</div>
+              <div class="ms-ud-tmm"><b>TMM:</b> ${baseTmm} / ${sprintTmm}${card.jump > 0 ? ` <span class="muted">(jump ${esc(card.tmmJump)})</span>` : ""}</div>`;
+}
+
 export function renderMechCard(card: OverrideCard): string {
   const warnings = card.warnings.length
     ? `<ul class="warnings">${card.warnings.map((w) => `<li>${esc(w)}</li>`).join("")}</ul>`
     : "";
   const type = /omni/i.test(card.config) ? "OmniMech" : "BattleMech";
-  // Leg-actuator penalty (web-set during play): −2 walk/run and −1 TMM each.
-  const lh = card.legHits ?? 0;
-  const wrap = (base: string, val: number) => (lh > 0 ? `<span class="leg-mod">${val}</span>` : base);
-  const walkVal = Math.max(0, card.walkMove - 2 * lh); // −2 walk per hit; run re-derives
-  const walk = wrap(esc(card.walkMove), walkVal);
-  const run = wrap(esc(card.runMove), Math.ceil(walkVal * 1.5));
-  const baseTmm = wrap(esc(card.tmm), Math.max(0, card.tmm - lh));
-  const sprintTmm = wrap(esc(card.tmmSprint), Math.max(0, card.tmmSprint - lh));
-  const legTag = lh > 0 ? ` <span class="leg-mod" title="leg actuator penalty">(leg −${lh})</span>` : "";
   return `<article class="card mech-sheet">
     <div class="ms-grid">
       <div class="ms-left">
@@ -207,11 +226,10 @@ export function renderMechCard(card: OverrideCard): string {
             <div class="ms-ud-stats">
               <div><b>Type:</b> ${type}</div>
               <div><b>Mass:</b> ${esc(card.mass)} Tons</div>
-              <div class="ms-ud-move"><b>Move:</b> ${walk} / ${run}${card.jump > 0 ? ` &nbsp;<b>Jump:</b> ${esc(card.jump)}` : ""}${legTag} <b>Sinks:</b> ${esc(card.heatDissipation)}</div>
-              <div><b>TMM:</b> ${baseTmm} / ${sprintTmm}${card.jump > 0 ? ` <span class="muted">(jump ${esc(card.tmmJump)})</span>` : ""}</div>
+              ${movementLines(card)}
               <div><b>Armor:</b> ${esc(armorTypeLabel(card.armorType))}</div>
             </div>
-            ${heatScale()}
+            ${heatScale(card.heat ?? 0)}
           </div>
         </div>
         ${weaponsTable(card)}

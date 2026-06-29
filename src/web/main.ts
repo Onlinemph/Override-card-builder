@@ -22,7 +22,7 @@ import { renderBACard } from "./ba-card.js";
 import { renderDropshipCard } from "./dropship-card.js";
 import { renderFighterCard } from "./fighter-card.js";
 import { renderInfantryCard } from "./infantry-card.js";
-import { renderMechCard } from "./mech-card.js";
+import { movementLines, renderMechCard } from "./mech-card.js";
 import { renderProtoCard } from "./proto-card.js";
 import { renderVehicleCard } from "./vehicle-card.js";
 import { applyMove, groupingFromTics, renderTicEditorHtml, ticsFromGrouping } from "./tic-editor.js";
@@ -775,7 +775,12 @@ function renderForceEdit(): void {
     output.innerHTML = forceEditBar(u) + r.html;
     return;
   }
-  if (r.result.kind === "mech") (r.result.card as { legHits?: number }).legHits = u.damage?.legHits; // play-mode leg penalty
+  editMechCard = null;
+  if (r.result.kind === "mech") {
+    r.result.card.legHits = u.damage?.legHits; // play-mode leg penalty
+    r.result.card.heat = u.damage?.heat; // play-mode heat: −2 Move / −1 TMM at 1+, +1 to-hit at 2+
+    editMechCard = r.result.card; // kept so updateTabletop can refresh Move/TMM in place
+  }
   editTorsoCockpit =
     r.result.kind === "mech" && r.result.card.equipment.some((e) => /torso-mounted cockpit/i.test(e.label));
   let raw: string;
@@ -942,6 +947,7 @@ type WeaponRangeRow = { label: string; range: RangeBrackets | null; directFire: 
 let editWeapons: WeaponRangeRow[] = []; // weapons of the edited unit (for to-hit)
 let editSinks = 0; // its heat dissipation (for the Cool button)
 let editHasTC = false; // unit mounts a Targeting Computer (−1 to-hit)
+let editMechCard: OverrideCard | null = null; // open mech card, for in-place Move/TMM refresh on heat change
 
 const HEAT_EFFECT = [
   "No effects",
@@ -1046,6 +1052,23 @@ function updateTabletop(): void {
   output.querySelectorAll<HTMLElement>(".heatscale .hs-row").forEach((row) => {
     row.classList.toggle("hs-active", Number(row.querySelector(".hs-n")?.textContent) === lvl);
   });
+  // Refresh the Move/TMM lines in place so heat (and leg) penalties show on the
+  // card itself without re-rendering (keeps the to-hit controls' state).
+  if (editMechCard) {
+    editMechCard.heat = heat;
+    editMechCard.legHits = u.damage?.legHits;
+    const moveEl = output.querySelector(".ms-ud-move");
+    const tmmEl = output.querySelector(".ms-ud-tmm");
+    if (moveEl && tmmEl) {
+      const tmpl = document.createElement("template");
+      tmpl.innerHTML = movementLines(editMechCard);
+      const [newMove, newTmm] = Array.from(tmpl.content.children);
+      if (newMove && newTmm) {
+        moveEl.replaceWith(newMove);
+        tmmEl.replaceWith(newTmm);
+      }
+    }
+  }
   const out = output.querySelector("#tohit-out");
   if (!out) return;
   const bracket = ((output.querySelector("#th-range") as HTMLSelectElement | null)?.value ?? "m") as keyof RangeBrackets;
