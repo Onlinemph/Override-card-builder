@@ -2072,29 +2072,36 @@ const freshInit = (): BattleInit => ({
   modReactions: false,
 });
 let battleInit: BattleInit = freshInit();
-const tmmCache = new Map<string, number>();
+interface UnitCardInfo { tmm: number; move: string; jump: number; jumpTmm: number }
+const tmmCache = new Map<string, UnitCardInfo>();
 const roll2d6 = (): number => 2 + Math.floor(Math.random() * 6) + Math.floor(Math.random() * 6);
 /** Side total = raw 2d6 + bonus (null until that side has rolled). */
 const initTotal = (r: Role): number | null => (battleInit.roll[r] == null ? null : battleInit.roll[r]! + battleInit.bonus[r]);
 /** "you"/"foe" → the owning role key (consistent across both clients). */
 const sideRole = (side: "you" | "foe"): Role => (side === "you" ? myRole : otherRole());
 const unitKey = (side: "you" | "foe", idx: number): string => `${sideRole(side)}:${idx}`;
-/** Base TMM for a unit (memoised — convertOne parses the source text). */
-function unitTmm(u: ForceUnit): number {
+/** Movement + TMM for a unit (memoised — convertOne parses the source text). */
+function unitCardInfo(u: ForceUnit): UnitCardInfo {
   const key = `${u.name}|${u.file ?? ""}`;
   const hit = tmmCache.get(key);
-  if (hit != null) return hit;
-  let t = 0;
+  if (hit) return hit;
+  let info: UnitCardInfo = { tmm: 0, move: "—", jump: 0, jumpTmm: 0 };
   try {
     const r = convertOne(u.text, u.file ?? u.name);
     if (r.ok) {
-      const c = r.result.card as { tmm?: number };
-      if (typeof c?.tmm === "number") t = c.tmm;
+      const c = r.result.card as { tmm?: number; move?: string; jump?: number; tmmJump?: number; walkMove?: number; runMove?: number };
+      // Mechs print walk/run/jump explicitly; other kinds use their move string.
+      const move =
+        r.result.kind === "mech" && c.walkMove != null
+          ? `${c.walkMove}/${c.runMove}${(c.jump ?? 0) > 0 ? `/${c.jump}j` : ""}`
+          : (c.move ?? "—");
+      info = { tmm: c.tmm ?? 0, move, jump: c.jump ?? 0, jumpTmm: c.tmmJump ?? 0 };
     }
   } catch { /* ignore */ }
-  tmmCache.set(key, t);
-  return t;
+  tmmCache.set(key, info);
+  return info;
 }
+const unitTmm = (u: ForceUnit): number => unitCardInfo(u).tmm;
 /** Activation bracket: base TMM, lowered by damage when Modified Reactions is on. */
 function unitBracket(u: ForceUnit): number {
   let t = unitTmm(u);
@@ -2419,12 +2426,12 @@ function renderBattle(): void {
   if (rolled && !tie) {
     const loserSide: "you" | "foe" = youTot! < foeTot! ? "you" : "foe";
     const winnerSide: "you" | "foe" = loserSide === "you" ? "foe" : "you";
-    type ActU = { s: "you" | "foe"; key: string; name: string; bracket: number };
+    type ActU = { s: "you" | "foe"; key: string; name: string; bracket: number; info: UnitCardInfo };
     const collect = (f: SavedForce, s: "you" | "foe"): ActU[] =>
       f.units
-        .map((u, idx) => ({ s, key: unitKey(s, idx), name: u.name, bracket: unitBracket(u), out: u.damage?.out }))
+        .map((u, idx) => ({ s, key: unitKey(s, idx), name: u.name, bracket: unitBracket(u), info: unitCardInfo(u), out: u.damage?.out }))
         .filter((a) => !a.out)
-        .map(({ s: ss, key, name, bracket }) => ({ s: ss, key, name, bracket }));
+        .map(({ s: ss, key, name, bracket, info }) => ({ s: ss, key, name, bracket, info }));
     const all = [...collect(you, "you"), ...collect(foe, "foe")];
     const brackets = [...new Set(all.map((a) => a.bracket))].sort((a, b) => a - b);
     const ordered: ActU[] = [];
@@ -2438,7 +2445,8 @@ function renderBattle(): void {
       const acted = actedSet.has(a.key);
       const isNext = nextUp?.key === a.key;
       const mine = iControl(a.s);
-      return `<button class="bt-act bt-act-${a.s}${acted ? " is-acted" : ""}${isNext ? " is-next" : ""}" type="button" ${mine ? `data-act-key="${a.key}"` : "disabled"} title="${acted ? "Activated — click to undo" : mine ? "Mark activated" : "Opponent's unit"}">${esc(a.name)}${acted ? " ✓" : ""}</button>`;
+      const stat = `<span class="bt-act-stat">${esc(a.info.move)} · TMM ${a.bracket}${a.info.jump > 0 ? ` <span class="bt-act-j">jump ${a.info.jumpTmm}</span>` : ""}</span>`;
+      return `<button class="bt-act bt-act-${a.s}${acted ? " is-acted" : ""}${isNext ? " is-next" : ""}" type="button" ${mine ? `data-act-key="${a.key}"` : "disabled"} title="${acted ? "Activated — click to undo" : mine ? "Mark activated" : "Opponent's unit"}"><span class="bt-act-name">${esc(a.name)}${acted ? " ✓" : ""}</span>${stat}</button>`;
     };
     const rows = brackets
       .map((b) => {
