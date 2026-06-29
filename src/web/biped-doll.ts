@@ -166,7 +166,7 @@ export function bipedDoll(card: OverrideCard): string {
     ctl("ct", "TORSO", "6,7,8", a.torso + s.torso, 50, tripod ? 41 : 43) +
     ctl("ll", "L LEG", tripod ? "d6 1-2" : "9", a.leftLeg + s.leftLeg, tripod ? 9 : 16, tripod ? 74 : 71) +
     ctl("rl", "R LEG", tripod ? "d6 5-6" : "5", a.rightLeg + s.rightLeg, tripod ? 91 : 84, tripod ? 74 : 71) +
-    (tripod ? ctl("cl", "C LEG", "d6 3-4", (a.centerLeg ?? 0) + (s.centerLeg ?? 0), 50, 80) : "") +
+    (tripod ? ctl("cl", "C LEG", "d6 3-4", (a.centerLeg ?? 0) + (s.centerLeg ?? 0), 50, 78) : "") +
     ctl("tr", "REAR", "2,12", a.rear + s.torso, 50, 91); // rear armor bleeds into torso structure
 
   const tripodNote = tripod
