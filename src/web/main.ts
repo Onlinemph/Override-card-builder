@@ -1307,7 +1307,16 @@ function loadForces(): { active: number; forces: SavedForce[] } {
     if (raw) {
       const p = JSON.parse(raw) as { active?: number; forces?: SavedForce[] };
       if (Array.isArray(p.forces) && p.forces.length) {
-        const fs = p.forces.map((f) => ({ name: f.name || "Force", units: Array.isArray(f.units) ? f.units : [] }));
+        // Preserve the battle marker so a live battle survives a page reload.
+        // Dedupe defensively: only the FIRST "you"/"foe" keeps its marker, so a
+        // previously corrupted save can't leave duplicate battle sides behind.
+        const claimed = new Set<string>();
+        const fs = p.forces.map((f) => {
+          const b = f.battle === "you" || f.battle === "foe" ? f.battle : undefined;
+          const keep = b !== undefined && !claimed.has(b);
+          if (keep) claimed.add(b!);
+          return { name: f.name || "Force", units: Array.isArray(f.units) ? f.units : [], ...(keep ? { battle: b } : {}) };
+        });
         return { active: Math.max(0, Math.min(fs.length - 1, p.active ?? 0)), forces: fs };
       }
     }
@@ -2543,8 +2552,16 @@ async function startBattle(): Promise<void> {
       if (!foe) { alert("Couldn't read that enemy force link."); return; }
     }
   }
+  // Snapshot the chosen roster BEFORE mutating `forces`, then clear any leftover
+  // battle copies (e.g. from a session that didn't exit cleanly) so we never
+  // stack duplicate you/foe sides — the root of cross-unit damage bleed.
+  const yourName = your.name;
+  const yourUnits = structuredClone(your.units);
+  forces = forces.filter((f) => !f.battle);
+  activeForce = Math.max(0, Math.min(activeForce, forces.length - 1));
+  force = forces[activeForce]?.units ?? [];
   forces.push(
-    { name: your.name, units: structuredClone(your.units), battle: "you" },
+    { name: yourName, units: yourUnits, battle: "you" },
     { name: foe?.name ?? (online ? "Waiting for opponent…" : "Enemy Force"), units: foe ? structuredClone(foe.units) : [], battle: "foe" },
   );
   myRole = battleMode === "join" ? "guest" : "host";
@@ -2627,7 +2644,8 @@ function renderBattle(): void {
   };
   const conn = mpInfo
     ? `<span class="bt-conn bt-conn-${mpStatus}">${mpStatus === "online" ? `● ${mpPresence} online` : mpStatus === "connecting" ? "● connecting…" : "● offline"}</span>` +
-      (myRole === "host" ? `<button id="bt-copylink" type="button">Copy room link</button>` : "")
+      (myRole === "host" ? `<button id="bt-copylink" type="button">Copy room link</button>` : "") +
+      `<button id="bt-resync" type="button" title="Re-exchange forces and initiative with your opponent — use if anything looks out of sync">⟳ Resync</button>`
     : "";
 
   // --- Initiative strip: round, per-side 2d6 + bonus, winner, mod-reactions.
@@ -2807,6 +2825,11 @@ document.getElementById("battle")?.addEventListener("click", (e) => {
       () => alert("Room link copied — send it to your opponent."),
       () => prompt("Copy this room link:", link),
     );
+    return;
+  }
+  if (t.closest("#bt-resync")) {
+    mpSendHello(); // re-announce my force; the opponent replies with theirs
+    initSyncSend(); // and push my current initiative state
     return;
   }
   const ko = t.closest<HTMLElement>(".bt-kill");
@@ -3143,13 +3166,13 @@ quirksToggle?.addEventListener("change", () => {
 
 renderForce();
 if (inBattle()) {
+  // Restore my role BEFORE the first battle render so "you"/"foe" and damage
+  // routing are correct immediately (not briefly defaulted to host).
+  let savedMp: { room: string; role: Role } | null = null;
+  try { savedMp = JSON.parse(localStorage.getItem(MP_KEY) ?? "null") as { room: string; role: Role } | null; } catch { /* ignore */ }
+  if (savedMp && (savedMp.role === "host" || savedMp.role === "guest")) myRole = savedMp.role;
   enterBattle(); // resume a battle in progress after a reload
-  try {
-    const saved = JSON.parse(localStorage.getItem(MP_KEY) ?? "null") as typeof mpInfo;
-    if (saved?.room && saved.role) mpConnect(saved.room, saved.role); // reconnect live battle
-  } catch {
-    /* ignore */
-  }
+  if (savedMp?.room && savedMp.role) mpConnect(savedMp.room, savedMp.role); // reconnect live battle
 } else {
   // A room link (#battle=…) opens the Join dialog pre-filled.
   const room = location.hash.match(/[#&]battle=([^&]+)/)?.[1];
