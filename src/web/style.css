@@ -937,6 +937,19 @@ svg.bdoll .bdoll-hit { font-size: 8.5px; font-weight: 600; fill: #6a6a62; text-a
 .heat-btn { padding: 0.2rem 0.55rem; font-size: 0.9rem; }
 .heat-val { font-size: 1.2rem; font-weight: 800; min-width: 1.4rem; text-align: center; font-variant-numeric: tabular-nums; }
 .heat-eff { font-size: 0.78rem; color: #c0392b; font-weight: 600; }
+/* Combat-phase fire tracker: tick fired weapons; heat resolves at end phase. */
+.ttop-fire { display: flex; align-items: baseline; gap: 0.4rem 0.5rem; flex-wrap: wrap; margin-top: 0.35rem; }
+.fire-list { display: flex; flex-wrap: wrap; gap: 0.2rem 0.4rem; flex: 1 1 100%; }
+.fire-row { display: inline-flex; align-items: center; gap: 0.25rem; font-size: 0.8rem; padding: 0.05rem 0.3rem; border: 1px solid var(--line); border-radius: 5px; cursor: pointer; }
+.fire-row.on { border-color: #b45309; background: rgba(180,83,9,0.12); }
+.fire-row .fire-h { color: #b45309; font-weight: 700; font-size: 0.72rem; }
+.fire-readout { flex: 1 1 100%; font-size: 0.82rem; color: var(--muted); }
+.fire-readout .fire-proj { color: #c0392b; font-size: 0.95rem; }
+/* End-phase heat resolution summary. */
+.bt-heatlog { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.3rem 0.6rem; margin: 0.15rem 0 0.4rem; padding: 0.3rem 0.5rem; border-radius: 6px; border-left: 4px solid #c0392b; background: rgba(192,57,24,0.08); }
+.bt-heatlog-h { font-weight: 800; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.03em; color: #c0392b; }
+.bt-heat-item { font-size: 0.85rem; font-weight: 600; }
+.bt-heat-item.hot b { color: #c0392b; }
 .ttop-tohit label { font-size: 0.72rem; color: var(--muted); display: inline-flex; align-items: center; gap: 0.25rem; }
 .ttop-tohit select, .th-num {
   background: var(--panel-2); color: var(--ink); border: 1px solid var(--line);

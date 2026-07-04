@@ -991,7 +991,16 @@ function unitSinks(result: AnyCard): number {
   return c.heatDissipation ?? c.sinks ?? 0;
 }
 
-/** Heat dial (mech/fighter/dropship) + per-weapon to-hit helper for play mode. */
+/** The battle key ("host:2") of the currently open unit, or null (not in battle). */
+function openUnitKey(): string | null {
+  const side = forces[activeForce]?.battle as "you" | "foe" | undefined;
+  return side && editingForceIdx != null ? unitKey(side, editingForceIdx) : null;
+}
+/** The projected end-of-round heat line for the fire tracker. */
+const fireReadout = (fired: number, move: number, sinks: number, projected: number): string =>
+  `<b>+${fired}</b> fired${move ? ` · +${move} jump` : ""} · −${sinks} sinks → <b class="fire-proj">${projected}</b> at end phase`;
+
+/** Heat dial (mech/fighter/dropship) + fire tracker + per-weapon to-hit helper. */
 function tabletopPanel(u: ForceUnit, result: AnyCard): string {
   const hasHeat = result.kind === "mech" || result.kind === "fighter" || result.kind === "dropship";
   if (!hasHeat && editWeapons.length === 0) return "";
@@ -1004,6 +1013,20 @@ function tabletopPanel(u: ForceUnit, result: AnyCard): string {
         <button class="heat-btn" type="button" data-heat="cool">Cool −${editSinks}</button>
         <span class="heat-eff"></span></div>`
     : "";
+  // Combat-phase fire tracker (mech, in battle): tick fired weapons; the summed
+  // heat + jump heat resolves against sinks automatically at the end phase.
+  const tics = result.kind === "mech" ? result.card.tics : [];
+  const firedSet = new Set(u.damage?.fired ?? []);
+  const jump = result.kind === "mech" ? (result.card.jump ?? 0) : 0;
+  const firedHeat = tics.reduce((s, t, ti) => s + (firedSet.has(ti) ? ticHeat(t) : 0), 0);
+  const moveHeat = movementHeat(openUnitKey() ? battleInit.moves[openUnitKey()!] : undefined, jump);
+  const fireBlock = hasHeat && result.kind === "mech" && inBattle() && tics.length > 0
+    ? `<div class="ttop-fire"><span class="ttop-h" title="Tick the weapons this unit fired; the heat resolves (−sinks) automatically at the end phase">Fired this round</span>
+        <div class="fire-list">${tics
+          .map((t, ti) => `<label class="fire-row${firedSet.has(ti) ? " on" : ""}"><input type="checkbox" class="fire-chk" data-ti="${ti}"${firedSet.has(ti) ? " checked" : ""}><span class="fire-name">${esc(abbreviatedTicLabel(t, result.card.techBase))}</span><span class="fire-h">+${ticHeat(t)}</span></label>`)
+          .join("")}</div>
+        <div class="fire-readout">${fireReadout(firedHeat, moveHeat, editSinks, Math.max(0, heat + firedHeat + moveHeat - editSinks))}</div></div>`
+    : "";
   const toHit = editWeapons.length
     ? `<div class="ttop-tohit"><span class="ttop-h">To-hit</span>
         <label>Range <select id="th-range"><option value="pb">PB</option><option value="s">S</option><option value="m" selected>M</option><option value="l">L</option><option value="x">X</option></select></label>
@@ -1013,7 +1036,7 @@ function tabletopPanel(u: ForceUnit, result: AnyCard): string {
         ${editHasTC ? '<span class="th-tc" title="Targeting Computer: −1 to-hit on direct-fire weapons (marked TC below)">TC −1 · direct-fire</span>' : ""}
         <div id="tohit-out" class="tohit-out"></div></div>`
     : "";
-  return `<div class="ttop">${heatBlock}${toHit}</div>`;
+  return `<div class="ttop">${heatBlock}${fireBlock}${toHit}</div>`;
 }
 
 // ---- Ammo counter ---------------------------------------------------------
@@ -1081,6 +1104,14 @@ function updateTabletop(): void {
   const skBoxes = Array.from(output.querySelectorAll<HTMLElement>(".ms-skill-box, .ba-skill-box"));
   if (skBoxes[0]) skBoxes[0].innerHTML = skillVal(sk.gunnery + pHits, pHits);
   if (skBoxes[1]) skBoxes[1].innerHTML = skillVal(sk.piloting + pHits, pHits);
+  // Fire tracker: recompute the projected end-of-round heat readout in place.
+  const fr = output.querySelector(".fire-readout");
+  if (fr && editMechCard) {
+    const firedSet = new Set(u.damage?.fired ?? []);
+    const firedHeat = editMechCard.tics.reduce((s, t, i) => s + (firedSet.has(i) ? ticHeat(t) : 0), 0);
+    const moveHeat = movementHeat(openUnitKey() ? battleInit.moves[openUnitKey()!] : undefined, editMechCard.jump ?? 0);
+    fr.innerHTML = fireReadout(firedHeat, moveHeat, editSinks, Math.max(0, heat + firedHeat + moveHeat - editSinks));
+  }
   const out = output.querySelector("#tohit-out");
   if (!out) return;
   const bracket = ((output.querySelector("#th-range") as HTMLSelectElement | null)?.value ?? "m") as keyof RangeBrackets;
@@ -1205,6 +1236,25 @@ output.addEventListener("change", (e) => {
     updateTabletop();
     return;
   }
+  // Fire tracker: tick/untick a fired weapon; recache its heat + refresh the readout.
+  const fc = target.closest<HTMLElement>(".fire-chk");
+  if (editingForceIdx != null && fc?.dataset.ti != null) {
+    const u = force[editingForceIdx]!;
+    u.damage ??= {};
+    const ti = Number(fc.dataset.ti);
+    const set = new Set(u.damage.fired ?? []);
+    if ((target as HTMLInputElement).checked) set.add(ti);
+    else set.delete(ti);
+    u.damage.fired = [...set].sort((a, b) => a - b);
+    // Cache the summed heat from the open card's TICs (single source when resolving).
+    u.damage.firedHeat = editMechCard ? editMechCard.tics.reduce((s, t, i) => s + (set.has(i) ? ticHeat(t) : 0), 0) : 0;
+    if (u.damage.fired.length === 0) { delete u.damage.fired; delete u.damage.firedHeat; }
+    fc.closest(".fire-row")?.classList.toggle("on", (target as HTMLInputElement).checked);
+    saveForce();
+    updateTabletop();
+    syncTrackedDamage();
+    return;
+  }
   // Biped-doll per-location damage dropdown.
   const dctl = target.closest<HTMLElement>(".dmg-ctl");
   if (editingForceIdx != null && dctl?.dataset.area) {
@@ -1290,6 +1340,10 @@ interface ForceUnit {
     tics?: number[];
     /** Current heat level (tabletop assistant). */
     heat?: number;
+    /** Combat-phase heat tracker: TIC indices fired this round, and their summed
+     * TW/5 heat. Both cleared when the end phase resolves heat. */
+    fired?: number[];
+    firedHeat?: number;
     /** Rounds expended per ammo line (key = "label@location"); remaining = total − this. */
     ammo?: Record<string, number>;
     /** Battle tracker: marked out of action (destroyed / withdrawn). */
@@ -2144,7 +2198,7 @@ const freshInit = (): BattleInit => ({
   modReactions: false,
 });
 let battleInit: BattleInit = freshInit();
-interface UnitCardInfo { tmm: number; tmmSprint: number; jumpTmm: number; walk: number; jump: number; move: string }
+interface UnitCardInfo { tmm: number; tmmSprint: number; jumpTmm: number; walk: number; jump: number; move: string; sinks: number }
 /** TMM for a chosen movement mode (leg actuators cut walk/sprint, not jump/still). */
 function modeTmm(info: UnitCardInfo, legHits: number, mode: MoveMode): number {
   if (mode === "still") return 0;
@@ -2161,6 +2215,12 @@ function modeMoveText(info: UnitCardInfo, legHits: number, mode: MoveMode): stri
   return `walk ${w}`;
 }
 const tmmCache = new Map<string, UnitCardInfo>();
+/** Heat generated by the chosen movement, on the Override heat-sink scale (TW ÷5,
+ * matching ticHeat and the sink count). Jumping adds ~1 (more for long jumps);
+ * still/walk/sprint add none here. */
+function movementHeat(mode: MoveMode | undefined, jumpMP: number): number {
+  return mode === "jump" ? Math.max(1, Math.round(jumpMP / 5)) : 0;
+}
 const roll2d6 = (): number => 2 + Math.floor(Math.random() * 6) + Math.floor(Math.random() * 6);
 
 // --- In-app dice roller (battle bar). Rolls are local to each player; an
@@ -2204,18 +2264,18 @@ function unitCardInfo(u: ForceUnit): UnitCardInfo {
   const key = `${u.name}|${u.file ?? ""}`;
   const hit = tmmCache.get(key);
   if (hit) return hit;
-  let info: UnitCardInfo = { tmm: 0, tmmSprint: 1, jumpTmm: 0, walk: 0, jump: 0, move: "—" };
+  let info: UnitCardInfo = { tmm: 0, tmmSprint: 1, jumpTmm: 0, walk: 0, jump: 0, move: "—", sinks: 0 };
   try {
     const r = convertOne(u.text, u.file ?? u.name);
     if (r.ok) {
-      const c = r.result.card as { tmm?: number; tmmSprint?: number; move?: string; jump?: number; tmmJump?: number; walkMove?: number; runMove?: number; cruiseMP?: number };
+      const c = r.result.card as { tmm?: number; tmmSprint?: number; move?: string; jump?: number; tmmJump?: number; walkMove?: number; runMove?: number; cruiseMP?: number; heatDissipation?: number; sinks?: number };
       const tmm = c.tmm ?? 0;
       // Mechs print walk/run/jump explicitly; other kinds use their move string.
       const move =
         r.result.kind === "mech" && c.walkMove != null
           ? `${c.walkMove}/${c.runMove}${(c.jump ?? 0) > 0 ? `/${c.jump}j` : ""}`
           : (c.move ?? "—");
-      info = { tmm, tmmSprint: c.tmmSprint ?? tmm + 1, jumpTmm: c.tmmJump ?? 0, walk: c.walkMove ?? c.cruiseMP ?? 0, jump: c.jump ?? 0, move };
+      info = { tmm, tmmSprint: c.tmmSprint ?? tmm + 1, jumpTmm: c.tmmJump ?? 0, walk: c.walkMove ?? c.cruiseMP ?? 0, jump: c.jump ?? 0, move, sinks: c.heatDissipation ?? c.sinks ?? 0 };
     }
   } catch { /* ignore */ }
   tmmCache.set(key, info);
@@ -2327,6 +2387,33 @@ function endPhaseChecks(): Array<{ side: "you" | "foe"; name: string; checks: En
   }
   return out;
 }
+/** Per-unit heat resolution summary for the end-phase panel (my units; transient). */
+let heatResolveLog: Array<{ name: string; from: number; fired: number; move: number; sinks: number; to: number }> = [];
+/** End phase: for every 'Mech I control, add its fired-weapon heat + jump heat,
+ * subtract its heat sinks, clamp at 0, and clear the round's fire marks. */
+function resolveEndPhaseHeat(): void {
+  heatResolveLog = [];
+  for (const s of ["you", "foe"] as const) {
+    if (mpInfo && s !== "you") continue; // only resolve units I control
+    const f = forces[battleIdx(s)];
+    f?.units.forEach((u, idx) => {
+      if (u.damage?.out || unitKind(u) !== "mech") return;
+      const info = unitCardInfo(u);
+      const fired = u.damage?.firedHeat ?? 0;
+      const move = movementHeat(battleInit.moves[unitKey(s, idx)], info.jump);
+      const from = u.damage?.heat ?? 0;
+      const to = Math.max(0, from + fired + move - info.sinks);
+      if (u.damage) { delete u.damage.fired; delete u.damage.firedHeat; }
+      if (from === 0 && fired === 0 && move === 0) return; // nothing generated, nothing to cool
+      u.damage ??= {};
+      u.damage.heat = to;
+      heatResolveLog.push({ name: u.name, from, fired, move, sinks: info.sinks, to });
+      mpBroadcast(s, idx, u); // push the new heat to the opponent
+    });
+  }
+  saveForce();
+  if (editingForceIdx != null) renderForceEdit(); // refresh the open card's heat + cleared fire marks
+}
 function endPhasePanel(): string {
   const items = endPhaseChecks();
   const line = (name: string, chk: EndCheck): string => {
@@ -2338,8 +2425,14 @@ function endPhasePanel(): string {
     : items
         .map((it) => `<div class="bt-fall bt-act-${it.side}"><span class="bt-fall-name">⚠ ${esc(it.name)}</span><span class="bt-fall-why">${it.checks.map((c) => line(it.name, c)).join("")}</span></div>`)
         .join("");
+  const heatBody = heatResolveLog.length
+    ? `<div class="bt-heatlog"><span class="bt-heatlog-h">Heat resolved</span>${heatResolveLog
+        .map((h) => `<span class="bt-heat-item${h.to >= 1 ? " hot" : ""}">${esc(h.name)} ${h.from}→<b>${h.to}</b> <span class="muted">(+${h.fired}${h.move ? ` +${h.move}j` : ""} −${h.sinks})</span></span>`)
+        .join("")}</div>`
+    : "";
   return `<div class="bt-activation bt-endphase">
-      <div class="bt-act-head"><b>End phase</b> <span class="bt-phase bt-phase-end">End</span><span class="muted">falling &amp; consciousness checks</span></div>
+      <div class="bt-act-head"><b>End phase</b> <span class="bt-phase bt-phase-end">End</span><span class="muted">heat, falling &amp; consciousness checks</span></div>
+      ${heatBody}
       ${body}
     </div>`;
 }
@@ -2349,6 +2442,7 @@ function initAdvance(): void {
     battleInit = { ...battleInit, phase: "combat", acted: [] }; // keep roll + moves into combat
   } else if (battleInit.phase === "combat") {
     battleInit = { ...battleInit, phase: "end", acted: [] }; // end phase: falling checks
+    resolveEndPhaseHeat(); // add fired + jump heat, dissipate sinks
   } else {
     battleInit = { ...battleInit, round: battleInit.round + 1, phase: "move", roll: { host: null, guest: null }, acted: [], moves: {} };
     snapshotRoundDamage(); // new round → reset the falling-check damage baseline
@@ -2419,10 +2513,12 @@ function initHandle(m: MpMsg): boolean {
     return true;
   }
   if (m.type === "init-advance" && typeof m.round === "number" && (m.phase === "move" || m.phase === "combat" || m.phase === "end")) {
+    const wasCombat = battleInit.phase === "combat";
     battleInit.round = m.round;
     battleInit.phase = m.phase;
     battleInit.acted = [];
     if (m.phase === "move") { battleInit.roll = { host: null, guest: null }; battleInit.moves = {}; snapshotRoundDamage(); } // new round
+    if (m.phase === "end" && wasCombat) resolveEndPhaseHeat(); // resolve my units' heat when the opponent advances
     saveInit();
     renderBattle();
     return true;
