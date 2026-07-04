@@ -1691,9 +1691,26 @@ body.battle-mode #battle { display: block; }
   border-left: 4px solid #b45309; background: rgba(180,83,9,0.1);
 }
 .bt-fall-name { font-weight: 800; }
-.bt-fall-why { color: #b45309; font-weight: 700; font-size: 0.86rem; }
+.bt-fall-why { color: #b45309; font-weight: 700; font-size: 0.86rem; display: flex; flex-direction: column; gap: 0.15rem; }
+.bt-fall-line { display: inline-flex; align-items: center; gap: 0.35rem; }
 .bt-acted-tag { color: #16a34a; font-weight: 800; }
 .bt-unit.bt-acted .bt-track { opacity: 0.6; }
+
+/* ---- In-app dice roller ---- */
+.bt-dice { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin: 0.4rem 0; padding: 0.3rem 0.5rem; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); }
+.bt-dice-h { font-weight: 800; font-size: 0.85rem; }
+.bt-roll { font-size: 0.8rem; font-weight: 700; padding: 0.1rem 0.5rem; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); cursor: pointer; }
+.bt-roll:hover { border-color: #b45309; color: #b45309; }
+.bt-roll-inline { padding: 0 0.25rem; font-size: 0.9rem; line-height: 1; }
+.bt-dice-res { display: inline-flex; align-items: center; gap: 0.3rem; font-size: 0.95rem; }
+.bt-dice-res .die { font-size: 1.35rem; line-height: 1; }
+.bt-dice-res b { font-size: 1.05rem; }
+.bt-pass { color: #16a34a; font-weight: 800; }
+.bt-fail { color: #c0392b; font-weight: 800; }
+.bt-dice-hist { display: inline-flex; gap: 0.25rem; }
+.bt-dice-past { font-size: 0.78rem; color: var(--muted); padding: 0 0.3rem; border: 1px solid var(--line); border-radius: 4px; }
+.bt-dice-past.pf-pass { color: #16a34a; border-color: #16a34a; }
+.bt-dice-past.pf-fail { color: #c0392b; border-color: #c0392b; }
 
 /* ---- On-screen print preview (WYSIWYG) ---- */
 .pp-bar { display: none; }

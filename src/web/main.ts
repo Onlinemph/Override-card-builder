@@ -2153,6 +2153,38 @@ function modeMoveText(info: UnitCardInfo, legHits: number, mode: MoveMode): stri
 }
 const tmmCache = new Map<string, UnitCardInfo>();
 const roll2d6 = (): number => 2 + Math.floor(Math.random() * 6) + Math.floor(Math.random() * 6);
+
+// --- In-app dice roller (battle bar). Rolls are local to each player; an
+// optional target number shows pass/fail (used by the end-phase check prompts).
+type DiceRoll = { dice: number[]; total: number; note?: string; tn?: number };
+let diceLog: DiceRoll[] = [];
+const DIE_FACES = ["", "⚀", "⚁", "⚂", "⚃", "⚄", "⚅"];
+function rollD6(n: number, note?: string, tn?: number): void {
+  const dice = Array.from({ length: Math.max(1, Math.min(6, n)) }, () => 1 + Math.floor(Math.random() * 6));
+  diceLog.unshift({ dice, total: dice.reduce((a, b) => a + b, 0), note, tn });
+  if (diceLog.length > 8) diceLog.length = 8;
+  renderBattle();
+}
+const diceFaces = (dice: number[]): string => dice.map((d) => `<span class="die">${DIE_FACES[d] ?? d}</span>`).join("");
+const passFail = (r: DiceRoll): string =>
+  r.tn == null ? "" : r.total >= r.tn ? ` <span class="bt-pass">✓ ${r.tn}+</span>` : ` <span class="bt-fail">✗ ${r.tn}+</span>`;
+function diceStrip(): string {
+  const latest = diceLog[0];
+  const res = latest
+    ? `<span class="bt-dice-res">${diceFaces(latest.dice)} <b>${latest.total}</b>${passFail(latest)}${latest.note ? ` <span class="muted">${esc(latest.note)}</span>` : ""}</span>`
+    : `<span class="muted">roll for to-hit, PSR, or any check</span>`;
+  const hist = diceLog
+    .slice(1, 6)
+    .map((r) => `<span class="bt-dice-past${r.tn != null ? (r.total >= r.tn ? " pf-pass" : " pf-fail") : ""}" title="${r.note ? esc(r.note) : ""}">${r.total}</span>`)
+    .join("");
+  return `<div class="bt-dice">
+      <span class="bt-dice-h">🎲 Dice</span>
+      <button class="bt-roll" type="button" data-dice="2">2d6</button>
+      <button class="bt-roll" type="button" data-dice="1">1d6</button>
+      ${res}
+      ${hist ? `<span class="bt-spacer"></span><span class="bt-dice-hist" title="recent rolls">${hist}</span>` : ""}
+    </div>`;
+}
 /** Side total = raw 2d6 + bonus (null until that side has rolled). */
 const initTotal = (r: Role): number | null => (battleInit.roll[r] == null ? null : battleInit.roll[r]! + battleInit.bonus[r]);
 /** "you"/"foe" → the owning role key (consistent across both clients). */
@@ -2251,20 +2283,22 @@ function snapshotRoundDamage(): void {
   battleInit.snap = snap;
 }
 /** Consciousness-roll target numbers by pilot-hit count (1st hit … 5th hit). */
-const CONSCIOUSNESS_TN = ["3+", "5+", "7+", "9+", "11+"];
+/** Consciousness-roll target numbers by pilot-hit count (1st hit … 5th hit). */
+const CONSCIOUSNESS_TN = [3, 5, 7, 9, 11];
+type EndCheck = { text: string; tn?: number }; // tn set → the roller can show pass/fail
 /** End-phase checks per 'Mech: a falling (Piloting) check when it took 10+ damage
  * / a gyro hit / a leg-actuator hit this round, and a consciousness check when
  * its pilot took a hit this round. */
-function endPhaseChecks(): Array<{ side: "you" | "foe"; name: string; checks: string[] }> {
+function endPhaseChecks(): Array<{ side: "you" | "foe"; name: string; checks: EndCheck[] }> {
   const base = battleInit.snap ?? {};
-  const out: Array<{ side: "you" | "foe"; name: string; checks: string[] }> = [];
+  const out: Array<{ side: "you" | "foe"; name: string; checks: EndCheck[] }> = [];
   for (const s of ["you", "foe"] as const) {
     const f = forces[battleIdx(s)];
     f?.units.forEach((u, idx) => {
       if (u.damage?.out || unitKind(u) !== "mech") return;
       const b = base[unitKey(s, idx)] ?? unitDmgSnap(u); // no baseline → no delta (no false alarm)
-      const checks: string[] = [];
-      // Falling (Piloting) check.
+      const checks: EndCheck[] = [];
+      // Falling (Piloting) check — TN is pilot skill + situational mods, so no fixed target.
       const fall: string[] = [];
       const dDelta = unitDamageTotal(u) - b.d;
       const gDelta = (u.damage?.gyro ?? 0) - b.g;
@@ -2272,12 +2306,12 @@ function endPhaseChecks(): Array<{ side: "you" | "foe"; name: string; checks: st
       if (dDelta >= 10) fall.push(`${dDelta} damage`);
       if (gDelta > 0) fall.push(gDelta > 1 ? `${gDelta} gyro hits` : "gyro hit");
       if (lDelta > 0) fall.push(lDelta > 1 ? `${lDelta} actuator hits` : "leg actuator hit");
-      if (fall.length) checks.push(`Falling check (Piloting) — ${fall.join(", ")}`);
-      // Consciousness check — pilot took a hit this round (not yet KIA).
+      if (fall.length) checks.push({ text: `Falling check (Piloting) — ${fall.join(", ")}` });
+      // Consciousness check — pilot took a hit this round (not yet KIA). Fixed TN.
       const c = u.damage?.condition ?? 0;
       if (c > b.c && c >= 1 && c <= CONSCIOUSNESS_TN.length) {
         const hits = c - b.c;
-        checks.push(`Consciousness check (${CONSCIOUSNESS_TN[c - 1]}) — ${hits > 1 ? `${hits} pilot hits` : "pilot hit"}`);
+        checks.push({ text: `Consciousness check (${CONSCIOUSNESS_TN[c - 1]}+) — ${hits > 1 ? `${hits} pilot hits` : "pilot hit"}`, tn: CONSCIOUSNESS_TN[c - 1] });
       }
       if (checks.length) out.push({ side: s, name: u.name, checks });
     });
@@ -2286,10 +2320,14 @@ function endPhaseChecks(): Array<{ side: "you" | "foe"; name: string; checks: st
 }
 function endPhasePanel(): string {
   const items = endPhaseChecks();
+  const line = (name: string, chk: EndCheck): string => {
+    const note = `${name}: ${chk.text.split(" —")[0]}`;
+    return `<span class="bt-fall-line">${esc(chk.text)} <button class="bt-roll bt-roll-inline" type="button" data-dice="2" data-note="${esc(note)}"${chk.tn != null ? ` data-tn="${chk.tn}"` : ""} title="Roll 2d6 for this check">🎲</button></span>`;
+  };
   const body = items.length === 0
     ? `<p class="muted">No checks required this round.</p>`
     : items
-        .map((it) => `<div class="bt-fall bt-act-${it.side}"><span class="bt-fall-name">⚠ ${esc(it.name)}</span><span class="bt-fall-why">${it.checks.map((c) => esc(c)).join(" · ")}</span></div>`)
+        .map((it) => `<div class="bt-fall bt-act-${it.side}"><span class="bt-fall-name">⚠ ${esc(it.name)}</span><span class="bt-fall-why">${it.checks.map((c) => line(it.name, c)).join("")}</span></div>`)
         .join("");
   return `<div class="bt-activation bt-endphase">
       <div class="bt-act-head"><b>End phase</b> <span class="bt-phase bt-phase-end">End</span><span class="muted">falling &amp; consciousness checks</span></div>
@@ -2709,6 +2747,7 @@ function renderBattle(): void {
       <button id="bt-end" type="button">End battle</button>
     </div>
     ${init}
+    ${diceStrip()}
     ${activation}
     <div class="bt-rosters">${side(you, youI, "Your force")}${side(foe, foeI, "Enemy")}</div>`;
 }
@@ -2727,6 +2766,11 @@ document.getElementById("battle")?.addEventListener("click", (e) => {
   }
   if (t.closest("#bt-roll-init")) {
     initRoll();
+    return;
+  }
+  const rollBtn = t.closest<HTMLElement>(".bt-roll");
+  if (rollBtn?.dataset.dice) {
+    rollD6(Number(rollBtn.dataset.dice), rollBtn.dataset.note, rollBtn.dataset.tn ? Number(rollBtn.dataset.tn) : undefined);
     return;
   }
   if (t.closest("#bt-next-round")) {
