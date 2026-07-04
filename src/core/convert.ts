@@ -606,6 +606,7 @@ export function ticRow(tic: Tic, techBase: TechBase, facingCode: string): Vehicl
     range: tic.range,
     rangeText: tic.rangeText,
     unknown: tic.weapons.some((w) => w.unknown),
+    ...(tic.weapons.some((w) => isWarshipWeapon(w.name)) ? { capital: true } : {}),
   };
 }
 

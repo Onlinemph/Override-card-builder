@@ -554,6 +554,9 @@ export interface VehicleWeaponRow {
   /** Display-only: set by the web layer when a Targeting Computer aids this
    * (direct-fire) weapon, so the card can mark it "(TC)". */
   tc?: boolean;
+  /** True for capital / sub-capital / naval weapons: their damage is on the
+   * capital scale (×10 vs standard), so the card flags it as capital. */
+  capital?: boolean;
 }
 
 /** Per-facing Override armor on the vehicle card. */

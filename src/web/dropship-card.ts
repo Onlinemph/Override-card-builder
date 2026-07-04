@@ -108,7 +108,7 @@ function weaponsTable(card: DropshipCard): string {
           const flag = w.unknown ? ' <span class="warn-flag">[?]</span>' : "";
           return `<tr>
         <td class="wname">${esc(w.label)}${w.tc ? ' <span class="tc-flag">(TC)</span>' : ""}${flag}</td>
-        <td class="num wdmg">${esc(w.damageText)}</td>
+        <td class="num wdmg${w.capital ? " cap-dmg" : ""}">${esc(w.damageText)}${w.capital ? ' <span class="cap-flag" title="Capital-scale damage — ×10 vs standard">cap</span>' : ""}</td>
         <td class="num">${esc(w.heat)}</td>
         ${rangeCells(w.range)}
       </tr>`;
@@ -117,7 +117,10 @@ function weaponsTable(card: DropshipCard): string {
       return head + rows;
     })
     .join("");
-  return `<table class="mweapons dropship-weapons">
+  const capCap = card.weapons.some((w) => w.capital)
+    ? `<caption class="wcap-cap"><span class="cap-flag">cap</span> = capital-scale damage (each point ≈ 10 standard)</caption>`
+    : "";
+  return `<table class="mweapons dropship-weapons">${capCap}
     <thead><tr>
       <th class="wname">Weapons</th><th class="num">Dmg</th><th class="num">Ht</th>
       <th class="num">PB</th><th class="num">S</th>
