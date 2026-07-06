@@ -359,11 +359,17 @@ function parseWeapons(lines: RawLine[], file: string): Weapon[] {
   const count = parseIntStrict(lines[idx]!.text.split(":")[1] ?? "", "Weapons", file);
   const weapons: Weapon[] = [];
 
+  // `Weapons:N` counts LINES, not weapons. Each line is "<qty> <Name>, <Location>"
+  // (the leading qty is almost always present in MegaMek MTF, even "1"); a line
+  // with qty>1 expands into that many identical weapons. So loop on lines read,
+  // not on weapons pushed.
   let cursor = idx + 1;
-  while (weapons.length < count && cursor < lines.length) {
+  let linesRead = 0;
+  while (linesRead < count && cursor < lines.length) {
     const line = lines[cursor]!;
     cursor++;
     if (line.text === "") continue;
+    linesRead++;
 
     const fields = splitWeaponFields(line.text);
     if (fields.length < 2 || fields[0] === "") {
@@ -376,6 +382,14 @@ function parseWeapons(lines: RawLine[], file: string): Weapon[] {
 
     let name = fields[0]!;
     let rawLocation = fields[1]!; // location is the SECOND field; ignore any after
+
+    // Leading quantity: "4 ISERSmallLaser" -> 4 copies of "ISERSmallLaser".
+    let qty = 1;
+    const qtyMatch = name.match(/^(\d+)\s+(.+)$/);
+    if (qtyMatch) {
+      qty = Math.max(1, parseInt(qtyMatch[1]!, 10));
+      name = qtyMatch[2]!;
+    }
 
     // Rear-mounted flag. MTF variants put the "(R)" marker on either side:
     // "Medium Laser (R), Center Torso" or "Medium Laser, Center Torso (R)".
@@ -393,12 +407,12 @@ function parseWeapons(lines: RawLine[], file: string): Weapon[] {
       );
     }
 
-    weapons.push({ name, location: loc, rawLocation, rearMounted });
+    for (let q = 0; q < qty; q++) weapons.push({ name, location: loc, rawLocation, rearMounted });
   }
 
-  if (weapons.length < count) {
+  if (linesRead < count) {
     throw new ParseError(
-      `weapons block claims ${count} entries but only ${weapons.length} found`,
+      `weapons block claims ${count} entries but only ${linesRead} found`,
       file,
       "Weapons",
     );

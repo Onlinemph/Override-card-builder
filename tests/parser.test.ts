@@ -93,6 +93,21 @@ Medium Laser, Center Torso (R)
     ]);
   });
 
+  it("expands a leading quantity prefix into that many weapons (e.g. Gurkha GUR-2G's 4 ER Small Lasers)", () => {
+    // MegaMek MTF Weapons blocks use "<qty> <Name>, <Location>"; Weapons:N counts
+    // LINES, not weapons. A qty>1 line must expand into that many weapons.
+    const mtf =
+      "chassis:T\nmodel:1\nConfig:Biped\nTechBase:Inner Sphere\nMass:35\nEngine:245 XL Engine\n" +
+      "Heat Sinks:10 Double\nWalk MP:7\nArmor:Standard\nCT armor:10\nWeapons:2\n" +
+      "4 ISERSmallLaser, Left Arm\n1 ISERPPC, Right Torso\n";
+    const u = parseMtf(mtf, "Gurkha.mtf");
+    expect(u.weapons).toHaveLength(5); // 4 lasers + 1 PPC, from 2 lines
+    expect(u.weapons.filter((w) => w.name === "ISERSmallLaser")).toHaveLength(4);
+    expect(u.weapons.map((w) => w.name)).toEqual([
+      "ISERSmallLaser", "ISERSmallLaser", "ISERSmallLaser", "ISERSmallLaser", "ISERPPC",
+    ]);
+  });
+
   it("keeps weapon names with internal commas, and maps a 'None' location to CT", () => {
     const mtf =
       "chassis:T\nmodel:1\nConfig:Biped\nTechBase:Inner Sphere\nMass:65\nEngine:260 Fusion Engine\n" +
