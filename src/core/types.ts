@@ -359,8 +359,14 @@ export type BAWeightClass = "PA(L)" | "Light" | "Medium" | "Heavy" | "Assault";
 export interface BlkMount {
   /** Item name exactly as written, tech prefix preserved, `:LOC` stripped. */
   name: string;
-  /** Mount/manipulator code after the colon (e.g. "LA", "Body"), or "". */
+  /** Body location (e.g. "LA", "Body", "TU"), or "" when none was given. */
   mount: string;
+  /**
+   * Every colon-separated field after the name, in file order. A line may carry
+   * a location plus modifiers in either order — "Auto-Rifle:APM:RA" and
+   * "InfantryRifle:LA:APM" both occur — plus extras like "Shots4#" or "SIZE".
+   */
+  tags: string[];
   /** How many the squad fields in total. */
   copies: number;
 }

@@ -167,27 +167,42 @@ function resolveWeightClass(blocks: Block[]): BAWeightClass {
 }
 
 /**
- * Collect weapon/equipment mounts. Each line is `Name` or `Name:LOC`. If the
- * file lists per-trooper blocks ("Trooper N Equipment"), each line is one mount
- * (copies = 1). Otherwise squad-wide blocks ("Squad Equipment", "Body", any
- * "* Equipment") are carried by every trooper (copies = troopers).
+ * Collect weapon/equipment mounts. Each line is `Name`, `Name:LOC`, or
+ * `Name:LOC:EXTRA` (e.g. an ammo `Shots4#` suffix).
+ *
+ * The two kinds of equipment block are ADDITIVE, not either/or:
+ *   - squad-wide ("Squad Equipment", "Point Equipment", "Body", any
+ *     "* Equipment"): every trooper carries it, so copies = troopers.
+ *   - per-trooper ("Trooper N Equipment"): that one suit carries it, copies = 1.
+ *
+ * A suit commonly has both — e.g. the Fa Shih BA keeps its flamer in Squad
+ * Equipment and a mine dispenser in each Trooper block — and some files (e.g.
+ * Stormbird Battle Armor) declare EMPTY trooper blocks as placeholders while the
+ * real loadout sits in a squad-wide block. Treating them as either/or dropped
+ * whichever half lost, leaving those cards with no weapons at all.
  */
+/** Body locations a BA equipment line can name (everything else is a modifier). */
+const BA_MOUNT_LOCATIONS = new Set(["body", "la", "ra", "tu", "turret", "squad"]);
+
 function parseMounts(blocks: Block[], troopers: number): BlkMount[] {
-  const trooperBlocks = blocks.filter((b) => /trooper\s*\d+\s*equipment/i.test(b.tag));
-  const useTrooper = trooperBlocks.length > 0;
-  const source = useTrooper
-    ? trooperBlocks
-    : blocks.filter((b) => b.key.includes("equipment"));
-  const copies = useTrooper ? 1 : troopers;
+  const isTrooperBlock = (b: Block): boolean => /trooper\s*\d+\s*equipment/i.test(b.tag);
 
   const mounts: BlkMount[] = [];
-  for (const block of source) {
+  for (const block of blocks) {
+    if (!block.key.includes("equipment")) continue;
+    const copies = isTrooperBlock(block) ? 1 : troopers;
     for (const line of block.lines) {
-      const colon = line.lastIndexOf(":");
-      const name = (colon >= 0 ? line.slice(0, colon) : line).trim();
-      const mount = colon >= 0 ? line.slice(colon + 1).trim() : "";
+      // Fields are `Name` then any of a location, a mount marker (APM / DWP /
+      // SSWM) and extras (`Shots4#`, `SIZE:n`) — in EITHER order, e.g.
+      // "Auto-Rifle:APM:RA" vs "InfantryRifle:LA:APM". Take field 0 as the name
+      // (so a trailing field is never glued onto it) and pick the location out
+      // of the rest by name, keeping every field in `tags` for the caller.
+      const [rawName, ...rest] = line.split(":");
+      const name = (rawName ?? "").trim();
       if (name === "") continue;
-      mounts.push({ name, mount, copies });
+      const tags = rest.map((t) => t.trim()).filter((t) => t !== "");
+      const mount = tags.find((t) => BA_MOUNT_LOCATIONS.has(t.toLowerCase())) ?? "";
+      mounts.push({ name, mount, tags, copies });
     }
   }
   return mounts;

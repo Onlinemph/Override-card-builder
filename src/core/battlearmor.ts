@@ -51,12 +51,14 @@ const BA_LOCATION = "CT" as const;
  * so the BA path ignores them entirely rather than listing them as weapons.
  *
  * @param name      the weapon name
- * @param mountTag  the BLK `:LOC` mount tag ("RA", "APM", …)
+ * @param mountTag  the BLK body location ("RA", "Body", …)
+ * @param tags      every `:` field after the name — the APM flag can appear in
+ *                  any of them ("Auto-Rifle:APM:RA" and "InfantryRifle:LA:APM"
+ *                  both occur), so check them all rather than one position.
  */
-function isAntiPersonnel(name: string, mountTag: string): boolean {
-  // The mount tag can be the last `:LOC` segment, but some BLKs put the APM flag
-  // in a MIDDLE segment ("Auto-Rifle:APM:RA"), so also look for it in the name.
-  return mountTag.toUpperCase() === "APM" || /:\s*apm\b/i.test(name) || /infantry|mauser/i.test(name);
+function isAntiPersonnel(name: string, mountTag: string, tags: readonly string[] = []): boolean {
+  const apm = (s: string): boolean => s.trim().toUpperCase() === "APM";
+  return apm(mountTag) || tags.some(apm) || /:\s*apm\b/i.test(name) || /infantry|mauser/i.test(name);
 }
 
 /**
@@ -136,7 +138,7 @@ export function convertBattleArmor(unit: BattleArmorUnit): BattleArmorCard {
   for (const mount of unit.mounts) {
     // Anti-personnel infantry small arms are flavor in BattleTech (abstracted by
     // the anti-infantry column), so drop them entirely — no weapon, no warning.
-    if (isAntiPersonnel(mount.name, mount.mount)) continue;
+    if (isAntiPersonnel(mount.name, mount.mount, mount.tags)) continue;
     // BA armor types (Reflective/Reactive/Mimetic/Stealth) are not weapons.
     if (isBaArmorType(mount.name)) continue;
     // Ammo and gear go through the equipment filter, never the weapon path —

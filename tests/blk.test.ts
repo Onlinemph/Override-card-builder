@@ -43,11 +43,62 @@ describe("parseBlkBattleArmor", () => {
 
     // Squad-wide mounts are carried by every trooper -> copies = trooper count.
     expect(u.mounts).toEqual([
-      { name: "CLERSmallLaser", mount: "RA", copies: 5 },
-      { name: "CLSRM2 (OS)", mount: "LA", copies: 5 },
-      { name: "CLSRM2 (OS) Ammo", mount: "Body", copies: 5 },
-      { name: "Battle Claw", mount: "LA", copies: 5 },
+      { name: "CLERSmallLaser", mount: "RA", tags: ["RA"], copies: 5 },
+      { name: "CLSRM2 (OS)", mount: "LA", tags: ["LA"], copies: 5 },
+      { name: "CLSRM2 (OS) Ammo", mount: "Body", tags: ["Body"], copies: 5 },
+      { name: "Battle Claw", mount: "LA", tags: ["LA"], copies: 5 },
     ]);
+  });
+
+  it("reads squad-wide equipment past EMPTY per-trooper blocks (Stormbird BA)", () => {
+    // The Stormbird declares placeholder <Trooper N Equipment> blocks and keeps
+    // its real loadout in <Point Equipment>; the card used to come out empty.
+    const blk =
+      "<UnitType>\nBattleArmor\n</UnitType>\n<Name>\nStormbird\n</Name>\n<Model>\n(Sqd6)\n</Model>\n" +
+      "<Trooper Count>\n6\n</Trooper Count>\n<armor>\n13\n</armor>\n<cruiseMP>\n2\n</cruiseMP>\n" +
+      "<Point Equipment>\nCLAdvancedSRM3:Body\nCLBAHeavyFlamer:RA\n</Point Equipment>\n" +
+      "<Trooper 1 Equipment>\n</Trooper 1 Equipment>\n<Trooper 2 Equipment>\n</Trooper 2 Equipment>\n";
+    const u = parseBlkBattleArmor(blk, "Stormbird.blk");
+    expect(u.mounts).toEqual([
+      { name: "CLAdvancedSRM3", mount: "Body", tags: ["Body"], copies: 6 },
+      { name: "CLBAHeavyFlamer", mount: "RA", tags: ["RA"], copies: 6 },
+    ]);
+    expect(convertBattleArmor(u).firepower.length).toBeGreaterThan(0);
+  });
+
+  it("combines squad-wide AND per-trooper equipment (Fa Shih BA)", () => {
+    // Squad Equipment holds the flamer, each Trooper block a mine dispenser.
+    // Treating the two as either/or dropped the squad's actual weapon.
+    const blk =
+      "<UnitType>\nBattleArmor\n</UnitType>\n<Name>\nFa Shih\n</Name>\n" +
+      "<Trooper Count>\n4\n</Trooper Count>\n<armor>\n10\n</armor>\n<cruiseMP>\n1\n</cruiseMP>\n" +
+      "<Squad Equipment>\nISBAFlamer:RA\n</Squad Equipment>\n" +
+      "<Trooper 1 Equipment>\nISBAMineDispenser:Body\n</Trooper 1 Equipment>\n";
+    const u = parseBlkBattleArmor(blk, "FaShih.blk");
+    expect(u.mounts).toEqual([
+      { name: "ISBAFlamer", mount: "RA", tags: ["RA"], copies: 4 }, // squad-wide
+      { name: "ISBAMineDispenser", mount: "Body", tags: ["Body"], copies: 1 }, // one suit
+    ]);
+  });
+
+  it("splits equipment fields regardless of order, keeping the name clean", () => {
+    // "Name:LOC:EXTRA" and "Name:EXTRA:LOC" both occur in the wild. The name is
+    // always field 0, the location is found by name, and an APM flag in ANY
+    // field still marks the item anti-personnel (dropped from the weapon list).
+    const blk =
+      "<UnitType>\nBattleArmor\n</UnitType>\n<Name>\nT\n</Name>\n" +
+      "<Trooper Count>\n4\n</Trooper Count>\n<armor>\n10\n</armor>\n<cruiseMP>\n1\n</cruiseMP>\n" +
+      "<Squad Equipment>\nBA-Advanced SRM-3 Ammo:Body:Shots4#\nAuto-Rifle (Modern, Generic):APM:RA\n" +
+      "Sample Gun:LA:APM\n</Squad Equipment>\n";
+    const u = parseBlkBattleArmor(blk, "fields.blk");
+    // Ammo keeps a clean name (no ":Body" glued on) and resolves its location.
+    expect(u.mounts[0]).toEqual({
+      name: "BA-Advanced SRM-3 Ammo", mount: "Body", tags: ["Body", "Shots4#"], copies: 4,
+    });
+    expect(u.mounts[1]!.mount).toBe("RA"); // location found after the APM marker
+    expect(u.mounts[2]!.mount).toBe("LA"); // location found before the APM marker
+    // Both APM items are anti-personnel, so neither becomes a squad weapon.
+    expect(convertBattleArmor(u).firepower).toHaveLength(0);
   });
 
   it("rejects non-BattleArmor BLK files with a clear error", () => {
