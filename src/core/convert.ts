@@ -424,14 +424,18 @@ export function scaleSquadDamage(weapon: CardWeapon, copies: number): DamageProf
   const totalTw = weapon.twDamage * m;
   const max = convertWeaponDamage(totalTw);
   const p = weapon.profile;
+  // Plasma/flamer heat dice are dealt per weapon, so they scale with the copy
+  // count exactly like M dice (3 Heavy Flamers -> 4+H3). Without this the "+H"
+  // was dropped entirely from every grouped TIC and every BA squad row.
+  const heat = p.heatDamage ? { heatDamage: p.heatDamage * m } : {};
   if (p.kind === "missile") {
-    return { kind: "missile", base: p.base * m, mDice: p.mDice * m, cDice: [], byRange: [], max };
+    return { kind: "missile", base: p.base * m, mDice: p.mDice * m, cDice: [], byRange: [], max, ...heat };
   }
   if (p.kind === "cluster") {
-    return { kind: "cluster", base: p.base * m, mDice: 0, cDice: p.cDice.map((c) => c * m), byRange: [], max };
+    return { kind: "cluster", base: p.base * m, mDice: 0, cDice: p.cDice.map((c) => c * m), byRange: [], max, ...heat };
   }
   // direct, variable, or unknown -> flat squad damage.
-  return { kind: "direct", base: max, mDice: 0, cDice: [], byRange: [], max };
+  return { kind: "direct", base: max, mDice: 0, cDice: [], byRange: [], max, ...heat };
 }
 
 // ---------------------------------------------------------------------------

@@ -350,6 +350,13 @@ describe("TIC grouping (page 41 caps: base <= 5, max <= 14)", () => {
       weapons,
     }).tics;
 
+  it("keeps plasma/flamer heat dice when grouping, scaled by count", () => {
+    // A lone Heavy Flamer prints 2+H1; three grouped must print 4+H3, not "4".
+    const tics = ticsFor([W("Heavy Flamer", "RA"), W("Heavy Flamer", "RA"), W("Heavy Flamer", "RA")]);
+    expect(tics).toHaveLength(1);
+    expect(tics[0]!.damageText).toBe("4+H3");
+  });
+
   it("groups identical weapons in the same location, summing TW", () => {
     const tics = ticsFor([W("Medium Laser", "LA"), W("Medium Laser", "LA")]);
     expect(tics).toHaveLength(1);
@@ -990,6 +997,23 @@ describe("scaleSquadDamage (Battle Armor: each suit fires its own copy)", () => 
       "4+M4 (6)",
       "5+M5 (7)",
     ]);
+  });
+
+  it("scales plasma/flamer heat dice per copy (the Stormbird's HFlamer row)", () => {
+    // Each suit's flamer deals its own heat die, so "+H{n}" scales with the copy
+    // count just like M dice. Previously scaleSquadDamage rebuilt the profile
+    // without heatDamage, silently dropping "+H" from every BA row and TIC group.
+    const hf = weapon("Heavy Flamer"); // single profile 2+H1
+    expect([1, 2, 3, 4, 5, 6].map((n) => formatDamage(scaleSquadDamage(hf, n)))).toEqual([
+      "2+H1",
+      "3+H2",
+      "4+H3",
+      "6+H4",
+      "7+H5",
+      "8+H6",
+    ]);
+    // A weapon with no heat damage still prints none.
+    expect(formatDamage(scaleSquadDamage(weapon("Small Laser"), 3))).toBe("3");
   });
 
   it("keeps direct fire flat: ceil(TW * copies / 3)", () => {
