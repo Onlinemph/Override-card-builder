@@ -782,10 +782,6 @@ function renderForceEdit(): void {
   if (r.result.kind === "mech") {
     r.result.card.legHits = u.damage?.legHits; // play-mode leg penalty
     r.result.card.heat = u.damage?.heat; // play-mode heat: −2 Move / −1 TMM at 1+, +1 to-hit at 2+
-    // The displayed card has TC + quirk effects baked in; keep that same adjusted
-    // copy so updateTabletop can refresh Move/TMM + weapon to-hit mods in place.
-    const adj = applyTargetingComputer(applyQuirkEffects(r.result));
-    editMechCard = adj.kind === "mech" ? adj.card : null;
   }
   editTorsoCockpit =
     r.result.kind === "mech" && r.result.card.equipment.some((e) => /torso-mounted cockpit/i.test(e.label));
@@ -803,6 +799,17 @@ function renderForceEdit(): void {
   } else {
     edit = null; // BA / infantry: skills only, no TICs
     raw = rawCardHtml(r.result);
+  }
+  // The displayed card has TC + quirk effects baked in; keep that same adjusted
+  // copy so updateTabletop can refresh Move/TMM + weapon to-hit mods in place.
+  // MUST be built AFTER the saved TIC grouping is applied above: quirks/TC CLONE
+  // the card, so snapshotting earlier froze the auto-grouping, and the
+  // updateTabletop() call at the end of this function then replaced the freshly
+  // rendered weapons table with that stale copy — manual regrouping appeared to
+  // do nothing on the card (it only showed in the TIC editor).
+  if (r.result.kind === "mech") {
+    const adj = applyTargetingComputer(applyQuirkEffects(r.result));
+    editMechCard = adj.kind === "mech" ? adj.card : null;
   }
   const sk = unitSkills(u);
   const pHits = u.damage?.condition ?? 0; // each pilot hit: +1 gunnery & piloting
